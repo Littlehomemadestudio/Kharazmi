@@ -149,7 +149,11 @@ class TaskNodeItem(QGraphicsObject):
 
         # 8. Slack / dates
         if self.task.early_start is not None and self.task.slack is not None:
-            date_str = self.task.early_start.strftime("%b %d")
+            date_str = ""
+            if self.task.early_start is not None:
+                from ...core.shamsi import ShamsiDate
+                sd = ShamsiDate.from_datetime(self.task.early_start)
+                date_str = f"{sd.month_name_en[:3]} {sd.day}"
             if self.task.is_critical:
                 slack_str = "CRITICAL"
             else:

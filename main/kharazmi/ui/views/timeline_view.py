@@ -76,7 +76,10 @@ class TimelineView(QTreeWidget):
             # ISO week Monday
             week_monday = week_start - timedelta(days=week_start.weekday())
             week_sunday = week_monday + timedelta(days=6)
-            week_label = f"Week of {week_monday.strftime('%b %d')} – {week_sunday.strftime('%b %d, %Y')}"
+            from ...core.shamsi import ShamsiDate, format_shamsi
+            week_monday_shamsi = ShamsiDate.from_gregorian(week_monday)
+            week_sunday_shamsi = ShamsiDate.from_gregorian(week_sunday)
+            week_label = f"Week of {week_monday_shamsi.format('d MMMM')} – {week_sunday_shamsi.format('d MMMM yyyy')}"
 
             parent = QTreeWidgetItem(self, [week_label, "", "", "", "", "", "", ""])
             f = parent.font(0)
@@ -94,8 +97,8 @@ class TimelineView(QTreeWidget):
                     t.status.value,
                     t.priority.name,
                     t.duration.humanize(),
-                    t.early_start.strftime("%b %d %H:%M") if t.early_start else "—",
-                    t.early_finish.strftime("%b %d %H:%M") if t.early_finish else "—",
+                    format_shamsi(t.early_start, include_time=True) if t.early_start else "—",
+                    format_shamsi(t.early_finish, include_time=True) if t.early_finish else "—",
                     t.slack.total_slack.humanize() if t.slack else "—",
                     f"{t.progress.percent}%",
                 ])

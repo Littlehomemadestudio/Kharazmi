@@ -34,6 +34,7 @@ from ..core import (
     Project, Task, TaskId, DependencyType, ViewKind, TaskStatus,
     DomainEvent, TaskCreated, TaskDeleted, TaskUpdated, TaskStatusChanged,
     DependencyAdded, DependencyRemoved, ScheduleRecalculated, CycleDetected,
+    ShamsiDate, format_shamsi, to_persian_digits,
 )
 from ..commands import UndoStack
 from ..services import (
@@ -45,11 +46,15 @@ from .icons import get_icon
 from .widgets import (
     MainToolbar, StatusBar, InspectorPanel, ConsolePanel,
     CommandPaletteDialog, PaletteItem, MinimapOverlay,
+    start_tour, TourOverlay,
 )
 from .views import (
     NodeGraphView, GanttView, KanbanView, TimelineView, StatisticsView,
 )
-from .dialogs import TaskEditorDialog, ProjectSettingsDialog, AdvisorDialog
+from .dialogs import (
+    TaskEditorDialog, ProjectSettingsDialog, AdvisorDialog,
+    PlanSelectionDialog, load_saved_plan, save_plan,
+)
 
 
 class SidebarTree(QTreeWidget):
@@ -263,6 +268,8 @@ class MainWindow(QMainWindow):
 
         # Auto-recalc on startup
         QTimer.singleShot(100, self._recalculate)
+        # Show tour on first run
+        QTimer.singleShot(600, self._maybe_show_tour)
 
     # ---- Building UI ----
     def _build_menu(self) -> None:
@@ -306,6 +313,12 @@ class MainWindow(QMainWindow):
         self._action_settings = QAction(get_icon("settings"), "Project &Settings...", self)
         self._action_settings.triggered.connect(self._on_project_settings)
         file_menu.addAction(self._action_settings)
+
+        file_menu.addSeparator()
+
+        self._action_switch_plan = QAction("&Switch to Basic Plan...", self)
+        self._action_switch_plan.triggered.connect(self._on_switch_plan)
+        file_menu.addAction(self._action_switch_plan)
 
         file_menu.addSeparator()
 
@@ -368,6 +381,13 @@ class MainWindow(QMainWindow):
 
         # Help menu (no docs per spec, just an about)
         help_menu = menubar.addMenu("&Help")
+        self._action_tour = QAction("Take the &Tour", self)
+        self._action_tour.setShortcut(QKeySequence("F1"))
+        self._action_tour.triggered.connect(self._on_show_tour)
+        help_menu.addAction(self._action_tour)
+
+        help_menu.addSeparator()
+
         self._action_about = QAction("&About Kharazmi", self)
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
@@ -658,8 +678,50 @@ class MainWindow(QMainWindow):
             "governed by real scheduling mathematics: Critical Path Method, "
             "PERT, topological ordering, cycle detection, and Monte Carlo "
             "risk analysis.</p>"
-            "<p style='color:#D4AF37'><b>Version 2.0</b></p>"
+            "<p>Dates are shown in the Persian Shamsi (Jalali) calendar.</p>"
+            "<p style='color:#D4AF37'><b>Version 2.0 — Enterprise</b></p>"
         )
+
+    def _on_switch_plan(self) -> None:
+        """Switch from Enterprise down to the Basic plan."""
+        ret = QMessageBox.question(
+            self, "Switch Plan",
+            "Switch to the Basic plan?\n\n"
+            "Basic is a full Google-Calendar-style experience: multiple "
+            "calendars, events with recurrence and reminders, day/week/"
+            "month/year/schedule views, drag-and-drop, natural-language "
+            "input, and Persian Shamsi dates.\n\n"
+            "The node graph, Gantt, Kanban, console, and statistics views "
+            "will be hidden. Your tasks are preserved. You can switch "
+            "back anytime via File → Switch Plan.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if ret == QMessageBox.Yes:
+            save_plan("basic")
+            QMessageBox.information(
+                self, "Restart Required",
+                "Plan changed to Basic. Please restart Kharazmi to "
+                "enter the calendar mode."
+            )
+            self.close()
+
+    def _on_show_tour(self) -> None:
+        """Show the guided tour."""
+        start_tour(self, plan="enterprise")
+
+    def _maybe_show_tour(self) -> None:
+        """Show the tour on first run only."""
+        import json
+        from pathlib import Path
+        seen_path = Path.home() / ".kharazmi" / "tour_seen_enterprise.json"
+        if not seen_path.exists():
+            self._on_show_tour()
+            try:
+                seen_path.parent.mkdir(parents=True, exist_ok=True)
+                seen_path.write_text(json.dumps({"seen": True}), encoding="utf-8")
+            except Exception:
+                pass
 
     def _on_sidebar_double_clicked(self, task_id_str: str) -> None:
         # Switch to graph view and select the task

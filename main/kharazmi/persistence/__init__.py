@@ -5,10 +5,12 @@ from .serializers import (
     export_to_csv_tasks, export_to_csv_deps,
     export_to_mermaid,
 )
+from .calendar_repository import CalendarRepository
 
 __all__ = [
     "SQLiteRepository", "SnapshotInfo", "DEFAULT_DB_PATH",
     "export_to_json", "import_from_json",
     "export_to_csv_tasks", "export_to_csv_deps",
     "export_to_mermaid",
+    "CalendarRepository",
 ]

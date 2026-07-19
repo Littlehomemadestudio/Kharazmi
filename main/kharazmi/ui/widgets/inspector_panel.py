@@ -293,10 +293,11 @@ class InspectorPanel(QScrollArea):
             self._tags_edit.setText(", ".join(sorted(str(t) for t in task.tags)))
 
             # Schedule
-            self._lbl_es.setText(task.early_start.strftime("%Y-%m-%d %H:%M") if task.early_start else "—")
-            self._lbl_ef.setText(task.early_finish.strftime("%Y-%m-%d %H:%M") if task.early_finish else "—")
-            self._lbl_ls.setText(task.late_start.strftime("%Y-%m-%d %H:%M") if task.late_start else "—")
-            self._lbl_lf.setText(task.late_finish.strftime("%Y-%m-%d %H:%M") if task.late_finish else "—")
+            from ...core.shamsi import format_shamsi
+            self._lbl_es.setText(format_shamsi(task.early_start, include_time=True) if task.early_start else "—")
+            self._lbl_ef.setText(format_shamsi(task.early_finish, include_time=True) if task.early_finish else "—")
+            self._lbl_ls.setText(format_shamsi(task.late_start, include_time=True) if task.late_start else "—")
+            self._lbl_lf.setText(format_shamsi(task.late_finish, include_time=True) if task.late_finish else "—")
             if task.slack:
                 self._lbl_slack.setText(task.slack.total_slack.humanize())
                 self._lbl_critical.setText("CRITICAL" if task.is_critical else "non-critical")

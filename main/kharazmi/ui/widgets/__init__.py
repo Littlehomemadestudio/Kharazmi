@@ -7,10 +7,26 @@ from .command_palette import CommandPaletteDialog, PaletteItem
 from .toolbar import MainToolbar
 from .status_bar import StatusBar
 from .minimap import MinimapOverlay
+from .tour_overlay import (
+    TourOverlay, TourStep, Tour,
+    ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
+)
+# Calendar widgets
+from .mini_month import MiniMonthWidget, MiniDayCell
+from .calendar_list import CalendarListWidget, CalendarRow
+from .event_block import EventBlock
+from .natural_language_input import NaturalLanguageInput
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
     "InspectorPanel", "ConsolePanel",
     "CommandPaletteDialog", "PaletteItem",
     "MainToolbar", "StatusBar", "MinimapOverlay",
+    "TourOverlay", "TourStep", "Tour",
+    "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
+    # Calendar
+    "MiniMonthWidget", "MiniDayCell",
+    "CalendarListWidget", "CalendarRow",
+    "EventBlock",
+    "NaturalLanguageInput",
 ]

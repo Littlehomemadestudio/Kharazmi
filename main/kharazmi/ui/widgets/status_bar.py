@@ -64,6 +64,10 @@ class StatusBar(QStatusBar):
             f"({project.task_count} tasks · {project.dependency_count} deps)"
         )
 
+    def update_project_named(self, text: str) -> None:
+        """Set the project label to an arbitrary string (for Basic plan)."""
+        self._project_label.setText(text)
+
     def update_stats(self, total: int, done: int, active: int,
                      blocked: int, critical: int, completion: float) -> None:
         self._stats_label.setText(

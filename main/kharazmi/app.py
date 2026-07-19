@@ -5,6 +5,12 @@ Run with:
     python -m kharazmi.app
 or:
     python main.py
+
+On startup, asks the user to choose between:
+  - Basic plan (free): Google-Calendar-style planner (Shamsi calendar)
+  - Enterprise plan (paid): Node-graph task operating system
+
+The choice is persisted; the user can switch plans later via the menu.
 """
 from __future__ import annotations
 
@@ -14,15 +20,16 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .core import (
     Project, Task, TaskId, Dependency, DependencyType,
     Priority, TaskStatus, RiskLevel, Duration, DurationUnit,
 )
 from .persistence import SQLiteRepository
-from .ui import MainWindow
+from .ui import MainWindow, BasicMainWindow
 from .ui.theme import QSS, build_qpalette, default_font
+from .ui.dialogs import PlanSelectionDialog, load_saved_plan, save_plan
 
 
 def _seed_demo_project(project: Project) -> None:
@@ -111,7 +118,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Allow Ctrl+C to terminate
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    # High-DPI handling (Qt6 does this by default; keep for clarity)
+    # High-DPI handling
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
@@ -127,38 +134,51 @@ def main(argv: Optional[list[str]] = None) -> int:
     app.setPalette(build_qpalette())
     app.setFont(default_font())
 
-    # Try to load the latest autosave, else seed a demo
-    repo = SQLiteRepository()
-    project: Optional[Project] = None
-
-    if "--demo" in argv or "--new" in argv:
-        project = Project(name="Demo Project",
-                          description="A seeded example project showing Kharazmi's capabilities.")
+    # ---- Determine which plan to start in ----
+    if "--basic" in argv:
+        plan = "basic"
+    elif "--enterprise" in argv:
+        plan = "enterprise"
     else:
-        # Try loading the most recent autosave across all projects
-        try:
-            projects = repo.list_projects()
-            if projects:
-                # Take the first project (alphabetical)
-                pid = projects[0]["id"]
-                loaded = repo.load_latest(pid)
-                if loaded is not None and loaded.task_count > 0:
-                    project = loaded
-        except Exception:
-            pass
+        # Check saved preference
+        plan = load_saved_plan()
+        if plan is None:
+            # First run — ask
+            plan = PlanSelectionDialog.ask(parent=None)
+            if plan is None:
+                # User cancelled — default to basic
+                plan = "basic"
+                save_plan(plan)
 
-    if project is None:
-        project = Project(name="Untitled Project",
-                          description="A new Kharazmi project.")
-        if "--empty" not in argv:
-            _seed_demo_project(project)
+    # ---- Build the appropriate window ----
+    if plan == "basic":
+        window = BasicMainWindow()
+        window.show()
+    else:
+        # Enterprise — load or seed the project
+        repo = SQLiteRepository()
+        project: Optional[Project] = None
 
-    # Show main window
-    window = MainWindow(project)
-    window.show()
+        if "--new" not in argv and "--demo" not in argv:
+            try:
+                projects = repo.list_projects()
+                if projects:
+                    pid = projects[0]["id"]
+                    loaded = repo.load_latest(pid)
+                    if loaded is not None and loaded.task_count > 0:
+                        project = loaded
+            except Exception:
+                pass
 
-    # Auto-recalc on startup
-    QTimer.singleShot(100, window._recalculate)
+        if project is None:
+            project = Project(name="Untitled Project",
+                              description="A new Kharazmi project.")
+            if "--empty" not in argv:
+                _seed_demo_project(project)
+
+        window = MainWindow(project)
+        window.show()
+        QTimer.singleShot(100, window._recalculate)
 
     return app.exec()
 

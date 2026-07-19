@@ -122,14 +122,16 @@ class GanttView(QGraphicsView):
                 weekend.setPen(Qt.NoPen)
                 weekend.setZValue(-10)
                 self._scene.addItem(weekend)
-            # Date label
-            date_label = QGraphicsTextItem(d.strftime("%b %d"))
+            # Persian (Shamsi) date label
+            from ...core.shamsi import ShamsiDate
+            sd = ShamsiDate.from_gregorian(d)
+            date_label = QGraphicsTextItem(f"{sd.month_name_en[:3]} {sd.day}")
             date_label.setDefaultTextColor(QColor(Palette.TEXT_SECONDARY))
             date_label.setFont(QFont("JetBrains Mono", 8))
             date_label.setPos(x + 4, 4)
             self._scene.addItem(date_label)
-            # Day-of-week
-            dow = QGraphicsTextItem(d.strftime("%a")[0])
+            # Day-of-week (Persian)
+            dow = QGraphicsTextItem(sd.weekday_short_en[0])
             dow.setDefaultTextColor(QColor(Palette.TEXT_TERTIARY))
             dow.setFont(QFont("Inter", 7))
             dow.setPos(x + 4, 22)
