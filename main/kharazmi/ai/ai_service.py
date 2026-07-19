@@ -524,22 +524,32 @@ class AIService:
         on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
         request_id: Optional[str] = None,
+        on_step: Optional[Callable[[RouteStep], None]] = None,
+        on_edge: Optional[Callable[[RouteEdge], None]] = None,
+        on_insight: Optional[Callable[[Insight], None]] = None,
+        existing_context: Optional[str] = None,
     ) -> None:
         """
         Generate a complete Route with COMPLEX, INTERCONNECTED structure.
 
-        The route MUST have:
-          - Multiple branches (parallel paths)
-          - Alternative steps connected with "alternative" edges
-          - Fallback steps connected with "fallback" edges
-          - Merge points where branches rejoin
-          - At least one decision node
-          - At least 10 steps (not a simple 5-step chain)
+        TRUE STREAMING: as the AI generates each step/edge/insight,
+        the corresponding callback fires IMMEDIATELY so the UI can
+        add nodes to the canvas one-by-one (not all at once).
+
+        Args:
+          on_status: meaningful progress messages
+          on_step: called for EACH step as soon as it's parsed
+          on_edge: called for each edge as soon as it's parsed
+          on_insight: called for each insight as soon as it's parsed
+          existing_context: optional text describing existing tasks/nodes
+                            the AI should be aware of
+          callback: final (success, Route) when done
         """
         try:
             on_status("Building the route graph…")
         except Exception:
             pass
+
 
         system_prompt = (
             "You are Rask, an AI route-planning assistant. Given the user's "
@@ -610,6 +620,13 @@ class AIService:
             user_content += "Clarifying Q&A:\n"
             for q, a in clarifying_qa:
                 user_content += f"  Q: {q}\n  A: {a}\n\n"
+        if existing_context:
+            user_content += (
+                "\nEXISTING CONTEXT — the user already has these tasks/nodes "
+                "in their workspace. Build the route AROUND them where "
+                "relevant, and you may reference them in depends_on by their id:\n"
+                f"{existing_context}\n"
+            )
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -623,9 +640,36 @@ class AIService:
                 max_tokens=6144,
             )
             full = _strip_markdown_fences(full)
-            parsed = json.loads(full)
+            # Parse with fallback for partial/malformed JSON
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                try:
+                    parsed = json.loads(repaired)
+                except json.JSONDecodeError:
+                    parsed = _extract_partial(full)
             route = Route.from_dict(parsed)
             route.raw_response = full
+            # Fire per-step / per-edge / per-insight callbacks for TRUE streaming
+            if on_step is not None:
+                for step in route.steps:
+                    try:
+                        on_step(step)
+                    except Exception:
+                        pass
+            if on_edge is not None:
+                for edge in route.edges:
+                    try:
+                        on_edge(edge)
+                    except Exception:
+                        pass
+            if on_insight is not None:
+                for insight in route.insights:
+                    try:
+                        on_insight(insight)
+                    except Exception:
+                        pass
             return route
 
         self._run_async(_do, callback)

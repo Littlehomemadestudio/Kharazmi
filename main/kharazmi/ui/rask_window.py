@@ -45,10 +45,9 @@ from .theme import Palette, QSS, build_qpalette, default_font
 from .icons import get_icon
 from .views import (
     GoogleCalendarView, AIPlannerView, JournalView,
-    NodeGraphView, GanttView, KanbanView, TimelineView, StatisticsView,
 )
 from .widgets import (
-    MainToolbar, StatusBar, InspectorPanel, ConsolePanel,
+    MainToolbar, StatusBar,
     CommandPaletteDialog, PaletteItem, MinimapOverlay,
     start_tour, TourOverlay,
 )
@@ -206,7 +205,7 @@ class RaskMainWindow(QMainWindow):
 
         self._action_tab_ai = QAction("Go to &AI Planner", self)
         self._action_tab_ai.setShortcut(QKeySequence("Ctrl+2"))
-        self._action_tab_ai.triggered.connect(lambda: self._switch_tab_and_workspace(1, "ai"))
+        self._action_tab_ai.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_ai)
 
         self._action_tab_journal = QAction("Go to &Journal", self)
@@ -214,9 +213,9 @@ class RaskMainWindow(QMainWindow):
         self._action_tab_journal.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_journal)
 
-        self._action_tab_tasks = QAction("Go to &Tasks (Enterprise)", self)
+        self._action_tab_tasks = QAction("Go to &Tasks", self)
         self._action_tab_tasks.setShortcut(QKeySequence("Ctrl+4"))
-        self._action_tab_tasks.triggered.connect(lambda: self._switch_tab_and_workspace(1, "tasks"))
+        self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_tasks)
 
         # Schedule menu (for Enterprise features)
@@ -307,173 +306,36 @@ class RaskMainWindow(QMainWindow):
         self.setCentralWidget(self._tabs)
 
     def _build_planner_tasks_tab(self) -> None:
-        """Build the merged AI Planner + Tasks tab.
+        """Build the UNIFIED AI Planner + Tasks tab.
 
-        The tab has a top mode-switcher (AI Planner / Tasks) that toggles
-        between two stacked workspaces sharing the same window.
+        No more separate Tasks workspace. The AIPlannerView now contains
+        the UnifiedGraphView which holds BOTH AI route nodes AND Tasks nodes
+        on the same canvas.
         """
         container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Mode switcher bar at the top
-        mode_bar = QFrame()
-        mode_bar.setFixedHeight(40)
-        mode_bar.setStyleSheet(
-            f"background-color: {Palette.BG_SECONDARY}; "
-            f"border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
+        # Single unified workspace (no mode switcher)
+        self.ai_planner_view = AIPlannerView(
+            self.ai_service, self.journal_store, self.calendar_store, self.project
         )
-        mode_layout = QHBoxLayout(mode_bar)
-        mode_layout.setContentsMargins(12, 4, 12, 4)
-        mode_layout.setSpacing(6)
-
-        mode_label = QLabel("WORKSPACE:")
-        mode_label.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
-            f"font-weight: bold; letter-spacing: 1.5px;"
-        )
-        mode_layout.addWidget(mode_label)
-
-        from PySide6.QtWidgets import QButtonGroup, QToolButton
-        self._mode_group = QButtonGroup(self)
-        self._mode_group.setExclusive(True)
-
-        ai_btn = QToolButton()
-        ai_btn.setText("✦  AI Planner")
-        ai_btn.setCheckable(True)
-        ai_btn.setChecked(True)
-        ai_btn.setStyleSheet(self._mode_button_style(True))
-        ai_btn.clicked.connect(lambda: self._switch_workspace("ai"))
-        self._mode_group.addButton(ai_btn)
-        mode_layout.addWidget(ai_btn)
-
-        tasks_btn = QToolButton()
-        tasks_btn.setText("◆  Tasks")
-        tasks_btn.setCheckable(True)
-        tasks_btn.setStyleSheet(self._mode_button_style(False))
-        tasks_btn.clicked.connect(lambda: self._switch_workspace("tasks"))
-        self._mode_group.addButton(tasks_btn)
-        mode_layout.addWidget(tasks_btn)
-
-        mode_layout.addStretch()
-
-        # Right-side: small Enterprise toolbar (undo/redo/recalc/layout)
-        from .widgets import MainToolbar
-        # We'll use menu actions instead of a full toolbar for simplicity
-        # But add quick buttons for the most-used Enterprise actions
-        self._tasks_recalc_btn = QToolButton()
-        self._tasks_recalc_btn.setText("▶  Recalc")
-        self._tasks_recalc_btn.setStyleSheet(f"""
-            QToolButton {{
-                background-color: transparent;
-                color: {Palette.TEXT_SECONDARY};
-                border: 1px solid {Palette.BORDER_NORMAL};
-                border-radius: 3px;
-                padding: 4px 10px;
-                font-size: 11px;
-            }}
-            QToolButton:hover {{
-                border: 1px solid {Palette.GOLD_PRIMARY};
-                color: {Palette.GOLD_BRIGHT};
-            }}
-        """)
-        self._tasks_recalc_btn.clicked.connect(self._recalculate)
-        mode_layout.addWidget(self._tasks_recalc_btn)
-
-        layout.addWidget(mode_bar)
-
-        # Stacked widget with both workspaces
-        from PySide6.QtWidgets import QStackedWidget
-        self._workspace_stack = QStackedWidget()
-
-        # Workspace 1: AI Planner
-        self.ai_planner_view = AIPlannerView(self.ai_service, self.journal_store, self.calendar_store)
-        self._workspace_stack.addWidget(self.ai_planner_view)
-
-        # Workspace 2: Tasks (Enterprise)
-        self._build_tasks_workspace()
-
-        layout.addWidget(self._workspace_stack, stretch=1)
+        layout.addWidget(self.ai_planner_view)
 
         self._tabs.addTab(container, "✦  Planner & Tasks")
 
     def _mode_button_style(self, active: bool) -> str:
-        if active:
-            return f"""
-                QToolButton {{
-                    background-color: {Palette.BG_SELECTED};
-                    color: {Palette.GOLD_BRIGHT};
-                    border: 1px solid {Palette.BORDER_GOLD};
-                    border-radius: 3px;
-                    padding: 4px 12px;
-                    font-size: 11px;
-                    font-weight: bold;
-                }}
-            """
-        return f"""
-            QToolButton {{
-                background-color: transparent;
-                color: {Palette.TEXT_SECONDARY};
-                border: 1px solid {Palette.BORDER_NORMAL};
-                border-radius: 3px;
-                padding: 4px 12px;
-                font-size: 11px;
-            }}
-            QToolButton:hover {{
-                background-color: {Palette.BG_TERTIARY};
-                color: {Palette.TEXT_PRIMARY};
-            }}
-        """
+        """Kept for backward compat — no longer used."""
+        return ""
 
     def _switch_workspace(self, mode: str) -> None:
-        """Switch between AI Planner and Tasks workspaces."""
-        if mode == "ai":
-            self._workspace_stack.setCurrentIndex(0)
-        elif mode == "tasks":
-            self._workspace_stack.setCurrentIndex(1)
-        # Update button styles
-        for i, btn in enumerate(self._mode_group.buttons()):
-            btn.setStyleSheet(self._mode_button_style(btn.isChecked()))
+        """Kept for backward compat — no longer used."""
+        pass
 
     def _build_tasks_workspace(self) -> None:
-        """Build the Enterprise Tasks workspace (graph + sidebar + inspector)."""
-        from .main_window import CentralWidget, SidebarTree
-        self.enterprise_central = CentralWidget()
-        self.enterprise_sidebar = SidebarTree(self.project)
-        self.enterprise_sidebar.setMinimumWidth(220)
-        self.enterprise_sidebar.setMaximumWidth(280)
-        self.enterprise_sidebar.taskDoubleClicked.connect(self._on_sidebar_double_clicked)
-        self.inspector = InspectorPanel(self.project, self.task_service)
-        # Build the views
-        self._views: dict[str, QWidget] = {
-            "graph": NodeGraphView(self.project, self.task_service),
-            "gantt": GanttView(self.project, self.task_service),
-            "kanban": KanbanView(self.project, self.task_service),
-            "timeline": TimelineView(self.project, self.task_service),
-            "stats": StatisticsView(self.project, self.task_service, self.scheduling),
-        }
-        for view in self._views.values():
-            if hasattr(view, "taskDoubleClicked"):
-                view.taskDoubleClicked.connect(self._on_task_double_clicked)
-        # Console
-        self.console = ConsolePanel(
-            self.project, self.task_service, self.scheduling, self.export_service
-        )
-        self.console.set_repository(self.repository)
-        self.enterprise_central.set_console(self.console)
-        # Default to graph view
-        self.enterprise_central.set_view(self._views["graph"])
-
-        # Layout: sidebar | central | inspector
-        tasks_widget = QWidget()
-        layout = QHBoxLayout(tasks_widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self.enterprise_sidebar)
-        layout.addWidget(self.enterprise_central, stretch=1)
-        layout.addWidget(self.inspector)
-        self._workspace_stack.addWidget(tasks_widget)
+        """Kept for backward compat — no longer used."""
+        pass
 
     def _build_statusbar(self) -> None:
         self.statusbar = StatusBar(self)
@@ -500,22 +362,6 @@ class RaskMainWindow(QMainWindow):
         if 0 <= idx < self._tabs.count():
             self._tabs.setCurrentIndex(idx)
 
-    def _switch_tab_and_workspace(self, tab_idx: int, workspace: str) -> None:
-        """Switch to a tab AND a workspace within that tab."""
-        if 0 <= tab_idx < self._tabs.count():
-            self._tabs.setCurrentIndex(tab_idx)
-        # If we have a workspace stack, switch it too
-        if hasattr(self, "_workspace_stack"):
-            self._switch_workspace(workspace)
-            # Update the mode buttons to reflect the new workspace
-            if hasattr(self, "_mode_group"):
-                target_idx = 0 if workspace == "ai" else 1
-                btns = list(self._mode_group.buttons())
-                if 0 <= target_idx < len(btns):
-                    btns[target_idx].setChecked(True)
-                    for btn in btns:
-                        btn.setStyleSheet(self._mode_button_style(btn.isChecked()))
-
     # ---- Project events ----
     def _on_project_event(self, event: DomainEvent) -> None:
         QTimer.singleShot(0, self._refresh_enterprise)
@@ -529,28 +375,20 @@ class RaskMainWindow(QMainWindow):
         self._action_redo.setEnabled(self.undo_stack.can_redo())
 
     def _refresh_enterprise(self) -> None:
-        # Refresh sidebar + current view + inspector
-        if hasattr(self, "enterprise_sidebar"):
-            self.enterprise_sidebar.refresh()
-        if hasattr(self, "inspector"):
-            self.inspector.load_task(self._get_selected_task())
-        # Refresh current enterprise view
-        # (the central widget holds the active view)
+        # Refresh the unified graph view (sync tasks)
+        if hasattr(self, "ai_planner_view") and hasattr(self.ai_planner_view, "graph_view"):
+            self.ai_planner_view.graph_view._sync_tasks_to_canvas()
         self._refresh_statusbar()
 
     def _get_selected_task(self) -> Optional[Task]:
-        graph_view = self._views.get("graph")
-        if isinstance(graph_view, NodeGraphView):
-            for item in graph_view._scene.selectedItems():
-                if hasattr(item, "task"):
-                    return item.task
+        # No longer used — selection is handled by the unified graph view
         return None
 
     # ---- Cross-tab interactions ----
     def _on_journal_entry_selected(self, entry) -> None:
         """Load a journal entry's route into the AI planner view."""
         if entry.route is not None:
-            self._switch_tab_and_workspace(1, "ai")  # Planner & Tasks tab, AI workspace
+            self._switch_tab(1)  # Planner & Tasks tab
             self.ai_planner_view.set_route(entry.route)
             self.statusbar.show_message(
                 f"Loaded route from {entry.timestamp[:10]} into AI Planner", 3000
@@ -564,10 +402,10 @@ class RaskMainWindow(QMainWindow):
             pass
 
     def _on_new_task(self) -> None:
-        self._switch_tab_and_workspace(1, "tasks")
-        dlg = TaskEditorDialog(None, self.task_service, self)
-        if dlg.exec():
-            self._recalculate()
+        self._switch_tab(1)
+        # Trigger the "add task" action in the unified graph view
+        if hasattr(self, "ai_planner_view") and hasattr(self.ai_planner_view, "graph_view"):
+            self.ai_planner_view.graph_view._on_add_task()
 
     def _on_save(self) -> None:
         self.repository.save_snapshot(self.project, kind="manual")
@@ -651,22 +489,12 @@ class RaskMainWindow(QMainWindow):
 
     # ---- Enterprise-side helpers ----
     def _on_sidebar_double_clicked(self, task_id_str: str) -> None:
-        self._switch_tab_and_workspace(1, "tasks")
-        graph_view = self._views["graph"]
-        if isinstance(graph_view, NodeGraphView):
-            node = graph_view._node_items.get(task_id_str)
-            if node is not None:
-                graph_view._scene.clearSelection()
-                node.setSelected(True)
-                graph_view.centerOn(node)
+        # No longer used — sidebar was removed
+        pass
 
     def _on_task_double_clicked(self, task_id_str: str) -> None:
-        task = self.project.get_task(TaskId(task_id_str))
-        if task is None:
-            return
-        dlg = TaskEditorDialog(task, self.task_service, self)
-        if dlg.exec():
-            self._recalculate()
+        # No longer used — handled by unified graph view
+        pass
 
     def _recalculate(self) -> None:
         result = self.scheduling.recalculate()

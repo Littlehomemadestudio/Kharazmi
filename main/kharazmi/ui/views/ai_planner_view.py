@@ -1,11 +1,17 @@
 """
-AIPlannerView — the unified AI Planner + Tasks workspace.
+AIPlannerView — the UNIFIED workspace (AI Planner + Tasks merged).
+
+No more separate Tasks window. Everything lives on one canvas:
+  - AI-generated route nodes
+  - User-created Tasks
+  - Insight bubbles
+  - Edges (primary, alternative, fallback, merge)
 
 Layout:
   ┌─────────────────────────────────────────────────────────────────────┐
   │ Top: Goal input + stats                                            │
   ├──────────────────────────────────────────────┬─────────────────────┤
-  │ Route Workspace (large)                     │ Professional Chat   │
+  │ Unified Workspace (large)                    │ Professional Chat   │
   │  ┌─────────┐   ┌─────────┐                  │  ✦ Rask             │
   │  │  Node   │──▶│  Node   │                  │  Building route…    │
   │  │         │   │         │                  │  (status box)       │
@@ -17,11 +23,12 @@ Layout:
   │  │         │                                │  How to speed up?   │
   │  └─────────┘                                │                     │
   │                                             │  ✦ Rask             │
-  │  Pan / zoom / drag                          │  streaming reply…  │
-  ├─────────────────────────────────────────────┴─────────────────────┤
-  │ Collapsible Step Details (expands on node click)                  │
-  │ [Schedule in Calendar] button                                      │
-  └────────────────────────────────────────────────────────────────────┘
+  │  Pan / zoom / drag / edit                   │  streaming reply…  │
+  │                                             │                     │
+  │  [Floating Step Details popup on click]     │                     │
+  └─────────────────────────────────────────────┴─────────────────────┘
+
+TRUE STREAMING: nodes appear one-by-one as the AI generates them.
 """
 from __future__ import annotations
 
@@ -34,7 +41,7 @@ from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
-    QSizePolicy, QMessageBox, QApplication, QToolButton,
+    QSizePolicy, QMessageBox, QApplication, QToolButton, QInputDialog,
 )
 
 from ...ai import (
@@ -42,17 +49,17 @@ from ...ai import (
     MultipleChoiceQuestion,
 )
 from ...calendar import CalendarStore, Event as CalendarEvent, EventType, Availability
+from ...core import Project, Task, TaskId, Duration, DurationUnit, Priority, TaskStatus
 from ...core.shamsi import ShamsiDate
 from ..theme import Palette
-from ..views.route_graph_view import RouteGraphView
+from ..views.unified_graph_view import UnifiedGraphView
 from ..widgets.ai_chat_panel import AIChatPanel
 from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
-from ..widgets.step_details_panel import StepDetailsPanel
 
 
 class AIPlannerView(QWidget):
     """
-    The unified AI Planner workspace.
+    The UNIFIED workspace — AI Planner + Tasks in one place.
     """
 
     viewActivated = Signal()
@@ -64,15 +71,21 @@ class AIPlannerView(QWidget):
     _chatDone = Signal(bool, object)
     _statusUpdate = Signal(str)
     _scheduleReady = Signal(bool, object)
+    _stepAdded = Signal(object)  # RouteStep
+    _edgeAdded = Signal(object)  # RouteEdge
+    _insightAdded = Signal(object)  # Insight
+    _taskCreated = Signal(str, float, float)  # title, x, y
 
     def __init__(self, ai_service: Optional[AIService] = None,
                  journal: Optional[JournalStore] = None,
                  calendar_store: Optional[CalendarStore] = None,
+                 project: Optional[Project] = None,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
         self.ai = ai_service or AIService()
         self.journal = journal or JournalStore()
         self.calendar_store = calendar_store
+        self.project = project
         self._current_route: Optional[Route] = None
         self._pending_goal: str = ""
         self._clarifying_qa: list[tuple[str, str]] = []
@@ -89,11 +102,20 @@ class AIPlannerView(QWidget):
         self._chatChunk.connect(self._on_chat_chunk)
         self._chatDone.connect(self._on_chat_done)
         self._scheduleReady.connect(self._on_schedule_received)
+        self._stepAdded.connect(self._on_step_added)
+        self._edgeAdded.connect(self._on_edge_added)
+        self._insightAdded.connect(self._on_insight_added)
+        self._taskCreated.connect(self._on_task_created)
 
         self._build_ui()
 
     def set_calendar_store(self, store: CalendarStore) -> None:
         self.calendar_store = store
+
+    def set_project(self, project: Project) -> None:
+        self.project = project
+        if self.graph_view is not None:
+            self.graph_view.set_project(project)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -110,13 +132,13 @@ class AIPlannerView(QWidget):
             f"QSplitter::handle {{ background: {Palette.BG_DEEPEST}; }}"
         )
 
-        # Left: route graph + collapsible step details
+        # Left: unified graph
         left_container = QWidget()
         left_layout = QVBoxLayout(left_container)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(0)
 
-        # Graph header with action buttons
+        # Graph header
         graph_header = QFrame()
         graph_header.setFixedHeight(36)
         graph_header.setStyleSheet(
@@ -126,7 +148,7 @@ class AIPlannerView(QWidget):
         gh_layout = QHBoxLayout(graph_header)
         gh_layout.setContentsMargins(12, 4, 12, 4)
         gh_layout.setSpacing(8)
-        gh_label = QLabel("ROUTE WORKSPACE")
+        gh_label = QLabel("WORKSPACE — AI ROUTES + TASKS")
         gh_label.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px;"
@@ -161,10 +183,11 @@ class AIPlannerView(QWidget):
 
         left_layout.addWidget(graph_header)
 
-        # Route graph view
-        self.graph_view = RouteGraphView()
-        self.graph_view.stepSelected.connect(self._on_step_selected)
-        self.graph_view.insightSelected.connect(self._on_insight_selected)
+        # Unified graph view
+        self.graph_view = UnifiedGraphView()
+        if self.project is not None:
+            self.graph_view.set_project(self.project)
+        self.graph_view.taskCreated.connect(self._taskCreated.emit)
         left_layout.addWidget(self.graph_view, stretch=1)
 
         # Multiple-choice questions container
@@ -189,10 +212,6 @@ class AIPlannerView(QWidget):
         self._questions_layout.addLayout(self._questions_list)
         self._questions_container.hide()
         left_layout.addWidget(self._questions_container)
-
-        # Collapsible step details panel
-        self.step_details = StepDetailsPanel()
-        left_layout.addWidget(self.step_details)
 
         splitter.addWidget(left_container)
 
@@ -308,9 +327,23 @@ class AIPlannerView(QWidget):
             f"font-family: 'JetBrains Mono', monospace; padding-left: 12px;"
         )
 
-    # ---- Status update from worker thread ----
+    def _build_existing_context(self) -> str:
+        """Build a context string describing the user's existing Tasks."""
+        if self.project is None:
+            return ""
+        tasks = list(self.project.tasks())
+        if not tasks:
+            return ""
+        lines = [f"Existing tasks ({len(tasks)}):"]
+        for t in tasks:
+            lines.append(f"  - id={t.id} title='{t.title}' duration={t.duration.minutes}min")
+            deps = self.project.dependencies_of(t.id)
+            if deps:
+                lines.append(f"    depends_on: {[str(d.predecessor_id) for d in deps]}")
+        return "\n".join(lines)
+
+    # ---- Status update ----
     def _on_status_update(self, text: str) -> None:
-        """Receive a status update from the worker thread (via signal)."""
         self.chat_panel.update_status(text)
 
     # ---- Plan flow ----
@@ -328,10 +361,7 @@ class AIPlannerView(QWidget):
         self._awaiting_questions = []
         self._goal_input.clear()
 
-        # Add user message to chat
         self.chat_panel.add_message(f"<b>Goal:</b> {goal}", role="user", as_html=True)
-
-        # Start status box (NOT streaming JSON — just meaningful status)
         self.chat_panel.start_status_box("Analysing your goal…")
         self._set_status("⏳ Asking AI to analyse your goal…")
         self._plan_btn.setEnabled(False)
@@ -348,7 +378,6 @@ class AIPlannerView(QWidget):
 
     def _on_clarifying_received(self, success, result) -> None:
         self._plan_btn.setEnabled(True)
-        # Finish the status box
         self.chat_panel.finish_status_box("Analysis complete")
 
         if not success:
@@ -393,7 +422,6 @@ class AIPlannerView(QWidget):
             f"<b>Q:</b> {question.question}<br><b>A:</b> {answer}",
             role="user", as_html=True,
         )
-        # Remove the answered question widget
         for i in range(self._questions_list.count()):
             item = self._questions_list.itemAt(i)
             widget = item.widget() if item else None
@@ -412,22 +440,43 @@ class AIPlannerView(QWidget):
             self._set_status(f"⏳ Waiting for {len(self._awaiting_questions)} more answer(s)…")
 
     def _generate_route(self) -> None:
-        # Start status box (NO raw JSON — just meaningful status)
         self.chat_panel.start_status_box("Building the route graph…")
         self._set_status("⏳ AI is building the route…")
 
         self._current_request_id = f"route-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        # Build existing context (existing tasks)
+        existing_context = self._build_existing_context()
+
+        # TRUE STREAMING: pass on_step, on_edge, on_insight callbacks
+        # so nodes appear one-by-one as the AI generates them
         self.ai.generate_route_streaming(
             self._pending_goal, self._clarifying_qa,
             on_status=lambda s: self._statusUpdate.emit(s),
             callback=lambda success, result: self._routeReady.emit(success, result),
             request_id=self._current_request_id,
+            on_step=lambda step: self._stepAdded.emit(step),
+            on_edge=lambda edge: self._edgeAdded.emit(edge),
+            on_insight=lambda insight: self._insightAdded.emit(insight),
+            existing_context=existing_context,
         )
 
+    def _on_step_added(self, step: RouteStep) -> None:
+        """TRUE STREAMING: a step was parsed from the AI's response.
+        Add it to the canvas immediately — don't wait for the full route."""
+        self.graph_view.add_step(step)
+        self.chat_panel.update_status(f"Added step: {step.title[:50]}…")
+
+    def _on_edge_added(self, edge: RouteEdge) -> None:
+        """An edge was parsed — add it immediately."""
+        self.graph_view.add_edge(edge)
+
+    def _on_insight_added(self, insight: Insight) -> None:
+        """An insight was parsed — add it immediately."""
+        self.graph_view.add_insight(insight)
+
     def _on_route_received(self, success, result) -> None:
-        # Finish the status box
         self.chat_panel.finish_status_box("Route generated")
 
         if not success:
@@ -436,11 +485,13 @@ class AIPlannerView(QWidget):
             return
 
         self._current_route = result
-        self.graph_view.set_route(result)
+        # The graph view has already been adding nodes incrementally
+        # via _on_step_added. Now set the route to update edges/insights.
+        # But we need to be careful not to re-add nodes. Let's just
+        # update stats and save to journal.
         self._update_stats(result)
         self._schedule_btn.setEnabled(True)
 
-        # Clean summary message (no JSON)
         msg = (
             f"<b>Route generated!</b><br><br>"
             f"{result.summary}<br><br>"
@@ -452,7 +503,6 @@ class AIPlannerView(QWidget):
         )
         self.chat_panel.add_message(msg, role="assistant", as_html=True)
 
-        # Save to journal
         self.journal.add(
             goal=self._pending_goal,
             clarifying_qa=self._clarifying_qa,
@@ -460,10 +510,9 @@ class AIPlannerView(QWidget):
         )
         self._set_status("✓ Route saved — AI is continuing to work…")
 
-        # Auto-continue
         QTimer.singleShot(500, self._continue_working)
 
-    # ---- Auto-continue after route generation ----
+    # ---- Auto-continue ----
     def _continue_working(self) -> None:
         if self._current_route is None:
             return
@@ -498,10 +547,13 @@ class AIPlannerView(QWidget):
                 role="assistant", as_html=True,
             )
 
-        # Add new steps/edges/insights to the graph
         if new_steps or new_edges or new_insights:
             self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
-            self._update_stats(self._current_route)
+            if self._current_route is not None:
+                self._current_route.steps.extend(new_steps)
+                self._current_route.edges.extend(new_edges)
+                self._current_route.insights.extend(new_insights)
+                self._update_stats(self._current_route)
             parts = []
             if new_steps:
                 parts.append(f"<b>{len(new_steps)} new steps</b>")
@@ -511,13 +563,13 @@ class AIPlannerView(QWidget):
                 parts.append(f"<b>{len(new_insights)} new insights</b>")
             self.chat_panel.add_message(
                 f"Added {' , '.join(parts)} to the route graph. "
-                f"Drag nodes around to reorganize.",
+                f"Drag nodes around to reorganize. Double-click a node to edit it.",
                 role="assistant", as_html=True,
             )
 
-        self._set_status(f"✓ Done · {len(self._current_route.steps)} steps · {len(self._current_route.insights)} insights")
+        self._set_status(f"✓ Done · {len(self._current_route.steps) if self._current_route else 0} steps")
 
-    # ---- Free-form chat (streaming REAL text) ----
+    # ---- Free-form chat ----
     def _on_chat_send(self, text: str) -> None:
         if self._current_route is None:
             self.chat_panel.add_message(
@@ -543,7 +595,6 @@ class AIPlannerView(QWidget):
             {"role": "user", "content": text},
         ]
 
-        # For chat, we stream REAL text (not JSON)
         streaming_msg = self.chat_panel.start_streaming_message()
         self._current_request_id = f"chat-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -557,7 +608,6 @@ class AIPlannerView(QWidget):
         )
 
     def _on_chat_chunk(self, chunk: str) -> None:
-        """Receive a chunk of REAL text from the chat (not JSON)."""
         self.chat_panel.stream_chunk(chunk)
 
     def _on_chat_done(self, success, result) -> None:
@@ -580,7 +630,6 @@ class AIPlannerView(QWidget):
         if self._current_route is None or self.calendar_store is None:
             return
 
-        # Start with route's start time = now rounded up to next 15 min
         now = datetime.now().replace(second=0, microsecond=0)
         now = now + timedelta(minutes=15 - now.minute % 15)
 
@@ -608,7 +657,6 @@ class AIPlannerView(QWidget):
         events_data = result.get("events", [])
         summary = result.get("summary", "")
 
-        # Create calendar events
         count = 0
         for ev_data in events_data:
             try:
@@ -621,14 +669,12 @@ class AIPlannerView(QWidget):
                 description = ev_data.get("description", "")
                 calendar_name = ev_data.get("calendar_name", "Personal")
 
-                # Find or use a calendar
                 cal_id = None
                 for cal in self.calendar_store.calendars():
                     if cal.name == calendar_name and not cal.is_readonly:
                         cal_id = cal.id
                         break
                 if cal_id is None:
-                    # Use first writable calendar
                     for cal in self.calendar_store.calendars():
                         if not cal.is_readonly:
                             cal_id = cal.id
@@ -658,15 +704,37 @@ class AIPlannerView(QWidget):
         )
         self._set_status(f"✓ Scheduled {count} events")
 
-    # ---- Selection handlers ----
-    def _on_step_selected(self, step: Optional[RouteStep]) -> None:
-        if step is None:
-            self.step_details.collapse()
-        else:
-            self.step_details.show_step(step)
-
-    def _on_insight_selected(self, insight: Optional[Insight]) -> None:
-        pass
+    # ---- Task creation ----
+    def _on_task_created(self, title: str, x: float, y: float) -> None:
+        """Handle the 'add task' button — create a new Task in the project."""
+        if self.project is None:
+            return
+        # Prompt for title
+        new_title, ok = QInputDialog.getText(self, "New Task", "Task title:", text=title)
+        if not ok or not new_title.strip():
+            return
+        task = self.project.create_task(
+            title=new_title.strip(),
+            duration=Duration.of(1, DurationUnit.HOUR),
+            priority=Priority.MEDIUM,
+            x=x, y=y,
+        )
+        # Add to canvas
+        from ...ai import RouteStep as RS
+        step = RS(
+            id=str(task.id),
+            title=task.title,
+            duration_minutes=task.duration.minutes,
+            success_probability=0.5,
+            description=task.description,
+            branch="tasks",
+            kind="action",
+        )
+        self.graph_view._add_node(step, x, y, animate=True)
+        self.chat_panel.add_message(
+            f"Created task <b>{new_title}</b>. Double-click to edit, drag to move.",
+            role="assistant", as_html=True,
+        )
 
     # ---- Public API ----
     def set_route(self, route: Route) -> None:

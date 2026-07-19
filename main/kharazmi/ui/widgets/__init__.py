@@ -2,7 +2,6 @@
 from .task_node_item import TaskNodeItem, NODE_WIDTH, NODE_HEIGHT
 from .edge_item import EdgeItem
 from .inspector_panel import InspectorPanel
-from .console_panel import ConsolePanel
 from .command_palette import CommandPaletteDialog, PaletteItem
 from .toolbar import MainToolbar
 from .status_bar import StatusBar
@@ -21,11 +20,11 @@ from .route_node_item import RouteNodeItem
 from .insight_bubble import InsightBubble
 from .ai_chat_panel import AIChatPanel, ChatMessage, ChatInput
 from .multiple_choice_question import MultipleChoiceQuestionWidget
-from .step_details_panel import StepDetailsPanel
+from .step_details_popup import StepDetailsPopup
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
-    "InspectorPanel", "ConsolePanel",
+    "InspectorPanel",
     "CommandPaletteDialog", "PaletteItem",
     "MainToolbar", "StatusBar", "MinimapOverlay",
     "TourOverlay", "TourStep", "Tour",
@@ -40,5 +39,5 @@ __all__ = [
     "InsightBubble",
     "AIChatPanel", "ChatMessage", "ChatInput",
     "MultipleChoiceQuestionWidget",
-    "StepDetailsPanel",
+    "StepDetailsPopup",
 ]

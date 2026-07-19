@@ -2,7 +2,7 @@
 from .theme import Palette, QSS, build_qpalette, default_font, mono_font
 from .icons import get_icon
 from .widgets import (
-    TaskNodeItem, EdgeItem, InspectorPanel, ConsolePanel,
+    TaskNodeItem, EdgeItem, InspectorPanel,
     CommandPaletteDialog, PaletteItem, MainToolbar, StatusBar, MinimapOverlay,
     TourOverlay, TourStep, Tour,
     ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
@@ -10,7 +10,9 @@ from .widgets import (
     MiniMonthWidget, CalendarListWidget, EventBlock,
     NaturalLanguageInput,
     # AI widgets
-    RouteNodeItem,
+    RouteNodeItem, InsightBubble,
+    AIChatPanel, ChatMessage, ChatInput,
+    MultipleChoiceQuestionWidget, StepDetailsPopup,
 )
 from .views import (
     NodeGraphView, GanttView, KanbanView, TimelineView, StatisticsView,
@@ -20,7 +22,7 @@ from .views import (
     MonthView, YearView, ScheduleView,
     GoogleCalendarView,
     # AI views
-    RouteGraphView, AIPlannerView, JournalView,
+    RouteGraphView, UnifiedGraphView, AIPlannerView, JournalView,
 )
 from .dialogs import (
     TaskEditorDialog, ProjectSettingsDialog, AdvisorDialog,
@@ -30,25 +32,26 @@ from .dialogs import (
     # AI dialogs
     AISettingsDialog,
 )
-from .main_window import MainWindow
 from .basic_window import BasicMainWindow
 from .rask_window import RaskMainWindow
 
 __all__ = [
     "Palette", "QSS", "build_qpalette", "default_font", "mono_font",
     "get_icon",
-    "TaskNodeItem", "EdgeItem", "InspectorPanel", "ConsolePanel",
+    "TaskNodeItem", "EdgeItem", "InspectorPanel",
     "CommandPaletteDialog", "PaletteItem", "MainToolbar", "StatusBar", "MinimapOverlay",
     "TourOverlay", "TourStep", "Tour",
     "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
     "MiniMonthWidget", "CalendarListWidget", "EventBlock", "NaturalLanguageInput",
-    "RouteNodeItem",
+    "RouteNodeItem", "InsightBubble",
+    "AIChatPanel", "ChatMessage", "ChatInput",
+    "MultipleChoiceQuestionWidget", "StepDetailsPopup",
     "NodeGraphView", "GanttView", "KanbanView", "TimelineView", "StatisticsView",
     "BasicCalendarView",
     "TimeGridView", "DayView", "WeekView", "CustomView",
     "MonthView", "YearView", "ScheduleView",
     "GoogleCalendarView",
-    "RouteGraphView", "AIPlannerView", "JournalView",
+    "RouteGraphView", "UnifiedGraphView", "AIPlannerView", "JournalView",
     "TaskEditorDialog", "ProjectSettingsDialog", "AdvisorDialog",
     "PlanSelectionDialog", "PlanCard", "load_saved_plan", "save_plan",
     "EventEditorDialog", "CalendarSettingsDialog",
