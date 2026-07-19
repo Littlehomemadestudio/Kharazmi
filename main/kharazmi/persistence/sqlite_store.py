@@ -22,7 +22,7 @@ from typing import Optional
 from ..core import Project
 
 
-DEFAULT_DB_PATH = Path.home() / ".kharazmi" / "kharazmi.sqlite3"
+DEFAULT_DB_PATH = Path.home() / ".rask" / "kharazmi.sqlite3"
 
 
 _schema = """

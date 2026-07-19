@@ -1,5 +1,5 @@
 """
-NodeGraphView — the main screen of Kharazmi.
+NodeGraphView — the main screen of Rask.
 
 A QGraphicsView + QGraphicsScene that shows every task as a
 TaskNodeItem and every dependency as an EdgeItem. Supports:

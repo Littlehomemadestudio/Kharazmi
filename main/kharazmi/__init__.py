@@ -2,7 +2,7 @@
 KHARAZMI — A serious task operating system.
 
 Named after Al-Khwarizmi (the Persian polymath whose name gave us "algorithm"),
-Kharazmi treats a project as a directed graph of tasks governed by real
+Rask treats a project as a directed graph of tasks governed by real
 scheduling mathematics: Critical Path Method, PERT, topological ordering,
 cycle detection, and Monte Carlo risk analysis.
 

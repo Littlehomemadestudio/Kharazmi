@@ -1,5 +1,5 @@
 """
-The Kharazmi Gold-on-Dark theme.
+The Rask Gold-on-Dark theme.
 
 A single, opinionated visual language: deep near-black surfaces with
 warm gold accents. No theme switching — the look IS the product.

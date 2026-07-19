@@ -11,6 +11,10 @@ from .month_view import MonthView
 from .year_view import YearView
 from .schedule_view import ScheduleView
 from .google_calendar_view import GoogleCalendarView
+# AI route views
+from .route_graph_view import RouteGraphView
+from .ai_planner_view import AIPlannerView
+from .journal_view import JournalView
 
 __all__ = [
     "NodeGraphView", "GanttView", "KanbanView", "TimelineView",
@@ -19,4 +23,6 @@ __all__ = [
     "TimeGridView", "DayView", "WeekView", "CustomView",
     "MonthView", "YearView", "ScheduleView",
     "GoogleCalendarView",
+    # AI
+    "RouteGraphView", "AIPlannerView", "JournalView",
 ]

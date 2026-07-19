@@ -16,6 +16,8 @@ from .mini_month import MiniMonthWidget, MiniDayCell
 from .calendar_list import CalendarListWidget, CalendarRow
 from .event_block import EventBlock
 from .natural_language_input import NaturalLanguageInput
+# AI widgets
+from .route_node_item import RouteNodeItem
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -29,4 +31,6 @@ __all__ = [
     "CalendarListWidget", "CalendarRow",
     "EventBlock",
     "NaturalLanguageInput",
+    # AI
+    "RouteNodeItem",
 ]

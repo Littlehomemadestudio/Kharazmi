@@ -5,7 +5,7 @@ Provides bidirectional conversion between Gregorian and Jalali dates,
 formatting in Persian style, and helper functions used throughout
 the UI.
 
-All display dates in Kharazmi go through `format_shamsi` so the entire
+All display dates in Rask go through `format_shamsi` so the entire
 application speaks Shamsi — the Gregorian calendar is only used for
 internal storage and CPM math (which is timezone-naive UTC).
 """

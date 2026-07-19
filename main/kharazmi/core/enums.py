@@ -1,4 +1,4 @@
-"""Enumerations for the Kharazmi domain model.
+"""Enumerations for the Rask domain model.
 
 These are the only legal values for the corresponding fields — the
 "serious logic" of the application. Anything that does not fit one of

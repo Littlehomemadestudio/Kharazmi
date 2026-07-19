@@ -13,7 +13,7 @@ Assumptions:
   * For FF/SS/SF we apply the standard precedence arithmetic.
 
 The "critical path" is the longest chain through the graph — any
-delay on it delays the whole project. Kharazmi paints these nodes
+delay on it delays the whole project. Rask paints these nodes
 in gold.
 """
 from __future__ import annotations

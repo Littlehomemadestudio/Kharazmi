@@ -75,7 +75,7 @@ class BasicMainWindow(QMainWindow):
             # Add a Work calendar as a starter
             self.calendar_store.create_calendar("Work", color="#5A7FA8")
 
-        self.setWindowTitle("Kharazmi — Basic Calendar")
+        self.setWindowTitle("Rask — Basic Calendar")
         self.resize(1400, 900)
         self.setMinimumSize(1000, 650)
 
@@ -180,7 +180,7 @@ class BasicMainWindow(QMainWindow):
 
         help_menu.addSeparator()
 
-        self._action_about = QAction("&About Kharazmi", self)
+        self._action_about = QAction("&About Rask", self)
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
@@ -265,7 +265,7 @@ class BasicMainWindow(QMainWindow):
             save_plan("enterprise")
             QMessageBox.information(
                 self, "Restart Required",
-                "Plan changed to Enterprise. Please restart Kharazmi to "
+                "Plan changed to Enterprise. Please restart Rask to "
                 "enter the node-graph mode."
             )
             self.close()
@@ -282,7 +282,7 @@ class BasicMainWindow(QMainWindow):
         """Show the tour if the user hasn't seen it yet."""
         import json
         from pathlib import Path
-        seen_path = Path.home() / ".kharazmi" / "tour_seen_basic.json"
+        seen_path = Path.home() / ".rask" / "tour_seen_basic.json"
         if not seen_path.exists():
             self._on_show_tour()
             try:
@@ -315,8 +315,8 @@ class BasicMainWindow(QMainWindow):
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Kharazmi — Basic",
-            "<h3>Kharazmi — Basic Plan</h3>"
+            "About Rask — Basic",
+            "<h3>Rask — Basic Plan</h3>"
             "<p>A full Google-Calendar-style planner using the Persian "
             "Shamsi calendar.</p>"
             "<p>Features:</p>"

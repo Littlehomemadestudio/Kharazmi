@@ -216,7 +216,7 @@ class MainWindow(QMainWindow):
         self.export_service = ExportService(self.project)
         self.repository = SQLiteRepository()
 
-        self.setWindowTitle("Kharazmi — Task Operating System")
+        self.setWindowTitle("Rask — Task Operating System")
         self.resize(1600, 1000)
         self.setMinimumSize(1200, 750)
 
@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):
 
         help_menu.addSeparator()
 
-        self._action_about = QAction("&About Kharazmi", self)
+        self._action_about = QAction("&About Rask", self)
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
@@ -670,11 +670,11 @@ class MainWindow(QMainWindow):
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Kharazmi",
-            "<h3>Kharazmi — Task Operating System</h3>"
+            "About Rask",
+            "<h3>Rask — Task Operating System</h3>"
             "<p>Named after Al-Khwarizmi, the Persian polymath whose name "
             "gave us <i>algorithm</i>.</p>"
-            "<p>Kharazmi treats a project as a directed graph of tasks "
+            "<p>Rask treats a project as a directed graph of tasks "
             "governed by real scheduling mathematics: Critical Path Method, "
             "PERT, topological ordering, cycle detection, and Monte Carlo "
             "risk analysis.</p>"
@@ -701,7 +701,7 @@ class MainWindow(QMainWindow):
             save_plan("basic")
             QMessageBox.information(
                 self, "Restart Required",
-                "Plan changed to Basic. Please restart Kharazmi to "
+                "Plan changed to Basic. Please restart Rask to "
                 "enter the calendar mode."
             )
             self.close()
@@ -714,7 +714,7 @@ class MainWindow(QMainWindow):
         """Show the tour on first run only."""
         import json
         from pathlib import Path
-        seen_path = Path.home() / ".kharazmi" / "tour_seen_enterprise.json"
+        seen_path = Path.home() / ".rask" / "tour_seen_enterprise.json"
         if not seen_path.exists():
             self._on_show_tour()
             try:

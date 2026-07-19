@@ -56,12 +56,12 @@ class Tour:
 
 ENTERPRISE_TOUR = Tour(
     name="enterprise",
-    title="Welcome to Kharazmi Enterprise",
+    title="Welcome to Rask Enterprise",
     steps=[
         TourStep(
             title="The Node Graph",
             body=(
-                "This is the main screen of Kharazmi — your project as a "
+                "This is the main screen of Rask — your project as a "
                 "neural network of tasks. Each box is a task; each arrow "
                 "is a dependency between them. Tasks on the critical path "
                 "glow in gold."
@@ -164,7 +164,7 @@ ENTERPRISE_TOUR = Tour(
         TourStep(
             title="You're Ready",
             body=(
-                "That's the tour. Kharazmi treats your project as a "
+                "That's the tour. Rask treats your project as a "
                 "directed graph governed by real scheduling math — "
                 "Critical Path Method, PERT, Monte Carlo. The more you "
                 "use it, the more useful the analytics become. Good luck."
@@ -178,7 +178,7 @@ ENTERPRISE_TOUR = Tour(
 
 BASIC_TOUR = Tour(
     name="basic",
-    title="Welcome to Kharazmi Basic",
+    title="Welcome to Rask Basic",
     steps=[
         TourStep(
             title="Your Calendar",
@@ -212,7 +212,7 @@ BASIC_TOUR = Tour(
                 "  • 'Meeting every Monday at 10am'\n"
                 "  • 'Doctor appointment next Friday 3pm'\n"
                 "  • 'Standup daily at 9am'\n\n"
-                "Kharazmi parses the text and creates the event "
+                "Rask parses the text and creates the event "
                 "automatically — title, time, recurrence, and attendees."
             ),
             target_name="centralWidget",

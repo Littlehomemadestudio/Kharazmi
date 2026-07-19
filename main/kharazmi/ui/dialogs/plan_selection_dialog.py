@@ -35,7 +35,7 @@ from ..theme import Palette
 
 # ---- Persistent plan preference ----
 
-SETTINGS_PATH = Path.home() / ".kharazmi" / "plan.json"
+SETTINGS_PATH = Path.home() / ".rask" / "plan.json"
 
 
 def load_saved_plan() -> Optional[str]:
@@ -188,7 +188,7 @@ class PlanSelectionDialog(QDialog):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.chosen_plan: Optional[str] = None
-        self.setWindowTitle("Welcome to Kharazmi")
+        self.setWindowTitle("Welcome to Rask")
         self.setModal(True)
         self.setMinimumSize(900, 620)
         self.setStyleSheet(f"background-color: {Palette.BG_DEEPEST};")

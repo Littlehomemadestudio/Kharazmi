@@ -1,16 +1,18 @@
 """
-Kharazmi application bootstrap.
+Rask application bootstrap.
 
 Run with:
     python -m kharazmi.app
 or:
     python main.py
 
-On startup, asks the user to choose between:
-  - Basic plan (free): Google-Calendar-style planner (Shamsi calendar)
-  - Enterprise plan (paid): Node-graph task operating system
+Rask is a unified planning workspace that integrates:
+  - Calendar (Google-Calendar-style, Shamsi dates)
+  - AI Planner (z.ai GLM-4.5-flash generates walkable route graphs)
+  - Journal (history of AI-generated routes)
+  - Tasks (Enterprise node-graph task operating system)
 
-The choice is persisted; the user can switch plans later via the menu.
+The Calendar tab is shown first by default.
 """
 from __future__ import annotations
 
@@ -27,13 +29,12 @@ from .core import (
     Priority, TaskStatus, RiskLevel, Duration, DurationUnit,
 )
 from .persistence import SQLiteRepository
-from .ui import MainWindow, BasicMainWindow
+from .ui import RaskMainWindow
 from .ui.theme import QSS, build_qpalette, default_font
-from .ui.dialogs import PlanSelectionDialog, load_saved_plan, save_plan
 
 
 def _seed_demo_project(project: Project) -> None:
-    """Populate the project with a small demo so the app opens to something interesting."""
+    """Seed the project with demo tasks so the Enterprise tab opens to something."""
     a = project.create_task(
         title="Define product vision",
         duration=Duration.of(2, DurationUnit.DAY),
@@ -98,7 +99,6 @@ def _seed_demo_project(project: Project) -> None:
         x=550, y=80,
     )
 
-    # Dependencies
     project.add_dependency(Dependency(a.id, b.id, DependencyType.FINISH_START))
     project.add_dependency(Dependency(a.id, c.id, DependencyType.FINISH_START))
     project.add_dependency(Dependency(b.id, d.id, DependencyType.FINISH_START))
@@ -124,9 +124,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
 
     app = QApplication(argv)
-    app.setApplicationName("Kharazmi")
-    app.setApplicationDisplayName("Kharazmi")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationName("Rask")
+    app.setApplicationDisplayName("Rask")
+    app.setApplicationVersion("3.0.0")
     app.setOrganizationName("Littlehomemadestudio")
 
     # Apply theme globally
@@ -134,51 +134,31 @@ def main(argv: Optional[list[str]] = None) -> int:
     app.setPalette(build_qpalette())
     app.setFont(default_font())
 
-    # ---- Determine which plan to start in ----
-    if "--basic" in argv:
-        plan = "basic"
-    elif "--enterprise" in argv:
-        plan = "enterprise"
-    else:
-        # Check saved preference
-        plan = load_saved_plan()
-        if plan is None:
-            # First run — ask
-            plan = PlanSelectionDialog.ask(parent=None)
-            if plan is None:
-                # User cancelled — default to basic
-                plan = "basic"
-                save_plan(plan)
+    # ---- Load or seed the project ----
+    repo = SQLiteRepository()
+    project: Optional[Project] = None
 
-    # ---- Build the appropriate window ----
-    if plan == "basic":
-        window = BasicMainWindow()
-        window.show()
-    else:
-        # Enterprise — load or seed the project
-        repo = SQLiteRepository()
-        project: Optional[Project] = None
+    if "--new" not in argv and "--demo" not in argv:
+        try:
+            projects = repo.list_projects()
+            if projects:
+                pid = projects[0]["id"]
+                loaded = repo.load_latest(pid)
+                if loaded is not None and loaded.task_count > 0:
+                    project = loaded
+        except Exception:
+            pass
 
-        if "--new" not in argv and "--demo" not in argv:
-            try:
-                projects = repo.list_projects()
-                if projects:
-                    pid = projects[0]["id"]
-                    loaded = repo.load_latest(pid)
-                    if loaded is not None and loaded.task_count > 0:
-                        project = loaded
-            except Exception:
-                pass
+    if project is None:
+        project = Project(name="Untitled Project",
+                          description="A new Rask project.")
+        if "--empty" not in argv:
+            _seed_demo_project(project)
 
-        if project is None:
-            project = Project(name="Untitled Project",
-                              description="A new Kharazmi project.")
-            if "--empty" not in argv:
-                _seed_demo_project(project)
-
-        window = MainWindow(project)
-        window.show()
-        QTimer.singleShot(100, window._recalculate)
+    # ---- Show the unified Rask window ----
+    window = RaskMainWindow(project)
+    window.show()
+    QTimer.singleShot(100, window._recalculate)
 
     return app.exec()
 

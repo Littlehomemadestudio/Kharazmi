@@ -16,7 +16,7 @@ from typing import Optional
 from ..calendar import CalendarStore
 
 
-DEFAULT_DB_PATH = Path.home() / ".kharazmi" / "calendar.sqlite3"
+DEFAULT_DB_PATH = Path.home() / ".rask" / "calendar.sqlite3"
 
 
 _SCHEMA = """
