@@ -10,6 +10,7 @@ from .event_editor_dialog import EventEditorDialog
 from .calendar_settings_dialog import CalendarSettingsDialog
 # AI dialogs
 from .ai_settings_dialog import AISettingsDialog
+from .node_edit_dialog import NodeEditDialog
 
 __all__ = [
     "TaskEditorDialog", "ProjectSettingsDialog", "AdvisorDialog",
@@ -18,4 +19,6 @@ __all__ = [
     "EventEditorDialog", "CalendarSettingsDialog",
     # AI
     "AISettingsDialog",
+    # Node editor
+    "NodeEditDialog",
 ]

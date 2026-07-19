@@ -1,14 +1,14 @@
 """
 RouteNodeItem — a QGraphicsItem that renders a single RouteStep.
 
-TRULY DYNAMIC SIZING + HEAVILY ENHANCED ANIMATIONS + EDITABLE.
+TRULY DYNAMIC SIZING + HEAVILY ENHANCED ANIMATIONS.
 
 Features:
   - Auto-sizes to fit FULL title and description (no truncation ever)
   - Rich entrance animation: fade + scale + slide-in + glow
   - Hover: lift + glow + scale-up slightly
   - Selection: pulsing gold border
-  - Double-click to edit title/description inline
+  - Double-click opens a full modal edit dialog (NodeEditDialog)
   - Drag to move (positions persist)
   - Tasks-like aesthetic: status accent bar, priority stripes, progress
 """
@@ -25,8 +25,6 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QGraphicsObject, QGraphicsItem, QGraphicsSceneMouseEvent,
     QGraphicsSceneHoverEvent, QStyleOptionGraphicsItem, QWidget,
-    QGraphicsTextItem, QGraphicsProxyWidget, QLineEdit, QTextEdit,
-    QVBoxLayout, QLabel,
 )
 
 from ...ai import RouteStep
@@ -57,37 +55,21 @@ _KIND_ICONS = {
 
 
 def _wrap_text_to_width(text: str, max_width: float, font: QFont) -> list[str]:
-    """Word-wrap text to fit max_width. Returns list of lines."""
-    if not text:
-        return []
+    """Word-wrap *text* so each line fits within *max_width* pixels."""
     fm = QFontMetrics(font)
     words = text.split()
     if not words:
-        return [""]
-    lines = []
+        return []
+    lines: list[str] = []
     current = ""
     for word in words:
-        if current:
-            test = current + " " + word
-        else:
-            test = word
+        test = f"{current} {word}" if current else word
         if fm.horizontalAdvance(test) <= max_width:
             current = test
         else:
             if current:
                 lines.append(current)
-            if fm.horizontalAdvance(word) > max_width:
-                cur_part = ""
-                for ch in word:
-                    if fm.horizontalAdvance(cur_part + ch) <= max_width:
-                        cur_part += ch
-                    else:
-                        if cur_part:
-                            lines.append(cur_part)
-                        cur_part = ch
-                current = cur_part
-            else:
-                current = word
+            current = word
     if current:
         lines.append(current)
     return lines
@@ -95,18 +77,23 @@ def _wrap_text_to_width(text: str, max_width: float, font: QFont) -> list[str]:
 
 class RouteNodeItem(QGraphicsObject):
     """
-    A draggable, editable route-step node with rich animations.
+    A draggable route-step node with rich animations.
+
+    Double-click emits nodeEditRequested — the parent view opens
+    a proper modal NodeEditDialog with Save/Cancel buttons.
 
     Signals:
       - nodeClicked(step_id)
       - nodeDoubleClicked(step_id)
       - nodeMoved(step_id, x, y)
       - nodeEdited(step_id, new_title, new_description)
+      - nodeEditRequested(step_id) — requests opening modal edit dialog
     """
     nodeClicked = Signal(str)
     nodeDoubleClicked = Signal(str)
     nodeMoved = Signal(str, float, float)
-    nodeEdited = Signal(str, str, str)
+    nodeEdited = Signal(str, str, str)  # step_id, new_title, new_desc
+    nodeEditRequested = Signal(str)      # step_id — requests opening modal edit dialog
 
     def __init__(self, step: RouteStep, parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -115,10 +102,6 @@ class RouteNodeItem(QGraphicsObject):
         self._drag_started_pos: Optional[QPointF] = None
         self._width: float = MIN_NODE_WIDTH
         self._height: float = 140
-        self._editing = False
-        self._edit_proxy: Optional[QGraphicsProxyWidget] = None
-        self._title_editor: Optional[QLineEdit] = None
-        self._desc_editor: Optional[QTextEdit] = None
         self._glow_phase = 0.0
         self._pulse_timer = QTimer()
         self._pulse_timer.setInterval(50)
@@ -287,134 +270,107 @@ class RouteNodeItem(QGraphicsObject):
         painter.setFont(branch_font)
         painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
         painter.drawText(QRectF(10, 30, 80, 12), Qt.AlignLeft,
-                         self.step.branch.upper())
+                         self.step.branch.upper() if self.step.branch else "")
 
-        # 7. Title
+        # 7. Title (may wrap)
         title_font = QFont("Inter", 11, QFont.DemiBold)
         painter.setFont(title_font)
         painter.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        title_x = 70
-        title_w = self._width - title_x - 14
-        y = 10
-        for line in self._title_lines:
-            painter.drawText(QRectF(title_x, y, title_w, TITLE_HEIGHT),
-                             Qt.AlignLeft | Qt.AlignVCenter, line)
-            y += TITLE_HEIGHT
+        y_cursor = 8.0
+        left_text_x = RING_RADIUS * 2 + 16
+        for tl in self._title_lines:
+            painter.drawText(QRectF(left_text_x, y_cursor, self._width - left_text_x - 14, TITLE_HEIGHT),
+                             Qt.AlignLeft | Qt.AlignVCenter, tl)
+            y_cursor += TITLE_HEIGHT
 
-        # 8. Duration + risk badge (top-right)
-        dur_font = QFont("JetBrains Mono", 9, QFont.Bold)
-        painter.setFont(dur_font)
-        painter.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+        y_cursor += 4
+
+        # 8. Meta row: duration · success · risk
+        meta_font = QFont("Inter", 9)
+        painter.setFont(meta_font)
+        painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
         dur_text = f"⏱ {self.step.duration_minutes}m"
-        painter.drawText(QRectF(self._width - 90, 10, 80, 18),
-                         Qt.AlignRight | Qt.AlignVCenter, dur_text)
+        prob_text = f"✓ {self.step.success_probability:.0%}"
+        risk_text = f"⚠ {self.step.risk_level}"
+        meta_line = f"  {dur_text}  ·  {prob_text}  ·  {risk_text}"
+        painter.drawText(QRectF(left_text_x, y_cursor, self._width - left_text_x - 14, META_HEIGHT),
+                         Qt.AlignLeft | Qt.AlignVCenter, meta_line)
+        y_cursor += META_HEIGHT + 8
 
-        risk_font = QFont("Inter", 7, QFont.Bold)
-        painter.setFont(risk_font)
-        risk_text = self.step.risk_level.upper()
-        fm = QFontMetrics(risk_font)
-        rw = fm.horizontalAdvance(risk_text) + 10
-        painter.setBrush(QBrush(risk_color))
-        painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(QRectF(self._width - rw - 10, 30, rw, 14), 3, 3)
-        painter.setPen(QPen(QColor(Palette.TEXT_ON_GOLD)))
-        painter.drawText(QRectF(self._width - rw - 10, 30, rw, 14),
-                         Qt.AlignCenter, risk_text)
-
-        # 9. Success probability ring
-        ring_center = QPointF(34, 80)
-        ring_radius = RING_RADIUS
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(QColor(Palette.BG_DEEPEST), 5))
-        painter.drawEllipse(ring_center, ring_radius, ring_radius)
-        prob = max(0.0, min(1.0, self.step.success_probability))
-        prob_color = QColor(risk_color)
-        if prob > 0.7:
-            prob_color = QColor(Palette.GOLD_BRIGHT)
-        elif prob < 0.4:
-            prob_color = QColor(Palette.STATUS_BLOCKED)
-        painter.setPen(QPen(prob_color, 5, Qt.SolidLine, Qt.RoundCap))
-        start_angle = 90 * 16
-        span_angle = int(-prob * 360 * 16)
-        painter.drawArc(
-            QRectF(ring_center.x() - ring_radius, ring_center.y() - ring_radius,
-                   ring_radius * 2, ring_radius * 2),
-            start_angle, span_angle,
-        )
-        painter.setFont(QFont("JetBrains Mono", 9, QFont.Bold))
-        painter.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        painter.drawText(
-            QRectF(ring_center.x() - ring_radius, ring_center.y() - ring_radius,
-                   ring_radius * 2, ring_radius * 2),
-            Qt.AlignCenter, f"{int(prob * 100)}%"
-        )
-
-        # 10. Right-side content
-        text_x = 70
-        text_w = self._width - text_x - 14
-        y = 50
-
+        # 9. Location
         if self._loc_lines:
             loc_font = QFont("Inter", 9)
             painter.setFont(loc_font)
-            painter.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            for line in self._loc_lines:
-                painter.drawText(QRectF(text_x, y, text_w, META_HEIGHT),
-                                 Qt.AlignLeft | Qt.AlignVCenter, line)
-                y += META_HEIGHT
-            y += 4
+            painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+            for ll in self._loc_lines:
+                painter.drawText(QRectF(left_text_x, y_cursor, self._width - left_text_x - 14, META_HEIGHT),
+                                 Qt.AlignLeft | Qt.AlignVCenter, ll)
+                y_cursor += META_HEIGHT
+            y_cursor += 4
 
+        # 10. Description (if any)
         if self._desc_lines:
-            desc_font = QFont("Inter", 9)
-            painter.setFont(desc_font)
+            body_font = QFont("Inter", 9)
+            painter.setFont(body_font)
             painter.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            for line in self._desc_lines:
-                painter.drawText(QRectF(text_x, y, text_w, 14),
-                                 Qt.AlignLeft | Qt.AlignVCenter, line)
-                y += 14
-            y += 6
+            for dl in self._desc_lines:
+                painter.drawText(QRectF(left_text_x, y_cursor, self._width - left_text_x - 14, 14),
+                                 Qt.AlignLeft | Qt.AlignVCenter, dl)
+                y_cursor += 14
+            y_cursor += 6
 
+        # 11. Sub-goals
         if self._sub_goal_lines:
             sg_font = QFont("Inter", 8)
             painter.setFont(sg_font)
             painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            for line in self._sub_goal_lines:
-                painter.drawText(QRectF(text_x + 4, y, text_w - 4, 14),
-                                 Qt.AlignLeft | Qt.AlignVCenter, line)
-                y += 14
-            y += 4
+            for sgl in self._sub_goal_lines:
+                painter.drawText(QRectF(left_text_x + 10, y_cursor, self._width - left_text_x - 24, 14),
+                                 Qt.AlignLeft | Qt.AlignVCenter, sgl)
+                y_cursor += 14
+            y_cursor += 4
 
+        # 12. Fallback
         if self._fb_lines:
-            fb_font = QFont("Inter", 8, QFont.Bold)
+            fb_font = QFont("Inter", 8)
             painter.setFont(fb_font)
-            painter.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
-            for line in self._fb_lines:
-                painter.drawText(QRectF(text_x + 4, y, text_w - 4, 14),
-                                 Qt.AlignLeft | Qt.AlignVCenter, line)
-                y += 14
+            painter.setPen(QPen(QColor("#A85A5A")))
+            for fbl in self._fb_lines:
+                painter.drawText(QRectF(left_text_x + 10, y_cursor, self._width - left_text_x - 24, 14),
+                                 Qt.AlignLeft | Qt.AlignVCenter, fbl)
+                y_cursor += 14
 
-        if self.step.cost_estimate:
-            cost_font = QFont("JetBrains Mono", 8)
-            painter.setFont(cost_font)
-            painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            painter.drawText(QRectF(self._width - 110, self._height - 22, 98, 14),
-                             Qt.AlignRight, self.step.cost_estimate)
+        # 13. Edit hint at bottom
+        hint_font = QFont("Inter", 7)
+        painter.setFont(hint_font)
+        painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+        painter.drawText(
+            QRectF(10, self._height - 16, self._width - 20, 14),
+            Qt.AlignRight | Qt.AlignVCenter,
+            "double-click to edit"
+        )
 
         painter.restore()
 
-    # ---- Animations ----
+    # ---- Pulse animation ----
     def _tick_pulse(self) -> None:
         self._glow_phase += 0.15
-        if self._glow_phase > 2 * math.pi:
-            self._glow_phase -= 2 * math.pi
         self.update()
 
+    def _get_scale(self) -> float:
+        return self.scale()
+
+    def _set_scale(self, v: float) -> None:
+        self.setScale(v)
+
+    scale_prop = Property(float, _get_scale, _set_scale)
+
+    # ---- Entrance animation ----
     def animate_entrance(self, delay_ms: int = 0) -> None:
-        """Rich entrance: fade + scale + slide-in from left."""
         def _start():
             # Fade in
             self._opacity_anim = QPropertyAnimation(self, b"opacity")
-            self._opacity_anim.setDuration(500)
+            self._opacity_anim.setDuration(400)
             self._opacity_anim.setStartValue(0.0)
             self._opacity_anim.setEndValue(1.0)
             self._opacity_anim.setEasingCurve(QEasingCurve.OutCubic)
@@ -439,140 +395,24 @@ class RouteNodeItem(QGraphicsObject):
         else:
             _start()
 
-    # ---- Inline editing ----
+    # ---- Editing ----
     def start_editing(self) -> None:
-        """Open an inline editor for the title and description."""
-        if self._editing:
-            return
-        self._editing = True
+        """Request the parent view to open the modal edit dialog."""
+        self.nodeEditRequested.emit(self.step.id)
 
-        # Dim the node itself so the user knows they are in edit mode
-        self._pre_edit_opacity = self.opacity()
-        self.setOpacity(0.55)
-
-        # Build a container widget with separate title + description editors
-        container = QWidget()
-        container.setStyleSheet(f"background: transparent;")
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-
-        # --- Title editor (single-line) ---
-        self._title_editor = QLineEdit()
-        self._title_editor.setText(self.step.title or "")
-        self._title_editor.setPlaceholderText("Step title…")
-        self._title_editor.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {Palette.BG_DEEPEST};
-                color: {Palette.GOLD_BRIGHT};
-                border: 2px solid {Palette.GOLD_BRIGHT};
-                border-radius: 4px;
-                padding: 6px 8px;
-                font-size: 12px;
-                font-weight: bold;
-            }}
-        """)
-
-        # --- Description editor (multi-line) ---
-        self._desc_editor = QTextEdit()
-        self._desc_editor.setPlainText(self.step.description or "")
-        self._desc_editor.setPlaceholderText("Description…")
-        self._desc_editor.setAcceptRichText(False)
-        self._desc_editor.setStyleSheet(f"""
-            QTextEdit {{
-                background-color: {Palette.BG_DEEPEST};
-                color: {Palette.GOLD_BRIGHT};
-                border: 2px solid {Palette.GOLD_BRIGHT};
-                border-radius: 4px;
-                padding: 6px 8px;
-                font-size: 11px;
-            }}
-        """)
-
-        # --- Hint label ---
-        hint = QLabel("Editing…  Ctrl+Enter to save · Esc to cancel")
-        hint.setStyleSheet(f"""
-            QLabel {{
-                color: {Palette.TEXT_TERTIARY};
-                font-size: 9px;
-                padding: 2px 4px;
-            }}
-        """)
-
-        layout.addWidget(self._title_editor)
-        layout.addWidget(self._desc_editor, 1)  # stretch=1 so desc takes remaining space
-        layout.addWidget(hint)
-
-        # Size the container to match the node's actual dimensions
-        container.setFixedSize(int(self._width - 8), int(self._height - 8))
-
-        # Install key handlers on both editors
-        self._title_editor.keyPressEvent = self._make_editor_key_handler(
-            self._title_editor.keyPressEvent
-        )
-        self._desc_editor.keyPressEvent = self._make_editor_key_handler(
-            self._desc_editor.keyPressEvent
-        )
-
-        # Place the proxy widget over the node
-        self._edit_proxy = QGraphicsProxyWidget(self)
-        self._edit_proxy.setWidget(container)
-        self._edit_proxy.setPos(4, 4)
-        self._edit_proxy.setZValue(100)
-
-        # Focus the title editor first, selecting all text for quick replacement
-        self._title_editor.setFocus()
-        self._title_editor.selectAll()
-
-    def _make_editor_key_handler(self, original_handler):
-        """Return a keyPressEvent that intercepts Ctrl+Enter (save) and Esc (cancel)."""
-        def handler(event):
-            if event.key() == Qt.Key_Return and (event.modifiers() & Qt.ControlModifier):
-                self._finish_editing()
-                return
-            if event.key() == Qt.Key_Escape:
-                self._cancel_editing()
-                return
-            # In the title line-edit, let Enter move focus to description
-            if event.key() in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ControlModifier):
-                if hasattr(self, '_desc_editor') and self._desc_editor is not None:
-                    self._desc_editor.setFocus()
-                    return
-            original_handler(event)
-        return handler
-
-    def _finish_editing(self) -> None:
-        """Save the edited title and description back to the step."""
-        new_title = self._title_editor.text().strip()
-        new_desc = self._desc_editor.toPlainText().strip()
-        if new_title:
-            self.step.title = new_title
-        self.step.description = new_desc
+    def apply_changes(self, changes: dict) -> None:
+        """Apply changes from the modal edit dialog to the step."""
+        for key, value in changes.items():
+            if hasattr(self.step, key):
+                setattr(self.step, key, value)
         self._compute_size()
         self.prepareGeometryChange()
         self.update()
-        self.nodeEdited.emit(self.step.id, new_title, new_desc)
-        self._cleanup_editor()
-
-    def _cancel_editing(self) -> None:
-        """Discard changes and close the editor."""
-        self._cleanup_editor()
-
-    def _cleanup_editor(self) -> None:
-        """Properly tear down the editor overlay and restore node appearance."""
-        if self._edit_proxy is not None:
-            widget = self._edit_proxy.widget()
-            if widget is not None:
-                widget.deleteLater()
-            self._edit_proxy.deleteLater()
-            self._edit_proxy = None
-        self._title_editor = None
-        self._desc_editor = None
-        # Restore the node's original opacity
-        if hasattr(self, '_pre_edit_opacity'):
-            self.setOpacity(self._pre_edit_opacity)
-            del self._pre_edit_opacity
-        self._editing = False
+        self.nodeEdited.emit(
+            self.step.id,
+            self.step.title,
+            self.step.description or "",
+        )
 
     # ---- Interaction ----
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
@@ -619,11 +459,8 @@ class RouteNodeItem(QGraphicsObject):
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
-            if self._editing:
-                self._cancel_editing()
-            else:
-                self.nodeDoubleClicked.emit(self.step.id)
-                self.start_editing()
+            self.nodeDoubleClicked.emit(self.step.id)
+            self.nodeEditRequested.emit(self.step.id)
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:

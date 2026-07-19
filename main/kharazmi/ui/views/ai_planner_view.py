@@ -623,7 +623,7 @@ class AIPlannerView(QWidget):
                 parts.append(f"<b>{len(new_insights)} new insights</b>")
             self.chat_panel.add_message(
                 f"Added {' , '.join(parts)} to the route graph. "
-                f"Drag nodes around to reorganize. Double-click a node to edit it.",
+                f"Drag nodes around to reorganize. Double-click a node to open the edit dialog (with Save button).",
                 role="assistant", as_html=True,
             )
 
@@ -792,7 +792,7 @@ class AIPlannerView(QWidget):
         )
         self.graph_view._add_node(step, x, y, animate=True)
         self.chat_panel.add_message(
-            f"Created task <b>{new_title}</b>. Double-click to edit, drag to move.",
+            f"Created task <b>{new_title}</b>. Double-click to edit (with Save button), drag to move.",
             role="assistant", as_html=True,
         )
 

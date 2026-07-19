@@ -2,8 +2,8 @@
 StepDetailsPopup — a floating, closeable popup window showing step details.
 
 Appears as a frameless window near the cursor when a node is clicked.
-Can be dragged around. Has a close button. Shows full step info with
-inline editing of title/description/duration/risk/etc.
+Can be dragged around. Has a close button and a "Full Edit" button.
+Shows full step info with inline editing + Save/Cancel buttons.
 """
 from __future__ import annotations
 
@@ -25,11 +25,13 @@ class StepDetailsPopup(QFrame):
     """
     A floating popup that shows step details and allows inline editing.
 
-    Frameless, draggable, closeable.
+    Frameless, draggable, closeable. Has Save and Cancel buttons at the bottom.
+    Also has a "Full Edit" button that opens the NodeEditDialog.
     """
     closed = Signal()
     stepEdited = Signal(str, str, str)  # step_id, new_title, new_description
     stepFieldChanged = Signal(str, str, object)  # step_id, field_name, new_value
+    fullEditRequested = Signal(str)  # step_id — requests opening NodeEditDialog
 
     def __init__(self, step: RouteStep, parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -46,8 +48,8 @@ class StepDetailsPopup(QFrame):
                 border-radius: 8px;
             }}
         """)
-        self.setFixedWidth(380)
-        self.setMinimumHeight(400)
+        self.setFixedWidth(400)
+        self.setMinimumHeight(420)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -104,27 +106,22 @@ class StepDetailsPopup(QFrame):
         content = QWidget()
         content.setStyleSheet(f"background-color: {Palette.BG_TERTIARY};")
         content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(16, 12, 16, 16)
-        content_layout.setSpacing(8)
+        content_layout.setContentsMargins(16, 12, 16, 12)
+        content_layout.setSpacing(6)
 
         # Title editor
         content_layout.addWidget(self._make_label("TITLE"))
         self._title_edit = QLineEdit(step.title)
         self._title_edit.setStyleSheet(self._input_style())
-        self._title_edit.textChanged.connect(
-            lambda t: self.stepFieldChanged.emit(step.id, "title", t)
-        )
         content_layout.addWidget(self._title_edit)
 
         # Description editor
         content_layout.addWidget(self._make_label("DESCRIPTION"))
         self._desc_edit = QTextEdit()
         self._desc_edit.setPlainText(step.description)
-        self._desc_edit.setFixedHeight(80)
+        self._desc_edit.setFixedHeight(70)
         self._desc_edit.setStyleSheet(self._input_style())
-        self._desc_edit.textChanged.connect(
-            lambda: self.stepFieldChanged.emit(step.id, "description", self._desc_edit.toPlainText())
-        )
+        self._desc_edit.setAcceptRichText(False)
         content_layout.addWidget(self._desc_edit)
 
         # Duration + success probability row
@@ -138,9 +135,6 @@ class StepDetailsPopup(QFrame):
         self._dur_spin.setRange(1, 9999)
         self._dur_spin.setValue(step.duration_minutes)
         self._dur_spin.setStyleSheet(self._input_style())
-        self._dur_spin.valueChanged.connect(
-            lambda v: self.stepFieldChanged.emit(step.id, "duration_minutes", v)
-        )
         row2.addWidget(self._dur_spin)
         row2.addStretch()
         self._prob_spin = QDoubleSpinBox()
@@ -149,9 +143,6 @@ class StepDetailsPopup(QFrame):
         self._prob_spin.setDecimals(2)
         self._prob_spin.setValue(step.success_probability)
         self._prob_spin.setStyleSheet(self._input_style())
-        self._prob_spin.valueChanged.connect(
-            lambda v: self.stepFieldChanged.emit(step.id, "success_probability", v)
-        )
         row2.addWidget(self._prob_spin)
         content_layout.addLayout(row2)
 
@@ -167,16 +158,10 @@ class StepDetailsPopup(QFrame):
             self._risk_combo.addItem(r)
         self._risk_combo.setCurrentText(step.risk_level)
         self._risk_combo.setStyleSheet(self._input_style())
-        self._risk_combo.currentTextChanged.connect(
-            lambda v: self.stepFieldChanged.emit(step.id, "risk_level", v)
-        )
         row4.addWidget(self._risk_combo)
         row4.addStretch()
         self._branch_edit = QLineEdit(step.branch)
         self._branch_edit.setStyleSheet(self._input_style())
-        self._branch_edit.textChanged.connect(
-            lambda t: self.stepFieldChanged.emit(step.id, "branch", t)
-        )
         row4.addWidget(self._branch_edit)
         content_layout.addLayout(row4)
 
@@ -184,20 +169,15 @@ class StepDetailsPopup(QFrame):
         content_layout.addWidget(self._make_label("LOCATION"))
         self._loc_edit = QLineEdit(step.location)
         self._loc_edit.setStyleSheet(self._input_style())
-        self._loc_edit.textChanged.connect(
-            lambda t: self.stepFieldChanged.emit(step.id, "location", t)
-        )
         content_layout.addWidget(self._loc_edit)
 
         # Fallback
         content_layout.addWidget(self._make_label("FALLBACK (if this step fails)"))
         self._fb_edit = QTextEdit()
         self._fb_edit.setPlainText(step.fallback)
-        self._fb_edit.setFixedHeight(50)
+        self._fb_edit.setFixedHeight(45)
         self._fb_edit.setStyleSheet(self._input_style())
-        self._fb_edit.textChanged.connect(
-            lambda: self.stepFieldChanged.emit(step.id, "fallback", self._fb_edit.toPlainText())
-        )
+        self._fb_edit.setAcceptRichText(False)
         content_layout.addWidget(self._fb_edit)
 
         # Sub-goals (read-only display)
@@ -228,13 +208,82 @@ class StepDetailsPopup(QFrame):
         content_layout.addWidget(self._make_label("COST ESTIMATE"))
         self._cost_edit = QLineEdit(step.cost_estimate)
         self._cost_edit.setStyleSheet(self._input_style())
-        self._cost_edit.textChanged.connect(
-            lambda t: self.stepFieldChanged.emit(step.id, "cost_estimate", t)
-        )
         content_layout.addWidget(self._cost_edit)
 
         content_layout.addStretch()
         layout.addWidget(content, stretch=1)
+
+        # ---- Bottom buttons ----
+        btn_frame = QFrame()
+        btn_frame.setStyleSheet(
+            f"background-color: {Palette.BG_ELEVATED}; "
+            f"border-top: 1px solid {Palette.BORDER_SUBTLE}; "
+            f"border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;"
+        )
+        btn_layout = QHBoxLayout(btn_frame)
+        btn_layout.setContentsMargins(12, 8, 12, 8)
+        btn_layout.setSpacing(8)
+
+        # Full Edit button (opens modal dialog)
+        full_edit_btn = QPushButton("✏️ Full Edit")
+        full_edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_SECONDARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 6px 14px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {Palette.BG_HOVER};
+                border: 1px solid {Palette.BORDER_GOLD};
+            }}
+        """)
+        full_edit_btn.clicked.connect(self._on_full_edit)
+        btn_layout.addWidget(full_edit_btn)
+
+        btn_layout.addStretch()
+
+        # Cancel button
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_SECONDARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 6px 14px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {Palette.BG_HOVER};
+            }}
+        """)
+        cancel_btn.clicked.connect(self._on_close)
+        btn_layout.addWidget(cancel_btn)
+
+        # Save button
+        save_btn = QPushButton("💾 Save")
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Palette.GOLD_PRIMARY};
+                color: {Palette.TEXT_ON_GOLD};
+                border: none;
+                border-radius: 4px;
+                padding: 6px 18px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+        save_btn.clicked.connect(self._on_save)
+        btn_layout.addWidget(save_btn)
+
+        layout.addWidget(btn_frame)
 
         # Animate in
         self.setWindowOpacity(0.0)
@@ -269,6 +318,27 @@ class StepDetailsPopup(QFrame):
                 border: 1px solid {Palette.GOLD_BRIGHT};
             }}
         """
+
+    def _on_save(self) -> None:
+        """Save all field changes and close."""
+        title = self._title_edit.text().strip()
+        if title:
+            self.stepFieldChanged.emit(self.step.id, "title", title)
+        self.stepFieldChanged.emit(self.step.id, "description", self._desc_edit.toPlainText())
+        self.stepFieldChanged.emit(self.step.id, "duration_minutes", self._dur_spin.value())
+        self.stepFieldChanged.emit(self.step.id, "success_probability", self._prob_spin.value())
+        self.stepFieldChanged.emit(self.step.id, "risk_level", self._risk_combo.currentText())
+        self.stepFieldChanged.emit(self.step.id, "branch", self._branch_edit.text())
+        self.stepFieldChanged.emit(self.step.id, "location", self._loc_edit.text())
+        self.stepFieldChanged.emit(self.step.id, "fallback", self._fb_edit.toPlainText())
+        self.stepFieldChanged.emit(self.step.id, "cost_estimate", self._cost_edit.text())
+        self.stepEdited.emit(self.step.id, title, self._desc_edit.toPlainText())
+        self._on_close()
+
+    def _on_full_edit(self) -> None:
+        """Request opening the full modal edit dialog."""
+        self.fullEditRequested.emit(self.step.id)
+        self._on_close()
 
     def _on_close(self) -> None:
         # Fade out then close
