@@ -18,6 +18,10 @@ from .event_block import EventBlock
 from .natural_language_input import NaturalLanguageInput
 # AI widgets
 from .route_node_item import RouteNodeItem
+from .insight_bubble import InsightBubble
+from .ai_chat_panel import AIChatPanel, ChatMessage, ChatInput
+from .multiple_choice_question import MultipleChoiceQuestionWidget
+from .step_details_panel import StepDetailsPanel
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -33,4 +37,8 @@ __all__ = [
     "NaturalLanguageInput",
     # AI
     "RouteNodeItem",
+    "InsightBubble",
+    "AIChatPanel", "ChatMessage", "ChatInput",
+    "MultipleChoiceQuestionWidget",
+    "StepDetailsPanel",
 ]

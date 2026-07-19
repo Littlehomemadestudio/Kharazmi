@@ -1,48 +1,47 @@
 """
-AIPlannerView — the main "Enterprise analysis screen".
+AIPlannerView — the unified AI Planner + Tasks workspace.
 
 Layout:
-  ┌──────────────────────────────────────────────────────────────────┐
-  │ Top bar: Goal input box + "Plan with AI" button                  │
-  ├──────────────────────────────────┬───────────────────────────────┤
-  │ Route Graph (left, large)        │ Side Panel (right)            │
-  │                                  │ ┌─────────────────────────┐  │
-  │  [node]──[node]──[node]          │ │ Conversation            │  │
-  │                                  │ │ (clarifying Q&A +       │  │
-  │  with success %, time, risk      │ │  AI responses)          │  │
-  │                                  │ └─────────────────────────┘  │
-  │                                  │ ┌─────────────────────────┐  │
-  │                                  │ │ Selected Step Details   │  │
-  │                                  │ │ (description, fallback, │  │
-  │                                  │ │  sub-goals, etc.)       │  │
-  │                                  │ └─────────────────────────┘  │
-  │                                  │ ┌─────────────────────────┐  │
-  │                                  │ │ Improvements &          │  │
-  │                                  │ │ Follow-up Questions     │  │
-  │                                  │ └─────────────────────────┘  │
-  ├──────────────────────────────────┴───────────────────────────────┤
-  │ Bottom: Stats (overall success %, total duration, step count)    │
-  └──────────────────────────────────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ Top: Goal input box + "Plan with AI" button + stats                 │
+  ├──────────────────────────────────────────────┬─────────────────────┤
+  │ Route Workspace (large)                     │ Cursor-IDE-style    │
+  │                                             │ AI Chat             │
+  │  ┌─────────┐   ┌─────────┐                  │                     │
+  │  │  Node   │──▶│  Node   │                  │  ✦ Rask             │
+  │  │         │   │         │                  │  streaming…         │
+  │  └─────────┘   └─────────┘                  │                     │
+  │       │                                     │  ○ You               │
+  │       ▼                                     │  how to speed up?    │
+  │  ┌─────────┐                                │                     │
+  │  │  Node   │      [Insight bubbles float]   │  ✦ Rask             │
+  │  │         │      around the route          │  here's how…        │
+  │  └─────────┘                                │                     │
+  │                                             │  ┌──────────────┐   │
+  │  Pan / zoom / drag / customize              │  │ Input box    │   │
+  │                                             │  └──────────────┘   │
+  ├─────────────────────────────────────────────┴─────────────────────┤
+  │ Collapsible Step Details (expands when a node is clicked)          │
+  └────────────────────────────────────────────────────────────────────┘
 
 Flow:
-  1. User types a goal in the top input
-  2. Clicks "Plan with AI"
-  3. AI either:
-     - Asks clarifying questions → user answers → AI generates route
-     - Generates route directly (if goal is clear)
-  4. Route appears in the graph view
-  5. Conversation and details appear in the side panel
-  6. Entry is saved to the journal
+  1. User types goal in top input
+  2. AI streams clarifying questions (multiple-choice, 4 options + custom)
+  3. User clicks an option OR types custom answer
+  4. After all questions answered, AI streams route generation
+  5. Route appears as node graph with insight bubbles floating around
+  6. AI automatically continues working — adds alternatives, breakthroughs,
+     more questions (also as floating insight bubbles)
+  7. User can chat with AI about the route in the side panel
 """
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import (
-    QFont, QColor, QKeyEvent, QTextCursor, QTextCharFormat,
-)
+from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
@@ -50,61 +49,39 @@ from PySide6.QtWidgets import (
 )
 
 from ...ai import (
-    AIService, Route, RouteStep, JournalStore,
+    AIService, Route, RouteStep, JournalStore, Insight,
+    MultipleChoiceQuestion,
 )
-from ...core.shamsi import ShamsiDate, format_shamsi
+from ...core.shamsi import ShamsiDate
 from ..theme import Palette
 from ..views.route_graph_view import RouteGraphView
-
-
-class MessageBubble(QFrame):
-    """A chat-style message bubble."""
-    def __init__(self, text: str, role: str = "assistant") -> None:
-        super().__init__()
-        self.role = role
-        bg = Palette.BG_TERTIARY if role == "assistant" else Palette.BG_SELECTED
-        fg = Palette.GOLD_BRIGHT if role == "assistant" else Palette.TEXT_PRIMARY
-        prefix = "✦ Rask" if role == "assistant" else "You"
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {bg};
-                border: 1px solid {Palette.BORDER_NORMAL};
-                border-radius: 6px;
-                padding: 8px 12px;
-                margin: 2px 0;
-            }}
-        """)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 6, 10, 6)
-        layout.setSpacing(2)
-        label = QLabel(prefix)
-        label.setStyleSheet(
-            f"color: {fg}; font-size: 9px; font-weight: bold; "
-            f"letter-spacing: 1.5px; background: transparent; border: none;"
-        )
-        layout.addWidget(label)
-        body = QLabel(text)
-        body.setWordWrap(True)
-        body.setStyleSheet(
-            f"color: {Palette.TEXT_PRIMARY}; font-size: 12px; "
-            f"background: transparent; border: none;"
-        )
-        body.setTextFormat(Qt.RichText)
-        layout.addWidget(body)
+from ..widgets.ai_chat_panel import AIChatPanel
+from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
+from ..widgets.step_details_panel import StepDetailsPanel
 
 
 class AIPlannerView(QWidget):
     """
-    The full AI planner screen.
+    The unified AI Planner workspace.
 
-    Owns an AIService instance, a RouteGraphView, a conversation panel,
-    and a step-details panel. Saves completed routes to a JournalStore.
+    Combines:
+      - Goal input bar (top)
+      - Route graph workspace (left, large)
+      - Cursor-style AI chat (right)
+      - Collapsible step details (bottom, expands on node click)
+      - Stats bar (goal, steps, duration, success %)
     """
 
     viewActivated = Signal()
-    # Internal signals used to marshal AI callbacks from worker thread to UI thread
+    # Internal signals for thread-safe UI updates
     _clarifyingReady = Signal(bool, object)
     _routeReady = Signal(bool, object)
+    _continueReady = Signal(bool, object)
+    _chatChunk = Signal(str)
+    _chatDone = Signal(bool, object)
+    _clarifyingChunk = Signal(str)
+    _routeChunk = Signal(str)
+    _continueChunk = Signal(str)
 
     def __init__(self, ai_service: Optional[AIService] = None,
                  journal: Optional[JournalStore] = None,
@@ -115,13 +92,20 @@ class AIPlannerView(QWidget):
         self._current_route: Optional[Route] = None
         self._pending_goal: str = ""
         self._clarifying_qa: list[tuple[str, str]] = []
-        self._awaiting_clarifying_answers: list[str] = []
+        self._awaiting_questions: list[MultipleChoiceQuestion] = []
+        self._current_request_id: Optional[str] = None
 
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
-        # Connect internal signals to UI-thread handlers
+        # Connect internal signals
+        self._clarifyingChunk.connect(self._on_clarifying_chunk)
         self._clarifyingReady.connect(self._on_clarifying_received)
+        self._routeChunk.connect(self._on_route_chunk)
         self._routeReady.connect(self._on_route_received)
+        self._continueChunk.connect(self._on_continue_chunk)
+        self._continueReady.connect(self._on_continue_received)
+        self._chatChunk.connect(self._on_chat_chunk)
+        self._chatDone.connect(self._on_chat_done)
 
         self._build_ui()
 
@@ -130,45 +114,82 @@ class AIPlannerView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Top: goal input
+        # Top: goal input + stats
         layout.addWidget(self._build_goal_bar())
 
-        # Middle: graph + side panel
+        # Middle: graph + chat
         splitter = QSplitter(Qt.Horizontal, self)
         splitter.setHandleWidth(2)
         splitter.setStyleSheet(
             f"QSplitter::handle {{ background: {Palette.BG_DEEPEST}; }}"
         )
 
-        # Left: route graph
-        self.graph_view = RouteGraphView()
-        self.graph_view.stepSelected.connect(self._on_step_selected)
-        graph_container = QFrame()
-        graph_container.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
-        graph_layout = QVBoxLayout(graph_container)
-        graph_layout.setContentsMargins(0, 0, 0, 0)
-        graph_layout.setSpacing(0)
+        # Left: route graph + collapsible step details
+        left_container = QWidget()
+        left_layout = QVBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
         # Graph header
-        header = QLabel("ROUTE GRAPH")
-        header.setStyleSheet(
+        graph_header = QLabel("ROUTE WORKSPACE")
+        graph_header.setStyleSheet(
             f"background-color: {Palette.BG_SECONDARY}; color: {Palette.GOLD_PRIMARY}; "
             f"font-size: 11px; font-weight: bold; letter-spacing: 2px; "
             f"padding: 8px 16px; border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
         )
-        graph_layout.addWidget(header)
-        graph_layout.addWidget(self.graph_view, stretch=1)
-        splitter.addWidget(graph_container)
+        left_layout.addWidget(graph_header)
 
-        # Right: side panel
-        splitter.addWidget(self._build_side_panel())
+        # Route graph view
+        self.graph_view = RouteGraphView()
+        self.graph_view.stepSelected.connect(self._on_step_selected)
+        self.graph_view.insightSelected.connect(self._on_insight_selected)
+        left_layout.addWidget(self.graph_view, stretch=1)
+
+        # Multiple-choice questions container (shown when AI asks questions)
+        self._questions_container = QFrame()
+        self._questions_container.setStyleSheet(f"""
+            QFrame {{
+                background-color: {Palette.BG_TERTIARY};
+                border-top: 2px solid {Palette.GOLD_PRIMARY};
+            }}
+        """)
+        self._questions_layout = QVBoxLayout(self._questions_container)
+        self._questions_layout.setContentsMargins(12, 8, 12, 8)
+        self._questions_layout.setSpacing(6)
+        # Header
+        q_header = QLabel("RASK NEEDS CLARIFICATION — answer the questions below")
+        q_header.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 11px; "
+            f"font-weight: bold; letter-spacing: 1.5px;"
+        )
+        self._questions_layout.addWidget(q_header)
+        # Container for question widgets
+        self._questions_list = QVBoxLayout()
+        self._questions_list.setSpacing(6)
+        self._questions_layout.addLayout(self._questions_list)
+        # Initially hidden
+        self._questions_container.hide()
+        left_layout.addWidget(self._questions_container)
+
+        # Collapsible step details panel
+        self.step_details = StepDetailsPanel()
+        left_layout.addWidget(self.step_details)
+
+        splitter.addWidget(left_container)
+
+        # Right: Cursor-style AI chat
+        self.chat_panel = AIChatPanel(self.ai)
+        self.chat_panel.setMinimumWidth(340)
+        self.chat_panel.setMaximumWidth(500)
+        self.chat_panel.sendRequested.connect(self._on_chat_send)
+        self.chat_panel.stopRequested.connect(self._on_chat_stop)
+        splitter.addWidget(self.chat_panel)
+
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([1000, 380])
+        splitter.setSizes([1100, 420])
 
         layout.addWidget(splitter, stretch=1)
-
-        # Bottom: stats bar
-        layout.addWidget(self._build_stats_bar())
 
     def _build_goal_bar(self) -> QWidget:
         bar = QFrame()
@@ -181,13 +202,42 @@ class AIPlannerView(QWidget):
         layout.setContentsMargins(16, 10, 16, 10)
         layout.setSpacing(4)
 
-        # Label
+        # Label + stats row
+        header_row = QHBoxLayout()
         label = QLabel("DESCRIBE YOUR GOAL — RASK WILL BUILD A WALKABLE ROUTE")
         label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; letter-spacing: 2px;"
         )
-        layout.addWidget(label)
+        header_row.addWidget(label)
+        header_row.addStretch()
+
+        # Inline stats
+        self._stat_steps = QLabel("○ steps: 0")
+        self._stat_steps.setStyleSheet(
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
+            f"font-family: 'JetBrains Mono', monospace;"
+        )
+        header_row.addWidget(self._stat_steps)
+        self._stat_duration = QLabel("⏱ —")
+        self._stat_duration.setStyleSheet(
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
+            f"font-family: 'JetBrains Mono', monospace;"
+        )
+        header_row.addWidget(self._stat_duration)
+        self._stat_success = QLabel("✓ —")
+        self._stat_success.setStyleSheet(
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
+            f"font-family: 'JetBrains Mono', monospace;"
+        )
+        header_row.addWidget(self._stat_success)
+        self._stat_status = QLabel("")
+        self._stat_status.setStyleSheet(
+            f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
+            f"font-family: 'JetBrains Mono', monospace; padding-left: 12px;"
+        )
+        header_row.addWidget(self._stat_status)
+        layout.addLayout(header_row)
 
         # Input row
         row = QHBoxLayout()
@@ -222,182 +272,25 @@ class AIPlannerView(QWidget):
         layout.addLayout(row)
         return bar
 
-    def _build_side_panel(self) -> QWidget:
-        panel = QFrame()
-        panel.setMinimumWidth(340)
-        panel.setMaximumWidth(500)
-        panel.setStyleSheet(f"background-color: {Palette.BG_SECONDARY};")
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Conversation
-        conv_header = QLabel("CONVERSATION")
-        conv_header.setStyleSheet(
-            f"background-color: {Palette.BG_TERTIARY}; color: {Palette.GOLD_PRIMARY}; "
-            f"font-size: 10px; font-weight: bold; letter-spacing: 2px; "
-            f"padding: 8px 12px; border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
-        )
-        layout.addWidget(conv_header)
-
-        self._conversation = QScrollArea()
-        self._conversation.setWidgetResizable(True)
-        self._conversation.setFrameShape(QFrame.NoFrame)
-        self._conversation.setStyleSheet(
-            f"QScrollArea {{ background-color: {Palette.BG_SECONDARY}; border: none; }}"
-        )
-        conv_container = QWidget()
-        self._conv_layout = QVBoxLayout(conv_container)
-        self._conv_layout.setContentsMargins(10, 10, 10, 10)
-        self._conv_layout.setSpacing(6)
-        self._conv_layout.addStretch()
-        self._conversation.setWidget(conv_container)
-        layout.addWidget(self._conversation, stretch=1)
-
-        # Answer input (for clarifying questions)
-        self._answer_input = QLineEdit()
-        self._answer_input.setPlaceholderText("Type your answer and press Enter…")
-        self._answer_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {Palette.BG_TERTIARY};
-                color: {Palette.TEXT_PRIMARY};
-                border: 1px solid {Palette.BORDER_NORMAL};
-                border-top: 1px solid {Palette.BORDER_SUBTLE};
-                border-radius: 0;
-                padding: 10px 14px;
-                font-size: 12px;
-            }}
-            QLineEdit:focus {{
-                border: 1px solid {Palette.GOLD_PRIMARY};
-                border-top: 1px solid {Palette.GOLD_PRIMARY};
-            }}
-        """)
-        self._answer_input.returnPressed.connect(self._on_answer_submitted)
-        self._answer_input.hide()
-        layout.addWidget(self._answer_input)
-
-        # Step details
-        details_header = QLabel("STEP DETAILS")
-        details_header.setStyleSheet(
-            f"background-color: {Palette.BG_TERTIARY}; color: {Palette.GOLD_PRIMARY}; "
-            f"font-size: 10px; font-weight: bold; letter-spacing: 2px; "
-            f"padding: 8px 12px; border-top: 1px solid {Palette.BORDER_SUBTLE}; "
-            f"border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
-        )
-        layout.addWidget(details_header)
-
-        self._details = QLabel("Click a step in the graph to see its details.")
-        self._details.setWordWrap(True)
-        self._details.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self._details.setStyleSheet(
-            f"color: {Palette.TEXT_SECONDARY}; font-size: 12px; padding: 10px 12px; "
-            f"background-color: {Palette.BG_SECONDARY};"
-        )
-        details_scroll = QScrollArea()
-        details_scroll.setWidgetResizable(True)
-        details_scroll.setFrameShape(QFrame.NoFrame)
-        details_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-        details_scroll.setWidget(self._details)
-        details_scroll.setFixedHeight(180)
-        layout.addWidget(details_scroll)
-
-        # Improvements + follow-up questions
-        insights_header = QLabel("INSIGHTS")
-        insights_header.setStyleSheet(
-            f"background-color: {Palette.BG_TERTIARY}; color: {Palette.GOLD_PRIMARY}; "
-            f"font-size: 10px; font-weight: bold; letter-spacing: 2px; "
-            f"padding: 8px 12px; border-top: 1px solid {Palette.BORDER_SUBTLE}; "
-            f"border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
-        )
-        layout.addWidget(insights_header)
-
-        self._insights = QLabel("Insights will appear here once a route is generated.")
-        self._insights.setWordWrap(True)
-        self._insights.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        self._insights.setStyleSheet(
-            f"color: {Palette.TEXT_SECONDARY}; font-size: 12px; padding: 10px 12px; "
-            f"background-color: {Palette.BG_SECONDARY};"
-        )
-        insights_scroll = QScrollArea()
-        insights_scroll.setWidgetResizable(True)
-        insights_scroll.setFrameShape(QFrame.NoFrame)
-        insights_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-        insights_scroll.setWidget(self._insights)
-        insights_scroll.setFixedHeight(180)
-        layout.addWidget(insights_scroll)
-
-        return panel
-
-    def _build_stats_bar(self) -> QWidget:
-        bar = QFrame()
-        bar.setFixedHeight(48)
-        bar.setStyleSheet(
-            f"background-color: {Palette.BG_SECONDARY}; "
-            f"border-top: 1px solid {Palette.BORDER_SUBTLE};"
-        )
-        layout = QHBoxLayout(bar)
-        layout.setContentsMargins(16, 6, 16, 6)
-        layout.setSpacing(20)
-
-        self._stat_goal = self._make_stat("GOAL", "—")
-        layout.addWidget(self._stat_goal)
-        self._stat_steps = self._make_stat("STEPS", "0")
-        layout.addWidget(self._stat_steps)
-        self._stat_duration = self._make_stat("TOTAL DURATION", "—")
-        layout.addWidget(self._stat_duration)
-        self._stat_success = self._make_stat("SUCCESS PROBABILITY", "—")
-        layout.addWidget(self._stat_success)
-        self._stat_critical = self._make_stat("CRITICAL PATH", "—")
-        layout.addWidget(self._stat_critical)
-
-        layout.addStretch()
-
-        self._stat_status = QLabel("")
-        self._stat_status.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
-            f"font-family: 'JetBrains Mono', monospace;"
-        )
-        layout.addWidget(self._stat_status)
-
-        return bar
-
-    def _make_stat(self, label: str, value: str) -> QWidget:
-        w = QFrame()
-        w.setStyleSheet("QFrame { background: transparent; border: none; }")
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(0)
-        lbl = QLabel(label)
-        lbl.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 9px; "
-            f"font-weight: bold; letter-spacing: 1.5px;"
-        )
-        l.addWidget(lbl)
-        val = QLabel(value)
-        val.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 14px; "
-            f"font-weight: bold; font-family: 'JetBrains Mono', monospace;"
-        )
-        l.addWidget(val)
-        w._value_label = val  # type: ignore[attr-defined]
-        return w
-
-    def _set_stat(self, widget: QWidget, value: str) -> None:
-        if hasattr(widget, "_value_label"):
-            widget._value_label.setText(value)  # type: ignore[attr-defined]
-
-    # ---- Conversation helpers ----
-    def _add_message(self, text: str, role: str = "assistant") -> None:
-        bubble = MessageBubble(text, role)
-        # Insert before the stretch
-        self._conv_layout.insertWidget(self._conv_layout.count() - 1, bubble)
-        # Scroll to bottom
-        QTimer.singleShot(50, lambda: self._conversation.verticalScrollBar().setValue(
-            self._conversation.verticalScrollBar().maximum()
-        ))
-
+    # ---- Helpers ----
     def _set_status(self, text: str) -> None:
         self._stat_status.setText(text)
+
+    def _update_stats(self, route: Route) -> None:
+        self._stat_steps.setText(f"○ steps: {len(route.steps)}")
+        hours = route.total_duration_minutes // 60
+        mins = route.total_duration_minutes % 60
+        if hours > 0:
+            self._stat_duration.setText(f"⏱ {hours}h {mins}m")
+        else:
+            self._stat_duration.setText(f"⏱ {mins}m")
+        pct = route.overall_success_probability
+        color = Palette.GOLD_BRIGHT if pct > 0.7 else (Palette.GOLD_PRIMARY if pct > 0.4 else Palette.STATUS_BLOCKED)
+        self._stat_success.setText(f"✓ {pct:.0%}")
+        self._stat_success.setStyleSheet(
+            f"color: {color}; font-size: 11px; "
+            f"font-family: 'JetBrains Mono', monospace; padding-left: 12px;"
+        )
 
     # ---- Plan flow ----
     def _on_plan_clicked(self) -> None:
@@ -411,98 +304,149 @@ class AIPlannerView(QWidget):
 
         self._pending_goal = goal
         self._clarifying_qa = []
-        self._awaiting_clarifying_answers = []
+        self._awaiting_questions = []
         self._goal_input.clear()
 
-        self._add_message(f"<b>Your goal:</b> {goal}", role="user")
-        self._set_status("⏳ Asking AI to analyse your goal...")
+        # Add user message to chat panel
+        self.chat_panel.add_message(f"<b>Goal:</b> {goal}", role="user", as_html=True)
+
+        # Start streaming assistant message
+        streaming_msg = self.chat_panel.start_streaming_message()
+        self._set_status("⏳ Asking AI to analyse your goal…")
         self._plan_btn.setEnabled(False)
 
-        # The AI callback runs on a worker thread — emit a signal to
-        # marshal back to the UI thread (Qt signals are thread-safe).
-        self.ai.generate_clarifying_questions(
-            goal, lambda success, result: self._clarifyingReady.emit(success, result)
+        # Generate request ID for cancellation
+        self._current_request_id = f"clar-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        # Start streaming clarifying questions
+        self.ai.generate_clarifying_questions_streaming(
+            goal,
+            on_chunk=lambda chunk: self._clarifyingChunk.emit(chunk),
+            callback=lambda success, result: self._clarifyingReady.emit(success, result),
+            request_id=self._current_request_id,
         )
+
+    def _on_clarifying_chunk(self, chunk: str) -> None:
+        """Stream chunk from clarifying API call."""
+        self.chat_panel.stream_chunk(chunk)
 
     def _on_clarifying_received(self, success, result) -> None:
         self._plan_btn.setEnabled(True)
+        # Finish the streaming message
+        self.chat_panel.finish_streaming()
+
         if not success:
             self._set_status("✗ Error")
-            self._add_message(f"<b>Error:</b> {result}", role="assistant")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
             return
 
-        # result is a dict with is_clear, clarifying_questions, acknowledgment
         is_clear = result.get("is_clear", False)
-        questions = result.get("clarifying_questions", [])
+        questions = result.get("questions", [])
         acknowledgment = result.get("acknowledgment", "")
 
+        # Replace streaming text with clean acknowledgment
         if acknowledgment:
-            self._add_message(acknowledgment)
+            self.chat_panel.add_message(acknowledgment, role="assistant")
 
         if is_clear or not questions:
-            self._set_status("⏳ Goal is clear — generating route...")
+            self._set_status("⏳ Goal is clear — generating route…")
             self._generate_route()
         else:
-            self._awaiting_clarifying_answers = questions
-            self._add_message(
-                f"I need to ask <b>{len(questions)} clarifying question(s)</b> "
-                f"to build a good route:<br><br>"
-                + "<br>".join(f"<b>Q{ i+1 }.</b> {q}" for i, q in enumerate(questions))
-                + "<br><br>Type your answer below (one per line, or all in one message)."
-            )
-            self._answer_input.show()
-            self._answer_input.setFocus()
-            self._answer_input.setPlaceholderText(
-                f"Answer Q1 (of {len(questions)})…"
-            )
-            self._set_status("⏳ Waiting for your answers…")
+            self._awaiting_questions = questions
+            self._show_multiple_choice_questions(questions)
+            self._set_status(f"⏳ Waiting for {len(questions)} answers…")
 
-    def _on_answer_submitted(self) -> None:
-        if not self._awaiting_clarifying_answers:
-            return
-        answer = self._answer_input.text().strip()
-        if not answer:
-            return
-        question = self._awaiting_clarifying_answers.pop(0)
-        self._clarifying_qa.append((question, answer))
-        self._add_message(f"<b>Q:</b> {question}<br><b>A:</b> {answer}", role="user")
-        self._answer_input.clear()
+    def _show_multiple_choice_questions(self, questions: list[MultipleChoiceQuestion]) -> None:
+        """Display multiple-choice questions in the bottom container."""
+        # Clear old question widgets
+        while self._questions_list.count():
+            item = self._questions_list.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-        if self._awaiting_clarifying_answers:
-            self._answer_input.setPlaceholderText(
-                f"Answer Q{len(self._clarifying_qa) + 1} (of {len(self._clarifying_qa) + len(self._awaiting_clarifying_answers)})…"
-            )
-        else:
-            self._answer_input.hide()
-            self._set_status("⏳ Generating route...")
-            self._generate_route()
+        # Add new question widgets
+        for i, q in enumerate(questions):
+            qw = MultipleChoiceQuestionWidget(q, i)
+            # Connect answered signal — we use a closure to capture the question
+            qw.answered.connect(lambda answer, question=q: self._on_question_answered(question, answer))
+            self._questions_list.addWidget(qw)
 
-    def _generate_route(self) -> None:
-        self.ai.generate_route(
-            self._pending_goal, self._clarifying_qa,
-            lambda success, result: self._routeReady.emit(success, result)
+        self._questions_container.show()
+
+    def _on_question_answered(self, question: MultipleChoiceQuestion, answer: str) -> None:
+        """Record the answer and remove the question widget."""
+        self._clarifying_qa.append((question.question, answer))
+
+        # Add the Q&A to the chat
+        self.chat_panel.add_message(
+            f"<b>Q:</b> {question.question}<br><b>A:</b> {answer}",
+            role="user", as_html=True,
         )
 
+        # Remove the answered question widget
+        for i in range(self._questions_list.count()):
+            item = self._questions_list.itemAt(i)
+            widget = item.widget() if item else None
+            if widget is not None and isinstance(widget, MultipleChoiceQuestionWidget):
+                if widget.question is question:
+                    self._questions_list.removeWidget(widget)
+                    widget.deleteLater()
+                    break
+
+        # Remove from awaiting list
+        if question in self._awaiting_questions:
+            self._awaiting_questions.remove(question)
+
+        # Check if all questions answered
+        if not self._awaiting_questions:
+            self._questions_container.hide()
+            self._set_status("⏳ Generating route…")
+            self._generate_route()
+        else:
+            self._set_status(f"⏳ Waiting for {len(self._awaiting_questions)} more answer(s)…")
+
+    def _generate_route(self) -> None:
+        # Start streaming route generation
+        streaming_msg = self.chat_panel.start_streaming_message()
+        self._set_status("⏳ AI is building the route…")
+
+        self._current_request_id = f"route-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self.ai.generate_route_streaming(
+            self._pending_goal, self._clarifying_qa,
+            on_chunk=lambda chunk: self._routeChunk.emit(chunk),
+            callback=lambda success, result: self._routeReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_route_chunk(self, chunk: str) -> None:
+        self.chat_panel.stream_chunk(chunk)
+
     def _on_route_received(self, success, result) -> None:
+        # Finish streaming message
+        self.chat_panel.finish_streaming()
+
         if not success:
             self._set_status("✗ Error generating route")
-            self._add_message(f"<b>Error:</b> {result}", role="assistant")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
             return
 
         self._current_route = result
         self.graph_view.set_route(result)
         self._update_stats(result)
-        self._update_insights(result)
 
         # Add summary message
         msg = (
             f"<b>Route generated!</b><br><br>"
             f"{result.summary}<br><br>"
-            f"<b>Overall success probability:</b> {result.overall_success_probability:.0%}<br>"
-            f"<b>Total duration:</b> {result.total_duration_minutes} minutes<br>"
-            f"<b>Steps:</b> {len(result.steps)}"
+            f"<b>Overall success:</b> {result.overall_success_probability:.0%}<br>"
+            f"<b>Total duration:</b> {result.total_duration_minutes} min<br>"
+            f"<b>Steps:</b> {len(result.steps)}<br>"
+            f"<b>Insights:</b> {len(result.insights)}"
         )
-        self._add_message(msg)
+        self.chat_panel.add_message(msg, role="assistant", as_html=True)
 
         # Save to journal
         self.journal.add(
@@ -510,87 +454,147 @@ class AIPlannerView(QWidget):
             clarifying_qa=self._clarifying_qa,
             route=result,
         )
-        self._set_status(f"✓ Route saved to journal · {ShamsiDate.today().format('yyyy/mm/dd')}")
+        self._set_status("✓ Route saved — AI is now continuing to work…")
 
-    # ---- Public API for loading from journal ----
+        # Auto-continue: AI adds alternatives, breakthroughs, more questions
+        QTimer.singleShot(500, self._continue_working)
+
+    # ---- Auto-continue after route generation ----
+    def _continue_working(self) -> None:
+        """After route is built, AI proactively continues adding value."""
+        if self._current_route is None:
+            return
+
+        streaming_msg = self.chat_panel.start_streaming_message()
+        self._set_status("⏳ AI is continuing to work — adding alternatives, breakthroughs, more questions…")
+
+        self._current_request_id = f"cont-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self.ai.continue_working_streaming(
+            self._current_route,
+            on_chunk=lambda chunk: self._continueChunk.emit(chunk),
+            callback=lambda success, result: self._continueReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_continue_chunk(self, chunk: str) -> None:
+        self.chat_panel.stream_chunk(chunk)
+
+    def _on_continue_received(self, success, result) -> None:
+        self.chat_panel.finish_streaming()
+        if not success:
+            self._set_status("✗ Continue-working failed")
+            return
+
+        reflection = result.get("reflection", "")
+        new_insights = result.get("new_insights", [])
+
+        if reflection:
+            self.chat_panel.add_message(
+                f"<b>Continuing my analysis…</b><br>{reflection}",
+                role="assistant", as_html=True,
+            )
+
+        # Add the new insights as floating bubbles on the canvas
+        if new_insights:
+            self.graph_view.add_insights(new_insights)
+            self.chat_panel.add_message(
+                f"Added <b>{len(new_insights)} new insights</b> as floating boxes around the route. "
+                f"Drag them around to reorganize.",
+                role="assistant", as_html=True,
+            )
+            # Also add to the route's insights list
+            self._current_route.insights.extend(new_insights)
+
+        self._set_status(f"✓ Done · {len(self._current_route.insights)} total insights · click any node to see details")
+
+    # ---- Free-form chat ----
+    def _on_chat_send(self, text: str) -> None:
+        if self._current_route is None:
+            self.chat_panel.add_message(
+                "Generate a route first — describe your goal in the top input.",
+                role="assistant", as_html=True,
+            )
+            return
+
+        # Build context for the AI
+        route = self._current_route
+        context = (
+            f"You are discussing this route with the user.\n\n"
+            f"Goal: {route.goal}\n"
+            f"Summary: {route.summary}\n"
+            f"Steps ({len(route.steps)}):\n"
+        )
+        for s in route.steps:
+            context += f"  [{s.id}] {s.title} — {s.duration_minutes}m, {s.success_probability:.0%} success\n"
+        context += f"\nOverall success: {route.overall_success_probability:.0%}\n"
+        context += f"Total duration: {route.total_duration_minutes} min\n"
+        if route.improvements:
+            context += "\nImprovements:\n"
+            for imp in route.improvements:
+                context += f"  - {imp}\n"
+
+        messages = [
+            {"role": "assistant", "content": context},
+            {"role": "user", "content": text},
+        ]
+
+        # Start streaming
+        streaming_msg = self.chat_panel.start_streaming_message()
+        self._current_request_id = f"chat-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+        self._set_status("⏳ AI is responding…")
+
+        self.ai.chat_streaming(
+            messages,
+            on_chunk=lambda chunk: self._chatChunk.emit(chunk),
+            callback=lambda success, result: self._chatDone.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_chat_chunk(self, chunk: str) -> None:
+        self.chat_panel.stream_chunk(chunk)
+
+    def _on_chat_done(self, success, result) -> None:
+        self.chat_panel.finish_streaming()
+        if not success:
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            self._set_status("✗ Chat error")
+        else:
+            self._set_status("✓ Ready")
+
+    def _on_chat_stop(self) -> None:
+        if self._current_request_id:
+            self.ai.cancel_request(self._current_request_id)
+        self.chat_panel.finish_streaming()
+        self._set_status("■ Stopped")
+
+    # ---- Selection handlers ----
+    def _on_step_selected(self, step: Optional[RouteStep]) -> None:
+        if step is None:
+            self.step_details.collapse()
+        else:
+            self.step_details.show_step(step)
+
+    def _on_insight_selected(self, insight: Optional[Insight]) -> None:
+        # Could show insight details somewhere — for now, just log
+        pass
+
+    # ---- Public API ----
     def set_route(self, route: Route) -> None:
-        """Load a route (e.g. from the journal) into the planner view."""
+        """Load a route from the journal."""
         self._current_route = route
         self._pending_goal = route.goal
         self._clarifying_qa = []
         self.graph_view.set_route(route)
         self._update_stats(route)
-        self._update_insights(route)
-        self._add_message(
-            f"<b>Loaded route from journal:</b><br>{route.goal}", role="user"
+        self.chat_panel.add_message(
+            f"<b>Loaded route from journal:</b><br>{route.goal}",
+            role="user", as_html=True,
         )
-        self._add_message(
-            f"<b>Route summary:</b><br>{route.summary}", role="assistant"
+        self.chat_panel.add_message(
+            f"<b>Route summary:</b><br>{route.summary}",
+            role="assistant", as_html=True,
         )
         self._set_status("✓ Loaded from journal")
-
-    # ---- Update UI ----
-    def _update_stats(self, route: Route) -> None:
-        self._set_stat(self._stat_goal, route.goal[:40] + ("…" if len(route.goal) > 40 else ""))
-        self._set_stat(self._stat_steps, str(len(route.steps)))
-        hours = route.total_duration_minutes // 60
-        mins = route.total_duration_minutes % 60
-        if hours > 0:
-            self._set_stat(self._stat_duration, f"{hours}h {mins}m")
-        else:
-            self._set_stat(self._stat_duration, f"{mins}m")
-        pct = route.overall_success_probability
-        color = Palette.GOLD_BRIGHT if pct > 0.7 else (Palette.GOLD_PRIMARY if pct > 0.4 else Palette.STATUS_BLOCKED)
-        # Update label color
-        self._stat_success._value_label.setStyleSheet(  # type: ignore[attr-defined]
-            f"color: {color}; font-size: 14px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono', monospace;"
-        )
-        self._set_stat(self._stat_success, f"{pct:.0%}")
-
-        # Critical path
-        critical_path = self.graph_view._compute_critical_path(route)
-        if critical_path:
-            self._set_stat(self._stat_critical, f"{len(critical_path)} steps")
-        else:
-            self._set_stat(self._stat_critical, "—")
-
-    def _update_insights(self, route: Route) -> None:
-        parts = []
-        if route.improvements:
-            parts.append("<b>How to improve your chances:</b>")
-            for imp in route.improvements:
-                parts.append(f"  • {imp}")
-        if route.follow_up_questions:
-            parts.append("")
-            parts.append("<b>Follow-up questions to consider:</b>")
-            for q in route.follow_up_questions:
-                parts.append(f"  ? {q}")
-        if not parts:
-            parts.append("No insights generated.")
-        self._insights.setText("<br>".join(parts))
-
-    def _on_step_selected(self, step: Optional[RouteStep]) -> None:
-        if step is None:
-            self._details.setText("Click a step in the graph to see its details.")
-            return
-        parts = [f"<b>{step.title}</b>"]
-        parts.append(f"<b>ID:</b> {step.id}")
-        parts.append(f"<b>Duration:</b> {step.duration_minutes} minutes")
-        parts.append(f"<b>Success probability:</b> {step.success_probability:.0%}")
-        parts.append(f"<b>Risk level:</b> {step.risk_level}")
-        if step.location:
-            parts.append(f"<b>Location:</b> 📍 {step.location}")
-        if step.cost_estimate:
-            parts.append(f"<b>Cost:</b> {step.cost_estimate}")
-        if step.description:
-            parts.append(f"<br><b>What to do:</b><br>{step.description}")
-        if step.fallback:
-            parts.append(f"<br><b>If this fails:</b><br>{step.fallback}")
-        if step.sub_goals:
-            parts.append("<br><b>Sub-goals:</b>")
-            for sg in step.sub_goals:
-                parts.append(f"  • {sg}")
-        if step.depends_on:
-            parts.append(f"<br><b>Depends on:</b> {', '.join(step.depends_on)}")
-        self._details.setText("<br>".join(parts))
