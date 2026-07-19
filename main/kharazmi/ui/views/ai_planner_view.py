@@ -42,11 +42,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
     QSizePolicy, QMessageBox, QApplication, QToolButton, QInputDialog,
+    QTabWidget,
 )
 
 from ...ai import (
     AIService, Route, RouteStep, RouteEdge, JournalStore, Insight,
     MultipleChoiceQuestion,
+    MonteCarloSimulator, SimulationResult,
+    RouteHealthEngine, RouteHealthReport,
 )
 from ...calendar import CalendarStore, Event as CalendarEvent, EventType, Availability
 from ...core import Project, Task, TaskId, Duration, DurationUnit, Priority, TaskStatus
@@ -55,6 +58,7 @@ from ..theme import Palette
 from ..views.unified_graph_view import UnifiedGraphView
 from ..widgets.ai_chat_panel import AIChatPanel
 from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
+from ..widgets.route_health_dashboard import RouteHealthDashboard
 
 
 class AIPlannerView(QWidget):
@@ -75,6 +79,10 @@ class AIPlannerView(QWidget):
     _edgeAdded = Signal(object)  # RouteEdge
     _insightAdded = Signal(object)  # Insight
     _taskCreated = Signal(str, float, float)  # title, x, y
+    _optimizeReady = Signal(bool, object)
+    _riskAnalysisReady = Signal(bool, object)
+    _replanReady = Signal(bool, object)
+    _simulationComplete = Signal(object)
 
     def __init__(self, ai_service: Optional[AIService] = None,
                  journal: Optional[JournalStore] = None,
@@ -106,6 +114,10 @@ class AIPlannerView(QWidget):
         self._edgeAdded.connect(self._on_edge_added)
         self._insightAdded.connect(self._on_insight_added)
         self._taskCreated.connect(self._on_task_created)
+        self._optimizeReady.connect(self._on_optimize_received)
+        self._riskAnalysisReady.connect(self._on_risk_analysis_received)
+        self._replanReady.connect(self._on_replan_received)
+        self._simulationComplete.connect(self._on_simulation_complete)
 
         self._build_ui()
 
@@ -188,6 +200,7 @@ class AIPlannerView(QWidget):
         if self.project is not None:
             self.graph_view.set_project(self.project)
         self.graph_view.taskCreated.connect(self._taskCreated.emit)
+        self.graph_view.stepBreakdownRequested.connect(self._on_step_breakdown_requested)
         left_layout.addWidget(self.graph_view, stretch=1)
 
         # Multiple-choice questions container
@@ -215,13 +228,54 @@ class AIPlannerView(QWidget):
 
         splitter.addWidget(left_container)
 
-        # Right: Professional AI chat
+        # Right: Tabbed panel (Chat + Health)
         self.chat_panel = AIChatPanel(self.ai)
         self.chat_panel.setMinimumWidth(360)
         self.chat_panel.setMaximumWidth(520)
         self.chat_panel.sendRequested.connect(self._on_chat_send)
         self.chat_panel.stopRequested.connect(self._on_chat_stop)
-        splitter.addWidget(self.chat_panel)
+
+        # Health dashboard
+        self._health_dashboard = RouteHealthDashboard()
+        self._health_dashboard.optimizeRequested.connect(self._on_optimize_clicked)
+        self._health_dashboard.riskAnalysisRequested.connect(self._on_risk_analysis_clicked)
+        self._health_dashboard.simulationRequested.connect(self._on_simulation_clicked)
+        self._health_dashboard.replanRequested.connect(self._on_replan_clicked)
+
+        # Tab widget
+        right_tabs = QTabWidget()
+        right_tabs.setTabPosition(QTabWidget.TabPosition.North)
+        right_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: none;
+                background-color: {Palette.BG_PRIMARY};
+            }}
+            QTabBar::tab {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_TERTIARY};
+                padding: 8px 16px;
+                margin: 0px;
+                border: none;
+                border-bottom: 2px solid transparent;
+                font-weight: bold;
+                font-size: 11px;
+                letter-spacing: 1px;
+            }}
+            QTabBar::tab:selected {{
+                color: {Palette.GOLD_BRIGHT};
+                border-bottom: 2px solid {Palette.GOLD_PRIMARY};
+                background-color: {Palette.BG_SECONDARY};
+            }}
+            QTabBar::tab:hover {{
+                color: {Palette.GOLD_PRIMARY};
+            }}
+        """)
+        right_tabs.addTab(self.chat_panel, "Chat")
+        right_tabs.addTab(self._health_dashboard, "Health")
+        right_tabs.setMinimumWidth(360)
+        right_tabs.setMaximumWidth(520)
+
+        splitter.addWidget(right_tabs)
 
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
@@ -510,6 +564,12 @@ class AIPlannerView(QWidget):
         )
         self._set_status("✓ Route saved — AI is continuing to work…")
 
+        # Auto-compute health score
+        if self._current_route:
+            health = RouteHealthEngine.compute(self._current_route)
+            self._health_dashboard.update_health(health)
+            self._health_dashboard.set_route(self._current_route)
+
         QTimer.singleShot(500, self._continue_working)
 
     # ---- Auto-continue ----
@@ -736,6 +796,69 @@ class AIPlannerView(QWidget):
             role="assistant", as_html=True,
         )
 
+    # ---- AI Step Breakdown ----
+    def _on_step_breakdown_requested(self, step_id: str) -> None:
+        """Handle the right-click 'AI Break Down' action on a step."""
+        if self._current_route is None:
+            return
+        step = next((s for s in self._current_route.steps if s.id == step_id), None)
+        if step is None:
+            return
+        self.chat_panel.start_status_box(f"Breaking down step: {step.title}…")
+        self._set_status(f"⏳ AI breaking down step: {step.title}…")
+
+        self._current_request_id = f"bd-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        def _on_breakdown_done(success, result):
+            self.chat_panel.finish_status_box("Breakdown complete")
+            if not success:
+                self._set_status("✗ Step breakdown failed")
+                self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+                return
+
+            analysis = result.get("analysis", "")
+            new_steps = result.get("new_steps", [])
+            new_edges = result.get("new_edges", [])
+            edges_to_parents = result.get("edges_to_parents", [])
+
+            if analysis:
+                self.chat_panel.add_message(f"<b>Step Breakdown:</b> {analysis}", role="assistant", as_html=True)
+
+            if new_steps:
+                # Remove the original step from the route and canvas
+                self._current_route.steps = [s for s in self._current_route.steps if s.id != step_id]
+                self._current_route.edges = [e for e in self._current_route.edges
+                                              if e.source_id != step_id and e.target_id != step_id]
+                item = self.graph_view._node_items.pop(step_id, None)
+                if item is not None:
+                    self.graph_view._scene.removeItem(item)
+
+                # Add new sub-steps
+                self.graph_view.add_steps_and_edges(new_steps, new_edges + edges_to_parents)
+                self._current_route.steps.extend(new_steps)
+                self._current_route.edges.extend(new_edges)
+                self._current_route.edges.extend(edges_to_parents)
+
+                self.chat_panel.add_message(
+                    f"Replaced <b>{step.title}</b> with <b>{len(new_steps)} sub-steps</b>. "
+                    f"Drag them around to reorganize.",
+                    role="assistant", as_html=True,
+                )
+
+            self._set_status("✓ Step broken down")
+            # Update health
+            if self._current_route:
+                health = RouteHealthEngine.compute(self._current_route)
+                self._health_dashboard.update_health(health)
+
+        self.ai.breakdown_step_streaming(
+            step, self._current_route,
+            on_status=lambda s: self._statusUpdate.emit(s),
+            callback=_on_breakdown_done,
+            request_id=self._current_request_id,
+        )
+
     # ---- Public API ----
     def set_route(self, route: Route) -> None:
         """Load a route from the journal."""
@@ -745,6 +868,10 @@ class AIPlannerView(QWidget):
         self.graph_view.set_route(route)
         self._update_stats(route)
         self._schedule_btn.setEnabled(True)
+        self._health_dashboard.set_route(route)
+        if route and route.steps:
+            health = RouteHealthEngine.compute(route)
+            self._health_dashboard.update_health(health)
         self.chat_panel.add_message(
             f"<b>Loaded route from journal:</b><br>{route.goal}",
             role="user", as_html=True,
@@ -754,3 +881,199 @@ class AIPlannerView(QWidget):
             role="assistant", as_html=True,
         )
         self._set_status("✓ Loaded from journal")
+
+    # ---- Monte Carlo Simulation ----
+    def _on_simulation_clicked(self) -> None:
+        if self._current_route is None or not self._current_route.steps:
+            self.chat_panel.add_message("Generate a route first before running simulation.", role="assistant", as_html=True)
+            return
+        self._set_status("⏳ Running Monte Carlo simulation (5,000 runs)…")
+        self.chat_panel.add_message("<b>Running Monte Carlo simulation…</b> Simulating the route 5,000 times to compute realistic time estimates.", role="assistant", as_html=True)
+
+        def _run():
+            sim = MonteCarloSimulator(self._current_route, n_simulations=5000)
+            result = sim.run()
+            return result
+
+        def _on_done(success, result):
+            if success:
+                self._simulationComplete.emit(result)
+            else:
+                self._set_status("✗ Simulation failed")
+
+        import threading
+        t = threading.Thread(target=lambda: _on_done(True, _run()), daemon=True)
+        t.start()
+
+    def _on_simulation_complete(self, result: SimulationResult) -> None:
+        self._health_dashboard.update_simulation(result)
+        self.chat_panel.add_message(
+            f"<b>Simulation complete!</b><br>"
+            f"P50: {result.p50_minutes}min · P75: {result.p75_minutes}min · "
+            f"P90: {result.p90_minutes}min · P99: {result.p99_minutes}min<br>"
+            f"Failure rate: {result.failure_rate:.1%}<br>"
+            f"Switch to the <b>Health</b> tab for full details.",
+            role="assistant", as_html=True,
+        )
+        self._set_status(f"✓ Simulation done · P50={result.p50_minutes}m")
+
+        # Also compute and update health
+        health = RouteHealthEngine.compute(self._current_route)
+        self._health_dashboard.update_health(health)
+
+    # ---- AI Route Optimization ----
+    def _on_optimize_clicked(self) -> None:
+        if self._current_route is None:
+            return
+        self.chat_panel.start_status_box("AI is optimizing your route…")
+        self._set_status("⏳ AI optimizing route…")
+
+        self._current_request_id = f"opt-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self.ai.optimize_route_streaming(
+            self._current_route,
+            on_status=lambda s: self._statusUpdate.emit(s),
+            callback=lambda success, result: self._optimizeReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_optimize_received(self, success, result) -> None:
+        self.chat_panel.finish_status_box("Optimization complete")
+        if not success:
+            self._set_status("✗ Optimization failed")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            return
+
+        analysis = result.get("analysis", "")
+        optimizations = result.get("optimizations", [])
+        new_steps = result.get("new_steps", [])
+        new_edges = result.get("new_edges", [])
+        new_insights = result.get("new_insights", [])
+
+        if analysis:
+            self.chat_panel.add_message(f"<b>Route Optimization Analysis:</b><br>{analysis}", role="assistant", as_html=True)
+
+        if optimizations:
+            parts = []
+            for opt in optimizations:
+                impact = opt.get("impact", "medium")
+                icon = "🔴" if impact == "high" else ("🟡" if impact == "medium" else "🟢")
+                parts.append(f"{icon} <b>{opt.get('title', '')}</b> ({impact} impact)<br>{opt.get('description', '')}")
+            self.chat_panel.add_message("<br><br>".join(parts), role="assistant", as_html=True)
+
+        if new_steps or new_edges or new_insights:
+            self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
+            if self._current_route is not None:
+                self._current_route.steps.extend(new_steps)
+                self._current_route.edges.extend(new_edges)
+                self._current_route.insights.extend(new_insights)
+            self.chat_panel.add_message(f"Added {len(new_steps)} new steps, {len(new_edges)} new edges, {len(new_insights)} new insights to the route.", role="assistant", as_html=True)
+
+        self._set_status("✓ Optimization applied")
+        # Update health dashboard
+        if self._current_route:
+            health = RouteHealthEngine.compute(self._current_route)
+            self._health_dashboard.update_health(health)
+
+    # ---- AI Risk Analysis ----
+    def _on_risk_analysis_clicked(self) -> None:
+        if self._current_route is None:
+            return
+        self.chat_panel.start_status_box("AI is analyzing risks…")
+        self._set_status("⏳ AI analyzing risks…")
+
+        self._current_request_id = f"risk-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self.ai.analyze_risks_streaming(
+            self._current_route,
+            on_status=lambda s: self._statusUpdate.emit(s),
+            callback=lambda success, result: self._riskAnalysisReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_risk_analysis_received(self, success, result) -> None:
+        self.chat_panel.finish_status_box("Risk analysis complete")
+        if not success:
+            self._set_status("✗ Risk analysis failed")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            return
+
+        overall = result.get("overall_risk_level", "unknown")
+        risk_score = result.get("risk_score", 0)
+        analysis = result.get("analysis", "")
+        risks = result.get("risks", [])
+        actions = result.get("recommended_actions", [])
+
+        icon = {"low": "🟢", "medium": "🟡", "high": "🔴", "critical": "⛔"}.get(overall, "⚪")
+        msg = f"<b>{icon} Risk Level: {overall.upper()}</b> (score: {risk_score:.2f})<br>{analysis}<br><br>"
+
+        if risks:
+            msg += "<b>Identified Risks:</b><br>"
+            for risk in risks:
+                sev = risk.get("severity", "medium")
+                sev_icon = "🔴" if sev in ("critical", "high") else ("🟡" if sev == "medium" else "🟢")
+                msg += f"{sev_icon} <b>{risk.get('title', '')}</b> ({sev})<br>{risk.get('description', '')}<br><i>Mitigation: {risk.get('mitigation', '')}</i><br><br>"
+
+        if actions:
+            msg += "<b>Recommended Actions:</b><br>"
+            for i, action in enumerate(actions, 1):
+                msg += f"{i}. {action}<br>"
+
+        self.chat_panel.add_message(msg, role="assistant", as_html=True)
+        self._set_status(f"✓ Risk analysis · {overall}")
+
+    # ---- Smart Re-plan ----
+    def _on_replan_clicked(self) -> None:
+        if self._current_route is None:
+            return
+        # Ask user what changed
+        change_desc, ok = QInputDialog.getText(self, "Smart Re-plan", "What did you change? Describe the modification:")
+        if not ok or not change_desc.strip():
+            return
+
+        self.chat_panel.start_status_box("AI is adjusting the route…")
+        self._set_status("⏳ AI re-planning…")
+
+        self._current_request_id = f"replan-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self.ai.smart_replan_streaming(
+            self._current_route, "", change_desc.strip(),
+            on_status=lambda s: self._statusUpdate.emit(s),
+            callback=lambda success, result: self._replanReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_replan_received(self, success, result) -> None:
+        self.chat_panel.finish_status_box("Re-plan complete")
+        if not success:
+            self._set_status("✗ Re-plan failed")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            return
+
+        analysis = result.get("analysis", "")
+        adjustments = result.get("step_adjustments", [])
+        new_steps = result.get("new_steps", [])
+        new_edges = result.get("new_edges", [])
+        new_insights = result.get("new_insights", [])
+
+        if analysis:
+            self.chat_panel.add_message(f"<b>Re-plan Analysis:</b><br>{analysis}", role="assistant", as_html=True)
+
+        if adjustments:
+            msg = "<b>Suggested Adjustments:</b><br>"
+            for adj in adjustments:
+                msg += f"• Step <b>{adj.get('step_id', '')}</b>: change <b>{adj.get('field', '')}</b> → {adj.get('new_value', '')}<br><i>{adj.get('reason', '')}</i><br>"
+            self.chat_panel.add_message(msg, role="assistant", as_html=True)
+
+        if new_steps or new_edges or new_insights:
+            self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
+            if self._current_route is not None:
+                self._current_route.steps.extend(new_steps)
+                self._current_route.edges.extend(new_edges)
+                self._current_route.insights.extend(new_insights)
+            self.chat_panel.add_message(f"Added {len(new_steps)} new steps and {len(new_edges)} new edges.", role="assistant", as_html=True)
+
+        self._set_status("✓ Re-plan applied")

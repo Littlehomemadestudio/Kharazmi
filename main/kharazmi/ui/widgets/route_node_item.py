@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QGraphicsObject, QGraphicsItem, QGraphicsSceneMouseEvent,
     QGraphicsSceneHoverEvent, QStyleOptionGraphicsItem, QWidget,
     QGraphicsTextItem, QGraphicsProxyWidget, QLineEdit, QTextEdit,
+    QVBoxLayout, QLabel,
 )
 
 from ...ai import RouteStep
@@ -116,6 +117,8 @@ class RouteNodeItem(QGraphicsObject):
         self._height: float = 140
         self._editing = False
         self._edit_proxy: Optional[QGraphicsProxyWidget] = None
+        self._title_editor: Optional[QLineEdit] = None
+        self._desc_editor: Optional[QTextEdit] = None
         self._glow_phase = 0.0
         self._pulse_timer = QTimer()
         self._pulse_timer.setInterval(50)
@@ -442,62 +445,133 @@ class RouteNodeItem(QGraphicsObject):
         if self._editing:
             return
         self._editing = True
-        # Create a QTextEdit with the current title + description
-        editor = QTextEdit()
-        editor.setPlainText(f"{self.step.title}\n\n{self.step.description}")
-        editor.setStyleSheet(f"""
+
+        # Dim the node itself so the user knows they are in edit mode
+        self._pre_edit_opacity = self.opacity()
+        self.setOpacity(0.55)
+
+        # Build a container widget with separate title + description editors
+        container = QWidget()
+        container.setStyleSheet(f"background: transparent;")
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        # --- Title editor (single-line) ---
+        self._title_editor = QLineEdit()
+        self._title_editor.setText(self.step.title or "")
+        self._title_editor.setPlaceholderText("Step title…")
+        self._title_editor.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {Palette.BG_DEEPEST};
+                color: {Palette.GOLD_BRIGHT};
+                border: 2px solid {Palette.GOLD_BRIGHT};
+                border-radius: 4px;
+                padding: 6px 8px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+        """)
+
+        # --- Description editor (multi-line) ---
+        self._desc_editor = QTextEdit()
+        self._desc_editor.setPlainText(self.step.description or "")
+        self._desc_editor.setPlaceholderText("Description…")
+        self._desc_editor.setAcceptRichText(False)
+        self._desc_editor.setStyleSheet(f"""
             QTextEdit {{
                 background-color: {Palette.BG_DEEPEST};
                 color: {Palette.GOLD_BRIGHT};
                 border: 2px solid {Palette.GOLD_BRIGHT};
                 border-radius: 4px;
-                padding: 8px;
+                padding: 6px 8px;
                 font-size: 11px;
             }}
         """)
-        editor.setMinimumWidth(int(self._width - 20))
-        editor.setMinimumHeight(int(self._height - 20))
-        editor.setAcceptRichText(False)
-        # Handle Ctrl+Enter to save, Escape to cancel
-        editor.keyPressEvent = self._make_editor_key_handler(editor)
-        self._edit_proxy = QGraphicsProxyWidget(self)
-        self._edit_proxy.setWidget(editor)
-        self._edit_proxy.setPos(10, 10)
-        self._edit_proxy.setZValue(100)
-        editor.setFocus()
-        editor.selectAll()
 
-    def _make_editor_key_handler(self, editor):
-        original = editor.keyPressEvent
+        # --- Hint label ---
+        hint = QLabel("Editing…  Ctrl+Enter to save · Esc to cancel")
+        hint.setStyleSheet(f"""
+            QLabel {{
+                color: {Palette.TEXT_TERTIARY};
+                font-size: 9px;
+                padding: 2px 4px;
+            }}
+        """)
+
+        layout.addWidget(self._title_editor)
+        layout.addWidget(self._desc_editor, 1)  # stretch=1 so desc takes remaining space
+        layout.addWidget(hint)
+
+        # Size the container to match the node's actual dimensions
+        container.setFixedSize(int(self._width - 8), int(self._height - 8))
+
+        # Install key handlers on both editors
+        self._title_editor.keyPressEvent = self._make_editor_key_handler(
+            self._title_editor.keyPressEvent
+        )
+        self._desc_editor.keyPressEvent = self._make_editor_key_handler(
+            self._desc_editor.keyPressEvent
+        )
+
+        # Place the proxy widget over the node
+        self._edit_proxy = QGraphicsProxyWidget(self)
+        self._edit_proxy.setWidget(container)
+        self._edit_proxy.setPos(4, 4)
+        self._edit_proxy.setZValue(100)
+
+        # Focus the title editor first, selecting all text for quick replacement
+        self._title_editor.setFocus()
+        self._title_editor.selectAll()
+
+    def _make_editor_key_handler(self, original_handler):
+        """Return a keyPressEvent that intercepts Ctrl+Enter (save) and Esc (cancel)."""
         def handler(event):
             if event.key() == Qt.Key_Return and (event.modifiers() & Qt.ControlModifier):
-                self._finish_editing(editor.toPlainText())
+                self._finish_editing()
                 return
             if event.key() == Qt.Key_Escape:
                 self._cancel_editing()
                 return
-            original(event)
+            # In the title line-edit, let Enter move focus to description
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter) and not (event.modifiers() & Qt.ControlModifier):
+                if hasattr(self, '_desc_editor') and self._desc_editor is not None:
+                    self._desc_editor.setFocus()
+                    return
+            original_handler(event)
         return handler
 
-    def _finish_editing(self, text: str) -> None:
-        """Save the edited text back to the step."""
-        parts = text.split('\n\n', 1)
-        new_title = parts[0].strip() if parts else ''
-        new_desc = parts[1].strip() if len(parts) > 1 else ''
+    def _finish_editing(self) -> None:
+        """Save the edited title and description back to the step."""
+        new_title = self._title_editor.text().strip()
+        new_desc = self._desc_editor.toPlainText().strip()
         if new_title:
             self.step.title = new_title
         self.step.description = new_desc
-        self.step.touch() if hasattr(self.step, 'touch') else None
         self._compute_size()
         self.prepareGeometryChange()
         self.update()
         self.nodeEdited.emit(self.step.id, new_title, new_desc)
-        self._cancel_editing()
+        self._cleanup_editor()
 
     def _cancel_editing(self) -> None:
+        """Discard changes and close the editor."""
+        self._cleanup_editor()
+
+    def _cleanup_editor(self) -> None:
+        """Properly tear down the editor overlay and restore node appearance."""
         if self._edit_proxy is not None:
-            self._edit_proxy.setParent(None)
+            widget = self._edit_proxy.widget()
+            if widget is not None:
+                widget.deleteLater()
+            self._edit_proxy.deleteLater()
             self._edit_proxy = None
+        self._title_editor = None
+        self._desc_editor = None
+        # Restore the node's original opacity
+        if hasattr(self, '_pre_edit_opacity'):
+            self.setOpacity(self._pre_edit_opacity)
+            del self._pre_edit_opacity
         self._editing = False
 
     # ---- Interaction ----

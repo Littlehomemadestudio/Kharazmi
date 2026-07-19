@@ -14,7 +14,9 @@ Streaming sends meaningful status text (not raw JSON) to the UI.
 from __future__ import annotations
 
 import json
+import math
 import os
+import random
 import threading
 import urllib.request
 import urllib.error
@@ -890,6 +892,364 @@ class AIService:
 
         self._run_async(_do, callback)
 
+    # ---- AI Route Optimizer ----
+    def optimize_route_streaming(
+        self, route: Route,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Ask the AI to analyze and optimize the current route:
+          - Identify bottlenecks and weak points
+          - Suggest parallelization opportunities
+          - Add missing fallbacks
+          - Optimize time estimates
+          - Restructure for better success probability
+        """
+        try:
+            on_status("Analyzing route for optimization opportunities…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask, an AI route optimization expert. Analyze the user's route "
+            "and provide OPTIMIZATION suggestions that will improve the route's success "
+            "probability, reduce total time, and strengthen the plan.\n\n"
+            "Output STRICT JSON only with this schema:\n"
+            "{\n"
+            "  \"analysis\": string,  // 2-3 sentence analysis of the route\n"
+            "  \"overall_health\": float,  // 0.0-1.0 health score\n"
+            "  \"optimizations\": [\n"
+            "    {\n"
+            "      \"kind\": string,  // \"parallelize\" | \"add_fallback\" | \"reorder\" | \"split\" | \"merge\" | \"remove_redundancy\"\n"
+            "      \"step_ids\": [string],  // which steps are affected\n"
+            "      \"title\": string,  // short title\n"
+            "      \"description\": string,  // what to do and why\n"
+            "      \"impact\": string,  // \"high\" | \"medium\" | \"low\"\n"
+            "      \"estimated_time_savings_minutes\": integer,\n"
+            "      \"estimated_probability_boost\": float  // 0.0-1.0\n"
+            "    }\n"
+            "  ],\n"
+            "  \"new_steps\": [RouteStep],  // optional new steps to add\n"
+            "  \"new_edges\": [RouteEdge],  // optional new edges\n"
+            "  \"new_insights\": [Insight]  // optional new insights\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Generate 3-7 specific, actionable optimizations.\n"
+            "- Focus on HIGH-IMPACT changes first.\n"
+            "- Each optimization must reference specific step IDs.\n"
+            "- Provide realistic time savings and probability boosts.\n"
+            "- Optionally add new steps/edges that implement the optimizations.\n"
+        )
+        route_summary = (
+            f"Goal: {route.goal}\n"
+            f"Summary: {route.summary}\n"
+            f"Overall success: {route.overall_success_probability:.0%}\n"
+            f"Total duration: {route.total_duration_minutes} min\n\n"
+            f"Steps ({len(route.steps)}):\n"
+        )
+        for s in route.steps:
+            route_summary += (
+                f"  [{s.id}] {s.title} — {s.duration_minutes}m, "
+                f"success={s.success_probability:.0%}, risk={s.risk_level}, "
+                f"branch={s.branch}, fallback={'yes' if s.fallback else 'none'}\n"
+            )
+        route_summary += f"\nEdges ({len(route.edges)}):\n"
+        for e in route.edges:
+            route_summary += f"  {e.source_id} --{e.kind}--> {e.target_id}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": route_summary},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.6, response_format_json=True,
+                max_tokens=8192,
+            )
+            full = _strip_markdown_fences(full)
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                try:
+                    parsed = json.loads(repaired)
+                except json.JSONDecodeError:
+                    parsed = _extract_partial(full)
+            # Parse new steps/edges/insights if present
+            if "new_steps" in parsed:
+                parsed["new_steps"] = [RouteStep.from_dict(s) for s in parsed.get("new_steps", [])]
+            else:
+                parsed["new_steps"] = []
+            if "new_edges" in parsed:
+                parsed["new_edges"] = [RouteEdge.from_dict(e) for e in parsed.get("new_edges", [])]
+            else:
+                parsed["new_edges"] = []
+            if "new_insights" in parsed:
+                parsed["new_insights"] = [Insight.from_dict(i) for i in parsed.get("new_insights", [])]
+            else:
+                parsed["new_insights"] = []
+            return parsed
+
+        self._run_async(_do, callback)
+
+    # ---- AI Step Breakdown ----
+    def breakdown_step_streaming(
+        self, step: RouteStep, route: Route,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Ask the AI to break down a complex step into 2-4 smaller sub-steps.
+        Returns new RouteSteps and edges to replace the original step.
+        """
+        try:
+            on_status(f"Breaking down step: {step.title}…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask. The user wants to break down a complex step into smaller "
+            "sub-steps. Generate 2-4 new steps that together accomplish the same goal "
+            "as the original step, but with better granularity and tracking.\n\n"
+            "Output STRICT JSON only:\n"
+            "{\n"
+            "  \"analysis\": string,  // why this step benefits from breakdown\n"
+            "  \"new_steps\": [RouteStep],  // 2-4 sub-steps (use same schema)\n"
+            "  \"new_edges\": [RouteEdge],  // edges connecting sub-steps\n"
+            "  \"edges_to_parents\": [RouteEdge]  // edges connecting first/last sub-step to the original step's neighbors\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Each sub-step should have a clear, actionable title.\n"
+            "- The first sub-step should depend on the original step's predecessors.\n"
+            "- The last sub-step should connect to the original step's successors.\n"
+            "- Total duration of sub-steps should approximate the original duration.\n"
+            "- Assign realistic success probabilities (sub-steps can be higher than parent).\n"
+            "- Use unique IDs for new steps (e.g., 'sub-{original_id}-1').\n"
+        )
+        user_content = (
+            f"Original step to break down:\n"
+            f"  ID: {step.id}\n"
+            f"  Title: {step.title}\n"
+            f"  Description: {step.description}\n"
+            f"  Duration: {step.duration_minutes} min\n"
+            f"  Success probability: {step.success_probability:.0%}\n"
+            f"  Risk: {step.risk_level}\n"
+            f"  Depends on: {step.depends_on}\n"
+            f"  Fallback: {step.fallback}\n\n"
+            f"Route context ({len(route.steps)} total steps):\n"
+        )
+        for s in route.steps:
+            if s.id != step.id:
+                user_content += f"  [{s.id}] {s.title}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.7, response_format_json=True,
+                max_tokens=6144,
+            )
+            full = _strip_markdown_fences(full)
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                parsed = json.loads(repaired)
+            parsed["new_steps"] = [RouteStep.from_dict(s) for s in parsed.get("new_steps", [])]
+            parsed["new_edges"] = [RouteEdge.from_dict(e) for e in parsed.get("new_edges", [])]
+            parsed["edges_to_parents"] = [RouteEdge.from_dict(e) for e in parsed.get("edges_to_parents", [])]
+            return parsed
+
+        self._run_async(_do, callback)
+
+    # ---- AI Risk Analysis ----
+    def analyze_risks_streaming(
+        self, route: Route,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Deep risk analysis of the route using AI. Identifies:
+          - Single points of failure
+          - Cascade failure risks
+          - Resource conflicts
+          - External dependencies
+          - Mitigation strategies
+        """
+        try:
+            on_status("Running deep risk analysis on your route…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask, an AI risk analysis expert. Perform a deep risk analysis "
+            "of the user's route. Identify all potential failure modes, cascade effects, "
+            "and provide concrete mitigation strategies.\n\n"
+            "Output STRICT JSON only:\n"
+            "{\n"
+            "  \"overall_risk_level\": string,  // \"low\" | \"medium\" | \"high\" | \"critical\"\n"
+            "  \"risk_score\": float,  // 0.0-1.0 (0=safe, 1=very risky)\n"
+            "  \"analysis\": string,  // 2-3 sentence summary\n"
+            "  \"risks\": [\n"
+            "    {\n"
+            "      \"kind\": string,  // \"single_point_of_failure\" | \"cascade\" | \"resource_conflict\" | \"external_dependency\" | \"time_pressure\" | \"probability_gap\"\n"
+            "      \"severity\": string,  // \"critical\" | \"high\" | \"medium\" | \"low\"\n"
+            "      \"affected_steps\": [string],  // step IDs\n"
+            "      \"title\": string,\n"
+            "      \"description\": string,\n"
+            "      \"mitigation\": string,  // concrete action to reduce risk\n"
+            "      \"mitigation_type\": string  // \"add_fallback\" | \"add_alternative\" | \"reorder\" | \"add_step\" | \"change_resource\" | \"adjust_timeline\"\n"
+            "    }\n"
+            "  ],\n"
+            "  \"critical_path_risks\": [string],  // step IDs on critical path with risks\n"
+            "  \"recommended_actions\": [string]  // top 3-5 prioritized actions\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Identify 4-8 specific risks.\n"
+            "- Every risk must have a concrete, actionable mitigation.\n"
+            "- Prioritize risks on the critical path.\n"
+            "- Consider cascade effects (if step X fails, what else fails?).\n"
+        )
+        route_summary = (
+            f"Goal: {route.goal}\n"
+            f"Overall success: {route.overall_success_probability:.0%}\n\n"
+            f"Steps ({len(route.steps)}):\n"
+        )
+        for s in route.steps:
+            route_summary += (
+                f"  [{s.id}] {s.title} — {s.duration_minutes}m, "
+                f"success={s.success_probability:.0%}, risk={s.risk_level}, "
+                f"fallback={'yes' if s.fallback else 'none'}, "
+                f"deps={s.depends_on}\n"
+            )
+        route_summary += f"\nEdges ({len(route.edges)}):\n"
+        for e in route.edges:
+            route_summary += f"  {e.source_id} --{e.kind}--> {e.target_id}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": route_summary},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.5, response_format_json=True,
+                max_tokens=8192,
+            )
+            full = _strip_markdown_fences(full)
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                parsed = json.loads(repaired)
+            return parsed
+
+        self._run_async(_do, callback)
+
+    # ---- Smart Re-plan ----
+    def smart_replan_streaming(
+        self, route: Route, changed_step_id: str, change_description: str,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        When the user edits a step, ask the AI to suggest adjustments to
+        dependent steps so the whole route stays coherent.
+        """
+        try:
+            on_status("Adjusting the route based on your changes…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask. The user has edited a step in their route. You must "
+            "suggest adjustments to OTHER steps that are affected by this change, "
+            "so the entire route stays coherent and achievable.\n\n"
+            "Output STRICT JSON only:\n"
+            "{\n"
+            "  \"analysis\": string,  // how the change affects the route\n"
+            "  \"step_adjustments\": [\n"
+            "    {\n"
+            "      \"step_id\": string,\n"
+            "      \"field\": string,  // which field to change\n"
+            "      \"old_value\": any,\n"
+            "      \"new_value\": any,\n"
+            "      \"reason\": string\n"
+            "    }\n"
+            "  ],\n"
+            "  \"new_steps\": [RouteStep],  // optional new steps needed\n"
+            "  \"new_edges\": [RouteEdge],  // optional new edges\n"
+            "  \"new_insights\": [Insight]  // insights about the impact\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Only suggest changes that are NECESSARY due to the edit.\n"
+            "- Don't modify steps that are unaffected.\n"
+            "- Provide clear reasons for each adjustment.\n"
+            "- If the change invalidates the route, suggest how to restructure.\n"
+        )
+        step = next((s for s in route.steps if s.id == changed_step_id), None)
+        step_info = ""
+        if step:
+            step_info = (
+                f"Changed step:\n"
+                f"  ID: {step.id}\n"
+                f"  Title: {step.title}\n"
+                f"  Duration: {step.duration_minutes}m\n"
+                f"  Success: {step.success_probability:.0%}\n\n"
+            )
+        user_content = (
+            f"{step_info}"
+            f"Change description: {change_description}\n\n"
+            f"Full route ({len(route.steps)} steps):\n"
+        )
+        for s in route.steps:
+            user_content += f"  [{s.id}] {s.title} — {s.duration_minutes}m, success={s.success_probability:.0%}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.6, response_format_json=True,
+                max_tokens=6144,
+            )
+            full = _strip_markdown_fences(full)
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                parsed = json.loads(repaired)
+            if "new_steps" in parsed:
+                parsed["new_steps"] = [RouteStep.from_dict(s) for s in parsed.get("new_steps", [])]
+            else:
+                parsed["new_steps"] = []
+            if "new_edges" in parsed:
+                parsed["new_edges"] = [RouteEdge.from_dict(e) for e in parsed.get("new_edges", [])]
+            else:
+                parsed["new_edges"] = []
+            if "new_insights" in parsed:
+                parsed["new_insights"] = [Insight.from_dict(i) for i in parsed.get("new_insights", [])]
+            else:
+                parsed["new_insights"] = []
+            return parsed
+
+        self._run_async(_do, callback)
+
     # ---- Test the connection ----
     def test_connection(self, callback: Callable[[bool, Any], None]) -> None:
         def _do():
@@ -904,6 +1264,367 @@ class AIService:
         self._run_async(_do, callback)
 
 
+# ---- Monte Carlo Simulation Engine ----
+
+class MonteCarloSimulator:
+    """
+    Simulate a route thousands of times to compute realistic completion
+    time estimates and step-level risk metrics.
+
+    Each simulation:
+      1. For each step, randomly decide success/failure based on success_probability.
+      2. If a step fails and has a fallback, the fallback duration is used instead.
+      3. If a step fails with no fallback, the route is marked as "failed at that step".
+      4. Compute the critical-path duration considering only successful steps.
+
+    Outputs: P50/P75/P90 completion times, failure rate, per-step failure count.
+    """
+
+    def __init__(self, route: Route, n_simulations: int = 5000) -> None:
+        self.route = route
+        self.n_simulations = n_simulations
+
+    def run(self) -> 'SimulationResult':
+        """Run the Monte Carlo simulation and return a SimulationResult."""
+        steps_by_id = {s.id: s for s in self.route.steps}
+        step_fail_counts: dict[str, int] = {s.id: 0 for s in self.route.steps}
+        completion_times: list[int] = []  # in minutes
+        failures = 0
+        step_completion_times: dict[str, list[int]] = {s.id: [] for s in self.route.steps}
+
+        # Build adjacency for the route graph
+        successors: dict[str, list[str]] = {s.id: [] for s in self.route.steps}
+        predecessors: dict[str, list[str]] = {s.id: [] for s in self.route.steps}
+        for edge in self.route.edges:
+            if edge.source_id in successors and edge.target_id in predecessors:
+                successors[edge.source_id].append(edge.target_id)
+                predecessors[edge.target_id].append(edge.source_id)
+        for step in self.route.steps:
+            for dep_id in step.depends_on:
+                if dep_id in successors and step.id in predecessors:
+                    if dep_id not in predecessors[step.id]:
+                        predecessors[step.id].append(dep_id)
+                    if step.id not in successors[dep_id]:
+                        successors[dep_id].append(step.id)
+
+        # Find root steps (no predecessors)
+        roots = [s.id for s in self.route.steps if not predecessors.get(s.id)]
+
+        for _ in range(self.n_simulations):
+            # Randomly determine success/failure for each step
+            step_succeeded: dict[str, bool] = {}
+            step_duration: dict[str, int] = {}
+            for step in self.route.steps:
+                if random.random() < step.success_probability:
+                    step_succeeded[step.id] = True
+                    # Add some variance to duration (±20%)
+                    variance = random.uniform(0.8, 1.2)
+                    step_duration[step.id] = int(step.duration_minutes * variance)
+                else:
+                    step_succeeded[step.id] = False
+                    step_fail_counts[step.id] += 1
+                    if step.fallback:
+                        # Fallback: use 1.5x duration as penalty
+                        step_duration[step.id] = int(step.duration_minutes * 1.5)
+                    else:
+                        step_duration[step.id] = 0  # Will be excluded
+
+            # Compute earliest finish time for each step (topological)
+            earliest_finish: dict[str, int] = {}
+            visited: set[str] = set()
+            failed = False
+
+            def compute_ef(sid: str) -> int:
+                if sid in visited:
+                    return earliest_finish.get(sid, 0)
+                visited.add(sid)
+                if not step_succeeded.get(sid, True) and not steps_by_id[sid].fallback:
+                    earliest_finish[sid] = 0
+                    return 0
+                max_pred_ef = 0
+                for pid in predecessors.get(sid, []):
+                    if not step_succeeded.get(pid, True) and not steps_by_id.get(pid, RouteStep(id="", title="", duration_minutes=0, success_probability=0, location="", description="", fallback="")).fallback:
+                        # Predecessor failed without fallback — this step can't start
+                        compute_ef(pid)
+                        if earliest_finish.get(pid, 0) == 0:
+                            earliest_finish[sid] = 0
+                            return 0
+                    pred_ef = compute_ef(pid)
+                    max_pred_ef = max(max_pred_ef, pred_ef)
+                ef = max_pred_ef + step_duration.get(sid, 0)
+                earliest_finish[sid] = ef
+                step_completion_times[sid].append(ef)
+                return ef
+
+            for sid in roots:
+                compute_ef(sid)
+
+            # Total completion = max of all leaf steps' finish times
+            leaves = [s.id for s in self.route.steps if not successors.get(s.id)]
+            total = max((earliest_finish.get(lid, 0) for lid in leaves), default=0)
+
+            # Check if any critical step failed without fallback
+            for step in self.route.steps:
+                if not step_succeeded.get(step.id, True) and not step.fallback:
+                    # Check if this step is on any path to a leaf
+                    if any(lid in visited for lid in leaves):
+                        failed = True
+                        break
+
+            if failed:
+                failures += 1
+            elif total > 0:
+                completion_times.append(total)
+
+        # Compute percentiles
+        completion_times.sort()
+        n = len(completion_times)
+        result = SimulationResult(
+            n_simulations=self.n_simulations,
+            p50_minutes=completion_times[int(n * 0.50)] if n > 0 else 0,
+            p75_minutes=completion_times[int(n * 0.75)] if n > 0 else 0,
+            p90_minutes=completion_times[int(n * 0.90)] if n > 0 else 0,
+            p99_minutes=completion_times[int(n * 0.99)] if n > 0 else 0,
+            min_minutes=completion_times[0] if n > 0 else 0,
+            max_minutes=completion_times[-1] if n > 0 else 0,
+            mean_minutes=sum(completion_times) / n if n > 0 else 0,
+            failure_rate=failures / self.n_simulations,
+            step_failure_counts=step_fail_counts,
+            step_completion_times=step_completion_times,
+            completion_time_distribution=self._build_distribution(completion_times),
+        )
+        return result
+
+    def _build_distribution(self, times: list[int], n_bins: int = 20) -> list[dict]:
+        """Build a histogram of completion times for visualization."""
+        if not times:
+            return []
+        min_t = times[0]
+        max_t = times[-1]
+        if max_t == min_t:
+            return [{"start": min_t, "end": max_t, "count": len(times)}]
+        bin_width = (max_t - min_t) / n_bins
+        bins = []
+        for i in range(n_bins):
+            start = min_t + i * bin_width
+            end = start + bin_width
+            count = sum(1 for t in times if start <= t < end)
+            bins.append({"start": round(start), "end": round(end), "count": count})
+        # Last bin is inclusive
+        if bins:
+            bins[-1]["count"] += sum(1 for t in times if t == max_t)
+        return bins
+
+
+@dataclass
+class SimulationResult:
+    """Result of a Monte Carlo simulation of a route."""
+    n_simulations: int = 0
+    p50_minutes: int = 0
+    p75_minutes: int = 0
+    p90_minutes: int = 0
+    p99_minutes: int = 0
+    min_minutes: int = 0
+    max_minutes: int = 0
+    mean_minutes: float = 0.0
+    failure_rate: float = 0.0
+    step_failure_counts: dict[str, int] = field(default_factory=dict)
+    step_completion_times: dict[str, list[int]] = field(default_factory=dict)
+    completion_time_distribution: list[dict] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "n_simulations": self.n_simulations,
+            "p50_minutes": self.p50_minutes,
+            "p75_minutes": self.p75_minutes,
+            "p90_minutes": self.p90_minutes,
+            "p99_minutes": self.p99_minutes,
+            "min_minutes": self.min_minutes,
+            "max_minutes": self.max_minutes,
+            "mean_minutes": self.mean_minutes,
+            "failure_rate": self.failure_rate,
+            "step_failure_counts": self.step_failure_counts,
+            "completion_time_distribution": self.completion_time_distribution,
+        }
+
+
+# ---- Route Health Score Engine ----
+
+class RouteHealthEngine:
+    """
+    Computes a comprehensive health score for a route based on:
+      - Step success probabilities
+      - Risk levels
+      - Fallback coverage
+      - Branch complexity
+      - Critical path vulnerability
+      - Time estimates vs. dependencies
+
+    Health score is 0-100, where:
+      90-100: Excellent (well-structured, high probability, good fallbacks)
+      70-89:  Good (minor issues)
+      50-69:  Fair (some risks, missing fallbacks)
+      30-49:  Poor (significant risks, low probabilities)
+      0-29:   Critical (route likely to fail)
+    """
+
+    @staticmethod
+    def compute(route: Route) -> 'RouteHealthReport':
+        if not route.steps:
+            return RouteHealthReport(overall_score=0, grade="F", metrics={})
+
+        steps = route.steps
+        n_steps = len(steps)
+
+        # 1. Average success probability (0-100, weighted)
+        avg_prob = sum(s.success_probability for s in steps) / n_steps
+        prob_score = avg_prob * 40  # Up to 40 points
+
+        # 2. Fallback coverage (what % of steps have fallbacks?)
+        fallback_pct = sum(1 for s in steps if s.fallback) / n_steps
+        fallback_score = fallback_pct * 15  # Up to 15 points
+
+        # 3. Risk level distribution
+        risk_weights = {"low": 1.0, "medium": 0.6, "high": 0.3, "severe": 0.1}
+        avg_risk = sum(risk_weights.get(s.risk_level, 0.5) for s in steps) / n_steps
+        risk_score = avg_risk * 15  # Up to 15 points
+
+        # 4. Branch complexity (having alternatives is good, but not too many)
+        branches = set(s.branch for s in steps)
+        n_branches = len(branches)
+        if n_branches <= 1:
+            branch_score = 5  # No alternatives = poor
+        elif n_branches <= 3:
+            branch_score = 12  # Good variety
+        elif n_branches <= 5:
+            branch_score = 10  # Getting complex
+        else:
+            branch_score = 6  # Too complex
+
+        # 5. Step kind variety (having decisions and checkpoints is good)
+        kinds = set(s.kind for s in steps)
+        kind_variety_score = min(len(kinds) * 3, 10)  # Up to 10 points
+
+        # 6. Dependency health (are there steps with too many deps?)
+        max_deps = max((len(s.depends_on) for s in steps), default=0)
+        if max_deps <= 2:
+            dep_score = 10
+        elif max_deps <= 4:
+            dep_score = 7
+        elif max_deps <= 6:
+            dep_score = 4
+        else:
+            dep_score = 2
+
+        overall = prob_score + fallback_score + risk_score + branch_score + kind_variety_score + dep_score
+        overall = max(0, min(100, overall))
+
+        # Grade
+        if overall >= 90:
+            grade = "A+"
+        elif overall >= 80:
+            grade = "A"
+        elif overall >= 70:
+            grade = "B"
+        elif overall >= 60:
+            grade = "C"
+        elif overall >= 50:
+            grade = "D"
+        else:
+            grade = "F"
+
+        # Identify bottlenecks (steps with low success probability that many others depend on)
+        bottlenecks = []
+        dependents_count: dict[str, int] = {}
+        for edge in route.edges:
+            dependents_count[edge.source_id] = dependents_count.get(edge.source_id, 0) + 1
+        for step in steps:
+            n_deps = dependents_count.get(step.id, 0)
+            if step.success_probability < 0.6 and n_deps >= 2:
+                bottlenecks.append(step.id)
+            elif step.success_probability < 0.4:
+                bottlenecks.append(step.id)
+
+        # Identify orphan steps (no edges to/from them)
+        connected = set()
+        for edge in route.edges:
+            connected.add(edge.source_id)
+            connected.add(edge.target_id)
+        for step in steps:
+            for dep_id in step.depends_on:
+                connected.add(dep_id)
+                connected.add(step.id)
+        orphans = [s.id for s in steps if s.id not in connected]
+
+        metrics = {
+            "avg_success_probability": round(avg_prob, 3),
+            "fallback_coverage_pct": round(fallback_pct, 3),
+            "avg_risk_score": round(avg_risk, 3),
+            "n_branches": n_branches,
+            "n_kinds": len(kinds),
+            "max_dependency_depth": max_deps,
+            "bottleneck_steps": bottlenecks,
+            "orphan_steps": orphans,
+            "prob_score": round(prob_score, 1),
+            "fallback_score": round(fallback_score, 1),
+            "risk_score": round(risk_score, 1),
+            "branch_score": round(branch_score, 1),
+            "kind_score": round(kind_variety_score, 1),
+            "dep_score": round(dep_score, 1),
+        }
+
+        return RouteHealthReport(
+            overall_score=round(overall, 1),
+            grade=grade,
+            metrics=metrics,
+            bottlenecks=bottlenecks,
+            orphans=orphans,
+            recommendations=RouteHealthEngine._generate_recommendations(metrics, steps),
+        )
+
+    @staticmethod
+    def _generate_recommendations(metrics: dict, steps: list[RouteStep]) -> list[str]:
+        recs = []
+        if metrics["avg_success_probability"] < 0.6:
+            recs.append("⚠ Overall success probability is low. Consider adding fallbacks or breaking down risky steps.")
+        if metrics["fallback_coverage_pct"] < 0.3:
+            recs.append("⚠ Less than 30% of steps have fallbacks. Add fallback plans for critical steps.")
+        if metrics["avg_risk_score"] < 0.5:
+            recs.append("⚠ Average risk is high. Review high-risk steps and add mitigations.")
+        if metrics["n_branches"] <= 1:
+            recs.append("💡 No alternative branches detected. Adding parallel paths improves resilience.")
+        if metrics["bottleneck_steps"]:
+            recs.append(f"🔴 {len(metrics['bottleneck_steps'])} bottleneck step(s) detected. These are low-probability steps that many others depend on.")
+        if metrics["orphan_steps"]:
+            recs.append(f"🔗 {len(metrics['orphan_steps'])} orphan step(s) detected — they have no connections to other steps.")
+        if metrics["max_dependency_depth"] > 4:
+            recs.append("📐 Some steps have too many dependencies (>4). Consider simplifying the dependency graph.")
+        if not recs:
+            recs.append("✅ Route health looks good! Consider running Monte Carlo simulation for deeper analysis.")
+        return recs
+
+
+@dataclass
+class RouteHealthReport:
+    """Health assessment of a route."""
+    overall_score: float = 0.0
+    grade: str = "F"
+    metrics: dict = field(default_factory=dict)
+    bottlenecks: list[str] = field(default_factory=list)
+    orphans: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            "overall_score": self.overall_score,
+            "grade": self.grade,
+            "metrics": self.metrics,
+            "bottlenecks": self.bottlenecks,
+            "orphans": self.orphans,
+            "recommendations": self.recommendations,
+        }
+
+
 # ---- Helpers ----
 
 def _strip_markdown_fences(s: str) -> str:
@@ -915,3 +1636,62 @@ def _strip_markdown_fences(s: str) -> str:
         if s.endswith("```"):
             s = s[:-3]
     return s.strip()
+
+
+def _repair_json(s: str) -> str:
+    """Attempt to repair common JSON issues: unclosed braces, trailing commas, etc."""
+    s = s.strip()
+    # Count braces/brackets
+    stack = []
+    for ch in s:
+        if ch in "{[":
+            stack.append(ch)
+        elif ch == "}" and stack and stack[-1] == "{":
+            stack.pop()
+        elif ch == "]" and stack and stack[-1] == "[":
+            stack.pop()
+    # Close unclosed structures
+    while stack:
+        ch = stack.pop()
+        s += "}" if ch == "{" else "]"
+    # Remove trailing commas before closing braces/brackets
+    import re
+    s = re.sub(r',\s*([}\]])', r'\1', s)
+    return s
+
+
+def _extract_partial(s: str) -> dict:
+    """Extract whatever we can from a partially-formed JSON response."""
+    result: dict = {}
+    import re
+    # Try to extract top-level string fields
+    for key in ["goal", "summary", "reflection"]:
+        m = re.search(rf'"{key}"\s*:\s*"([^"]*?)"', s)
+        if m:
+            result[key] = m.group(1)
+    # Try to extract numeric fields
+    for key in ["overall_success_probability", "total_duration_minutes"]:
+        m = re.search(rf'"{key}"\s*:\s*([0-9.]+)', s)
+        if m:
+            result[key] = float(m.group(1))
+    # Try to extract steps array (even partial)
+    steps_match = re.search(r'"steps"\s*:\s*\[', s)
+    if steps_match:
+        # Find all step objects
+        step_pattern = re.compile(r'\{[^{}]*"id"\s*:\s*"([^"]+)"[^{}]*\}', re.DOTALL)
+        found_steps = []
+        for m in step_pattern.finditer(s[steps_match.start():]):
+            try:
+                step_json = json.loads(m.group(0))
+                found_steps.append(step_json)
+            except json.JSONDecodeError:
+                continue
+        if found_steps:
+            result["steps"] = found_steps
+    if "edges" not in result:
+        result["edges"] = []
+    if "insights" not in result:
+        result["insights"] = []
+    if "steps" not in result:
+        result["steps"] = []
+    return result

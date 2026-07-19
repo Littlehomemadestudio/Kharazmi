@@ -26,12 +26,12 @@ from typing import Optional
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer, QSizeF
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath, QPolygonF,
-    QMouseEvent, QWheelEvent, QKeyEvent, QPainterPathStroker,
+    QMouseEvent, QWheelEvent, QKeyEvent, QPainterPathStroker, QAction,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QGraphicsItem, QGraphicsRectItem, QGraphicsPathItem, QGraphicsTextItem,
-    QFrame, QPushButton, QToolButton, QSizePolicy, QApplication,
+    QFrame, QPushButton, QToolButton, QSizePolicy, QApplication, QMenu,
 )
 
 from ...ai import Route, RouteStep, RouteEdge, Insight
@@ -190,6 +190,7 @@ class UnifiedGraphView(QGraphicsView):
     insightSelected = Signal(object)
     stepFieldChanged = Signal(str, str, object)  # step_id, field, value
     taskCreated = Signal(str, float, float)  # title, x, y — request to create a task
+    stepBreakdownRequested = Signal(str)  # step_id — request AI breakdown
 
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -761,6 +762,80 @@ class UnifiedGraphView(QGraphicsView):
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
+    def contextMenuEvent(self, event) -> None:
+        """Right-click context menu on nodes."""
+        item = self.itemAt(event.pos())
+        # Find the RouteNodeItem under cursor
+        step_id = None
+        while item is not None:
+            if isinstance(item, RouteNodeItem):
+                step_id = item.step.id
+                break
+            item = item.parentItem()
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 20px;
+                border-radius: 3px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Palette.BG_HOVER};
+                color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+
+        if step_id and self._route is not None:
+            step = next((s for s in self._route.steps if s.id == step_id), None)
+            if step:
+                breakdown_action = menu.addAction(f"✦ AI Break Down: {step.title}")
+                breakdown_action.triggered.connect(lambda: self.stepBreakdownRequested.emit(step_id))
+
+                # Add separator
+                menu.addSeparator()
+
+                # Edit action
+                edit_action = menu.addAction(f"✏️ Edit: {step.title}")
+                edit_action.triggered.connect(lambda: item and item.start_editing() if isinstance(item, RouteNodeItem) else None)
+
+                # Delete action
+                delete_action = menu.addAction(f"🗑 Remove: {step.title}")
+                delete_action.triggered.connect(lambda: self._remove_step(step_id))
+            else:
+                menu.addAction("No actions available")
+        else:
+            add_task_action = menu.addAction("＋ Add Task Here")
+            scene_pos = self.mapToScene(event.pos())
+            add_task_action.triggered.connect(
+                lambda: self.taskCreated.emit("New Task", scene_pos.x(), scene_pos.y())
+            )
+
+        menu.exec(event.globalPos())
+
+    def _remove_step(self, step_id: str) -> None:
+        """Remove a step from the route and the canvas."""
+        if self._route is not None:
+            self._route.steps = [s for s in self._route.steps if s.id != step_id]
+            self._route.edges = [e for e in self._route.edges
+                                  if e.source_id != step_id and e.target_id != step_id]
+        # Remove from canvas
+        item = self._node_items.pop(step_id, None)
+        if item is not None:
+            self._scene.removeItem(item)
+        # Remove connected edges
+        to_remove = [e for e in self._edge_items
+                     if e.edge.source_id == step_id or e.edge.target_id == step_id]
+        for edge in to_remove:
+            self._scene.removeItem(edge)
+            self._edge_items.remove(edge)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
