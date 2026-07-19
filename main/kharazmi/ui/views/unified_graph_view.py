@@ -326,7 +326,9 @@ class UnifiedGraphView(QGraphicsView):
                 title=task.title,
                 duration_minutes=task.duration.minutes,
                 success_probability=0.5,
+                location="",
                 description=task.description,
+                fallback="",
                 branch="tasks",
                 kind="action",
             )
@@ -571,10 +573,15 @@ class UnifiedGraphView(QGraphicsView):
             return []
         steps_by_id = {s.id: s for s in route.steps}
         memo: dict[str, tuple[int, list[str]]] = {}
+        visiting: set[str] = set()  # cycle detection
 
         def longest_path_ending_at(sid: str) -> tuple[int, list[str]]:
             if sid in memo:
                 return memo[sid]
+            # Cycle detection — if we're already visiting this node, skip it
+            if sid in visiting:
+                return (0, [])
+            visiting.add(sid)
             step = steps_by_id[sid]
             preds = list(step.depends_on)
             for e in route.edges:
@@ -591,6 +598,7 @@ class UnifiedGraphView(QGraphicsView):
                         if dep_len > best[0]:
                             best = (dep_len, dep_path)
                 result = (best[0] + step.duration_minutes, best[1] + [sid])
+            visiting.discard(sid)
             memo[sid] = result
             return result
 
@@ -615,7 +623,9 @@ class UnifiedGraphView(QGraphicsView):
                         id=str(task.id), title=task.title,
                         duration_minutes=task.duration.minutes,
                         success_probability=0.5,
+                        location="",
                         description=task.description,
+                        fallback="",
                         depends_on=[str(d.predecessor_id) for d in self._project.dependencies_of(task.id)],
                         branch="tasks", kind="action",
                     )
@@ -639,7 +649,9 @@ class UnifiedGraphView(QGraphicsView):
                         id=str(task.id), title=task.title,
                         duration_minutes=task.duration.minutes,
                         success_probability=0.5,
+                        location="",
                         description=task.description,
+                        fallback="",
                         branch="tasks", kind="action",
                     )
             except Exception:
@@ -660,7 +672,9 @@ class UnifiedGraphView(QGraphicsView):
                         id=str(task.id), title=task.title,
                         duration_minutes=task.duration.minutes,
                         success_probability=0.5,
+                        location="",
                         description=task.description,
+                        fallback="",
                         branch="tasks", kind="action",
                     )
             except Exception:
@@ -823,7 +837,7 @@ class UnifiedGraphView(QGraphicsView):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MiddleButton or \
-           (event.button() == Qt.LeftButton and (event.modifiers() & Qt.SpaceModifier)):
+           (event.button() == Qt.LeftButton and (event.modifiers() & Qt.KeyboardModifier.ShiftModifier)):
             self._panning = True
             self._pan_last = event.position().toPoint()
             self.setCursor(Qt.ClosedHandCursor)

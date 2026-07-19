@@ -786,7 +786,9 @@ class AIPlannerView(QWidget):
             title=task.title,
             duration_minutes=task.duration.minutes,
             success_probability=0.5,
+            location="",
             description=task.description,
+            fallback="",
             branch="tasks",
             kind="action",
         )
