@@ -388,7 +388,7 @@ class RaskMainWindow(QMainWindow):
         self._workspace_stack = QStackedWidget()
 
         # Workspace 1: AI Planner
-        self.ai_planner_view = AIPlannerView(self.ai_service, self.journal_store)
+        self.ai_planner_view = AIPlannerView(self.ai_service, self.journal_store, self.calendar_store)
         self._workspace_stack.addWidget(self.ai_planner_view)
 
         # Workspace 2: Tasks (Enterprise)

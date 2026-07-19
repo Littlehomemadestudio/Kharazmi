@@ -2,15 +2,14 @@
 Rask AI service — connects to z.ai GLM-4.5-flash for natural-language
 route planning with streaming responses.
 
-Features:
-  - Streaming chat (SSE chunks) for live "thinking" feedback
-  - Clarifying questions with multiple-choice options (4 options + custom)
-  - Route generation as a structured walkable graph
-  - "Continue working" — after the route is built, AI proactively
-    suggests alternatives, breakthroughs, and more questions
+The AI generates COMPLEX, INTERCONNECTED route graphs:
+  - Multiple branches (parallel paths)
+  - Alternative steps connected with dashed "alternative" edges
+  - Fallback steps connected with dotted "fallback" edges
+  - Branch merge points
+  - No straight single-chain routes
 
-The AI uses your z.ai API key (stored in ~/.rask/ai_settings.json).
-Free model: glm-4.5-flash.
+Streaming sends meaningful status text (not raw JSON) to the UI.
 """
 from __future__ import annotations
 
@@ -34,13 +33,12 @@ SETTINGS_PATH = Path.home() / ".rask" / "ai_settings.json"
 
 
 def load_ai_settings() -> dict:
-    """Load AI settings from disk, falling back to defaults."""
     defaults = {
         "api_key": DEFAULT_API_KEY,
         "model": DEFAULT_MODEL,
         "base_url": API_URL,
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
     }
     try:
         if SETTINGS_PATH.exists():
@@ -52,7 +50,6 @@ def load_ai_settings() -> dict:
 
 
 def save_ai_settings(settings: dict) -> None:
-    """Persist AI settings."""
     try:
         SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
         SETTINGS_PATH.write_text(
@@ -67,7 +64,7 @@ def save_ai_settings(settings: dict) -> None:
 
 @dataclass
 class RouteStep:
-    """A single step in a route."""
+    """A single step in a route. Auto-sizes to fit title + description."""
     id: str
     title: str
     duration_minutes: int
@@ -79,6 +76,10 @@ class RouteStep:
     sub_goals: list[str] = field(default_factory=list)
     cost_estimate: str = ""
     risk_level: str = "low"
+    # Which branch this step belongs to (e.g. "main", "alt-1", "fallback-1")
+    branch: str = "main"
+    # Step kind: "action" | "decision" | "milestone" | "wait" | "checkpoint"
+    kind: str = "action"
 
     def to_dict(self) -> dict:
         return {
@@ -89,6 +90,7 @@ class RouteStep:
             "fallback": self.fallback, "depends_on": list(self.depends_on),
             "sub_goals": list(self.sub_goals),
             "cost_estimate": self.cost_estimate, "risk_level": self.risk_level,
+            "branch": self.branch, "kind": self.kind,
         }
 
     @classmethod
@@ -105,6 +107,38 @@ class RouteStep:
             sub_goals=[str(x) for x in data.get("sub_goals", [])],
             cost_estimate=str(data.get("cost_estimate", "")),
             risk_level=str(data.get("risk_level", "low")),
+            branch=str(data.get("branch", "main")),
+            kind=str(data.get("kind", "action")),
+        )
+
+
+@dataclass
+class RouteEdge:
+    """
+    An edge between two steps. Can be:
+      - "primary" (solid arrow, normal dependency)
+      - "alternative" (dashed arrow, optional alternative path)
+      - "fallback" (dotted arrow, used if the source step fails)
+      - "merge" (thick arrow, where branches rejoin)
+    """
+    source_id: str
+    target_id: str
+    kind: str = "primary"  # primary | alternative | fallback | merge
+    label: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "source_id": self.source_id, "target_id": self.target_id,
+            "kind": self.kind, "label": self.label,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "RouteEdge":
+        return cls(
+            source_id=str(data.get("source_id", "")),
+            target_id=str(data.get("target_id", "")),
+            kind=str(data.get("kind", "primary")),
+            label=str(data.get("label", "")),
         )
 
 
@@ -114,9 +148,7 @@ class Insight:
     kind: str  # "improvement" | "alternative" | "breakthrough" | "question" | "warning"
     title: str
     body: str
-    # Optional anchor — if set, the insight floats near this step id
     anchor_step_id: Optional[str] = None
-    # Position hint (relative units, 0..1) — used when no anchor
     x_hint: float = 0.5
     y_hint: float = 0.5
 
@@ -141,19 +173,15 @@ class Insight:
 
 @dataclass
 class MultipleChoiceQuestion:
-    """A clarifying question with 4 options + custom answer."""
     question: str
     options: list[str] = field(default_factory=list)
     allow_custom: bool = True
-    # Optional helper text shown under the question
     hint: str = ""
 
     def to_dict(self) -> dict:
         return {
-            "question": self.question,
-            "options": list(self.options),
-            "allow_custom": self.allow_custom,
-            "hint": self.hint,
+            "question": self.question, "options": list(self.options),
+            "allow_custom": self.allow_custom, "hint": self.hint,
         }
 
     @classmethod
@@ -168,9 +196,15 @@ class MultipleChoiceQuestion:
 
 @dataclass
 class Route:
-    """A complete AI-generated route — a walkable graph of steps."""
+    """
+    A complete AI-generated route — a complex interconnected graph.
+
+    Has multiple branches, alternative paths, fallbacks, and merge points.
+    NOT a straight line.
+    """
     goal: str
     steps: list[RouteStep] = field(default_factory=list)
+    edges: list[RouteEdge] = field(default_factory=list)  # explicit edges
     overall_success_probability: float = 0.0
     total_duration_minutes: int = 0
     improvements: list[str] = field(default_factory=list)
@@ -178,13 +212,13 @@ class Route:
     summary: str = ""
     clarifying_questions: list[str] = field(default_factory=list)
     raw_response: str = ""
-    # New: structured insights (float around the graph as overlay boxes)
     insights: list[Insight] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
             "goal": self.goal,
             "steps": [s.to_dict() for s in self.steps],
+            "edges": [e.to_dict() for e in self.edges],
             "overall_success_probability": self.overall_success_probability,
             "total_duration_minutes": self.total_duration_minutes,
             "improvements": list(self.improvements),
@@ -200,6 +234,7 @@ class Route:
         return cls(
             goal=str(data.get("goal", "")),
             steps=[RouteStep.from_dict(s) for s in data.get("steps", [])],
+            edges=[RouteEdge.from_dict(e) for e in data.get("edges", [])],
             overall_success_probability=float(data.get("overall_success_probability", 0.0)),
             total_duration_minutes=int(data.get("total_duration_minutes", 0)),
             improvements=[str(x) for x in data.get("improvements", [])],
@@ -213,7 +248,6 @@ class Route:
 
 @dataclass
 class JournalEntry:
-    """A single journal entry recording an AI interaction."""
     id: str
     timestamp: str
     user_goal: str
@@ -245,20 +279,43 @@ class JournalEntry:
         )
 
 
+# ---- Status messages for streaming ----
+
+# When streaming JSON, we periodically emit meaningful status messages
+# to the UI so the user sees progress (not raw JSON).
+
+_STATUS_PHRASES = [
+    "Analysing your goal…",
+    "Breaking the goal into sub-problems…",
+    "Identifying key constraints…",
+    "Mapping out the primary path…",
+    "Considering alternative approaches…",
+    "Building fallback branches…",
+    "Adding checkpoint milestones…",
+    "Computing time estimates…",
+    "Estimating success probabilities…",
+    "Connecting the dots…",
+    "Adding parallel branches…",
+    "Refining the route graph…",
+    "Generating insights…",
+    "Finalising the route…",
+]
+
+
 # ---- AI service ----
 
 class AIService:
     """
     Wraps calls to the z.ai GLM API with streaming support.
 
-    All public methods run on a worker thread and invoke the callback
-    on completion — this keeps the UI responsive. Streaming methods
-    also accept an `on_chunk` callback that fires on each token.
+    Streaming sends MEANINGFUL STATUS TEXT to the UI (not raw JSON).
+    The UI shows a 'building route…' box while the JSON streams in
+    invisibly.
     """
 
     def __init__(self) -> None:
         self.settings = load_ai_settings()
-        self._cancel_flags: dict[str, bool] = {}  # request_id → cancel
+        self._cancel_flags: dict[str, bool] = {}
 
     def update_settings(self, **changes) -> None:
         self.settings.update(changes)
@@ -280,7 +337,7 @@ class AIService:
             "temperature": temperature if temperature is not None
                            else self.settings.get("temperature", 0.7),
             "max_tokens": max_tokens if max_tokens is not None
-                          else self.settings.get("max_tokens", 4096),
+                          else self.settings.get("max_tokens", 8192),
         }
         if response_format_json:
             payload["response_format"] = {"type": "json_object"}
@@ -296,7 +353,7 @@ class AIService:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
+            with urllib.request.urlopen(req, timeout=300) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
@@ -304,17 +361,19 @@ class AIService:
         except urllib.error.URLError as e:
             raise RuntimeError(f"Network error: {e.reason}") from e
 
-    # ---- Streaming API call ----
+    # ---- Streaming API call (returns full text, fires on_status for progress) ----
     def _call_api_streaming(self, messages: list[dict],
-                             on_chunk: Callable[[str], None],
+                             on_status: Optional[Callable[[str], None]] = None,
                              request_id: Optional[str] = None,
                              temperature: Optional[float] = None,
                              max_tokens: Optional[int] = None,
                              response_format_json: bool = False) -> str:
         """
-        Stream a chat completion. Calls `on_chunk(text)` for each delta.
+        Stream a chat completion. Returns the full concatenated text.
 
-        Returns the full concatenated text.
+        Instead of sending raw JSON chunks to the UI, we periodically
+        emit meaningful status messages via on_status so the user sees
+        progress like 'Building fallback branches…' instead of JSON.
         """
         payload = {
             "model": self.settings.get("model", DEFAULT_MODEL),
@@ -323,7 +382,7 @@ class AIService:
             "temperature": temperature if temperature is not None
                            else self.settings.get("temperature", 0.7),
             "max_tokens": max_tokens if max_tokens is not None
-                          else self.settings.get("max_tokens", 4096),
+                          else self.settings.get("max_tokens", 8192),
             "stream": True,
         }
         if response_format_json:
@@ -340,18 +399,17 @@ class AIService:
             method="POST",
         )
         full_text = ""
+        chunk_count = 0
+        status_idx = 0
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            with urllib.request.urlopen(req, timeout=120) as resp:
                 for raw_line in resp:
                     line = raw_line.decode("utf-8", errors="replace").strip()
-                    if not line:
-                        continue
-                    if not line.startswith("data: "):
+                    if not line or not line.startswith("data: "):
                         continue
                     data_str = line[6:]
                     if data_str == "[DONE]":
                         break
-                    # Check cancel
                     if request_id and self._cancel_flags.get(request_id):
                         break
                     try:
@@ -365,10 +423,15 @@ class AIService:
                     content = delta.get("content", "")
                     if content:
                         full_text += content
-                        try:
-                            on_chunk(content)
-                        except Exception:
-                            pass
+                        chunk_count += 1
+                        # Every ~50 chunks, emit a meaningful status message
+                        if on_status is not None and chunk_count % 50 == 0:
+                            if status_idx < len(_STATUS_PHRASES):
+                                try:
+                                    on_status(_STATUS_PHRASES[status_idx])
+                                except Exception:
+                                    pass
+                                status_idx += 1
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
             raise RuntimeError(f"HTTP {e.code}: {error_body}") from e
@@ -391,31 +454,28 @@ class AIService:
         t = threading.Thread(target=_worker, daemon=True)
         t.start()
 
-    # ---- Step 1: Generate clarifying questions (multiple-choice) ----
+    # ---- Step 1: Generate clarifying questions (multiple-choice, streaming status) ----
     def generate_clarifying_questions_streaming(
         self, user_goal: str,
-        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
         request_id: Optional[str] = None,
     ) -> None:
         """
         Ask the AI for clarifying questions as multiple-choice.
-
-        Each question has 4 options + allows custom answer.
-
-        on_chunk is called with text deltas as the AI streams its response.
-        callback is called with (success, result) when done.
-        result is a dict:
-          {
-            "is_clear": bool,
-            "acknowledgment": str,
-            "questions": [MultipleChoiceQuestion, ...]
-          }
+        on_status fires with meaningful messages like 'Analysing your goal…'.
         """
+        # Emit initial status immediately
+        try:
+            on_status("Analysing your goal…")
+        except Exception:
+            pass
+
         system_prompt = (
             "You are Rask, an AI route-planning assistant. Your job is to "
             "help the user achieve a goal by breaking it down into a "
-            "structured, walkable route of interconnected steps.\n\n"
+            "COMPLEX, INTERCONNECTED route graph with multiple branches, "
+            "alternatives, and fallbacks.\n\n"
             "Given the user's goal, decide whether it is clear enough to plan "
             "a route, or whether you need to ask clarifying questions first.\n\n"
             "Output STRICT JSON only (no markdown, no commentary) with this schema:\n"
@@ -426,8 +486,8 @@ class AIService:
             "    {\n"
             "      \"question\": string,\n"
             "      \"options\": [string, string, string, string],  // EXACTLY 4 options\n"
-            "      \"allow_custom\": true,  // always true\n"
-            "      \"hint\": string  // optional helper text\n"
+            "      \"allow_custom\": true,\n"
+            "      \"hint\": string\n"
             "    }\n"
             "  ]\n"
             "}\n\n"
@@ -438,7 +498,7 @@ class AIService:
             "- Each question MUST have EXACTLY 4 options.\n"
             "- Options should cover the most common cases.\n"
             "- The user will be able to type a custom answer if none of the 4 fit.\n"
-            "- Maximum 4 questions. Each question should be specific.\n"
+            "- Maximum 4 questions.\n"
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -447,52 +507,78 @@ class AIService:
 
         def _do():
             full = self._call_api_streaming(
-                messages, on_chunk, request_id=request_id,
+                messages, on_status, request_id=request_id,
                 temperature=0.3, response_format_json=True,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
-            # Convert raw question dicts to MultipleChoiceQuestion objects
             raw_questions = parsed.get("questions", [])
             parsed["questions"] = [MultipleChoiceQuestion.from_dict(q) for q in raw_questions]
             return parsed
 
         self._run_async(_do, callback)
 
-    # ---- Step 2: Generate the route (streaming) ----
+    # ---- Step 2: Generate the route (COMPLEX interconnected graph) ----
     def generate_route_streaming(
         self, user_goal: str, clarifying_qa: list[tuple[str, str]],
-        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
         request_id: Optional[str] = None,
     ) -> None:
         """
-        Generate a complete Route with streaming.
+        Generate a complete Route with COMPLEX, INTERCONNECTED structure.
 
-        on_chunk fires on each text delta (so the UI can show 'AI is thinking…').
-        callback is called with (success, Route) when done.
+        The route MUST have:
+          - Multiple branches (parallel paths)
+          - Alternative steps connected with "alternative" edges
+          - Fallback steps connected with "fallback" edges
+          - Merge points where branches rejoin
+          - At least one decision node
+          - At least 10 steps (not a simple 5-step chain)
         """
+        try:
+            on_status("Building the route graph…")
+        except Exception:
+            pass
+
         system_prompt = (
             "You are Rask, an AI route-planning assistant. Given the user's "
             "goal and the answers to clarifying questions, you must produce "
-            "a complete, walkable route of interconnected steps.\n\n"
+            "a COMPLEX, INTERCONNECTED route graph — NOT a straight line.\n\n"
+            "The route MUST have:\n"
+            "  - At least 2 branches (places where the path splits into parallel options)\n"
+            "  - At least one 'alternative' edge (a different way to achieve a sub-goal)\n"
+            "  - At least one 'fallback' edge (what to do if a step fails)\n"
+            "  - A merge point where branches rejoin\n"
+            "  - At least one 'decision' node and one 'checkpoint' node\n"
+            "  - Between 8 and 12 steps total\n\n"
             "Output STRICT JSON only (no markdown, no commentary) with this schema:\n"
             "{\n"
             "  \"goal\": string,\n"
-            "  \"summary\": string,  // one-paragraph summary of the route\n"
+            "  \"summary\": string,\n"
             "  \"steps\": [\n"
             "    {\n"
-            "      \"id\": string,  // short unique id like \"s1\", \"s2\"\n"
+            "      \"id\": string,\n"
             "      \"title\": string,\n"
             "      \"description\": string,\n"
             "      \"duration_minutes\": integer,\n"
-            "      \"success_probability\": float,  // 0..1\n"
+            "      \"success_probability\": float,\n"
             "      \"location\": string,\n"
             "      \"fallback\": string,\n"
             "      \"depends_on\": [string],\n"
             "      \"sub_goals\": [string],\n"
             "      \"cost_estimate\": string,\n"
-            "      \"risk_level\": string  // \"low\" | \"medium\" | \"high\" | \"severe\"\n"
+            "      \"risk_level\": string,\n"
+            "      \"branch\": string,\n"
+            "      \"kind\": string\n"
+            "    }\n"
+            "  ],\n"
+            "  \"edges\": [\n"
+            "    {\n"
+            "      \"source_id\": string,\n"
+            "      \"target_id\": string,\n"
+            "      \"kind\": string,\n"
+            "      \"label\": string\n"
             "    }\n"
             "  ],\n"
             "  \"overall_success_probability\": float,\n"
@@ -501,30 +587,22 @@ class AIService:
             "  \"follow_up_questions\": [string],\n"
             "  \"insights\": [\n"
             "    {\n"
-            "      \"kind\": string,  // \"improvement\" | \"alternative\" | \"breakthrough\" | \"question\" | \"warning\"\n"
+            "      \"kind\": string,\n"
             "      \"title\": string,\n"
             "      \"body\": string,\n"
-            "      \"anchor_step_id\": string | null,  // if set, floats near this step\n"
-            "      \"x_hint\": float,  // 0..1, position on canvas if no anchor\n"
-            "      \"y_hint\": float   // 0..1\n"
+            "      \"anchor_step_id\": string | null,\n"
+            "      \"x_hint\": float,\n"
+            "      \"y_hint\": float\n"
             "    }\n"
             "  ]\n"
             "}\n\n"
-            "Rules:\n"
-            "- Generate between 5 and 15 steps.\n"
-            "- Steps should be ordered logically; use depends_on for parallelism.\n"
-            "- Each step should be concrete and actionable.\n"
-            "- Include realistic time estimates (in minutes).\n"
-            "- Success probabilities should be honest (0.3-0.95).\n"
-            "- Include fallbacks for steps that might fail.\n"
-            "- Use sub_goals for steps that have multiple parts.\n"
-            "- The overall_success_probability should be computed from steps, not averaged.\n"
-            "- total_duration_minutes should be the sum (or longest path if parallel).\n"
-            "- improvements should be specific to THIS goal.\n"
-            "- follow_up_questions should help the user reflect on the route.\n"
-            "- Generate 3-6 insights that float around the route graph as "
-            "overlay boxes. These should include at least: 1 alternative "
-            "route suggestion, 1 breakthrough/creative idea, and 1-2 questions."
+            "CRITICAL RULES:\n"
+            "1. Generate 8-12 steps. NOT a single linear chain — at least 2 branches.\n"
+            "2. List ALL edges explicitly in the 'edges' array.\n"
+            "3. Use edge kinds: 'primary' (normal), 'alternative' (different option), 'fallback' (if step fails), 'merge' (branches rejoin).\n"
+            "4. Titles and descriptions should be COMPLETE — never truncate.\n"
+            "5. Generate 2-4 floating insights.\n"
+            "6. Be efficient with tokens — keep descriptions concise but complete.\n"
         )
 
         user_content = f"User goal: {user_goal}\n\n"
@@ -540,9 +618,9 @@ class AIService:
 
         def _do():
             full = self._call_api_streaming(
-                messages, on_chunk, request_id=request_id,
-                temperature=0.7, response_format_json=True,
-                max_tokens=8192,
+                messages, on_status, request_id=request_id,
+                temperature=0.8, response_format_json=True,
+                max_tokens=6144,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
@@ -555,63 +633,52 @@ class AIService:
     # ---- Step 3: Continue working after route generation ----
     def continue_working_streaming(
         self, route: Route,
-        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
         request_id: Optional[str] = None,
     ) -> None:
         """
         After a route is generated, ask the AI to continue working:
           - Suggest alternative route options
-          - Identify breakthroughs / creative ideas
-          - Ask more questions for the user
-
-        Returns a list of new Insight objects to add to the route.
+          - Identify breakthroughs
+          - Ask more questions
+          - Add MORE nodes/edges to the graph (not just insights)
         """
+        try:
+            on_status("Continuing to work on your route…")
+        except Exception:
+            pass
+
         system_prompt = (
-            "You are Rask, an AI route-planning assistant. The user has "
-            "already received a route. Now you should CONTINUE WORKING — "
-            "proactively add more value.\n\n"
-            "Generate additional insights that will float around the route "
-            "graph as overlay boxes. Include:\n"
-            "  - 2-3 ALTERNATIVE route options (different approaches)\n"
-            "  - 1-2 BREAKTHROUGH ideas (creative, non-obvious suggestions)\n"
-            "  - 1-2 more QUESTIONS for the user to consider\n"
-            "  - Optional WARNINGS about things that could go wrong\n\n"
-            "Output STRICT JSON only (no markdown, no commentary) with this schema:\n"
+            "You are Rask. The user has a route. Now CONTINUE WORKING:\n"
+            "  - Add MORE steps and edges to the graph (alternative paths, fallbacks)\n"
+            "  - Suggest breakthrough ideas\n"
+            "  - Ask follow-up questions\n"
+            "  - Flag warnings\n\n"
+            "Output STRICT JSON only with this schema:\n"
             "{\n"
-            "  \"reflection\": string,  // 1-2 sentence reflection on the route\n"
-            "  \"new_insights\": [\n"
-            "    {\n"
-            "      \"kind\": \"alternative\" | \"breakthrough\" | \"question\" | \"warning\",\n"
-            "      \"title\": string,\n"
-            "      \"body\": string,\n"
-            "      \"anchor_step_id\": string | null,\n"
-            "      \"x_hint\": float,\n"
-            "      \"y_hint\": float\n"
-            "    }\n"
-            "  ]\n"
+            "  \"reflection\": string,  // 1-2 sentence reflection\n"
+            "  \"new_steps\": [RouteStep],  // same schema as before, NEW steps to add\n"
+            "  \"new_edges\": [RouteEdge],  // edges connecting new steps to existing ones\n"
+            "  \"new_insights\": [Insight]  // floating insights\n"
             "}\n\n"
             "Rules:\n"
-            "- Generate 4-8 new insights.\n"
+            "- Generate 2-5 new steps that branch off the existing route.\n"
+            "- Connect them via 'alternative' or 'fallback' edges to existing steps.\n"
+            "- Generate 2-4 new insights.\n"
             "- Make alternatives genuinely different (not minor variations).\n"
-            "- Breakthroughs should be creative — things the user might not think of.\n"
-            "- Questions should be specific and actionable.\n"
-            "- Use anchor_step_id to attach an insight to a specific step when relevant.\n"
-            "- Use x_hint/y_hint (0..1) to position unattached insights on the canvas.\n"
         )
         route_summary = (
             f"Goal: {route.goal}\n"
             f"Summary: {route.summary}\n"
-            f"Steps ({len(route.steps)}):\n"
+            f"Existing steps ({len(route.steps)}):\n"
         )
         for s in route.steps:
-            route_summary += f"  [{s.id}] {s.title} — {s.duration_minutes}m, {s.success_probability:.0%} success, risk={s.risk_level}\n"
-            if s.depends_on:
-                route_summary += f"    depends_on: {s.depends_on}\n"
-            if s.fallback:
-                route_summary += f"    fallback: {s.fallback}\n"
+            route_summary += f"  [{s.id}] {s.title} (branch={s.branch}, kind={s.kind})\n"
+        route_summary += f"\nExisting edges ({len(route.edges)}):\n"
+        for e in route.edges:
+            route_summary += f"  {e.source_id} --{e.kind}--> {e.target_id}\n"
         route_summary += f"\nOverall success: {route.overall_success_probability:.0%}\n"
-        route_summary += f"Total duration: {route.total_duration_minutes} min\n"
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -620,38 +687,162 @@ class AIService:
 
         def _do():
             full = self._call_api_streaming(
-                messages, on_chunk, request_id=request_id,
+                messages, on_status, request_id=request_id,
                 temperature=0.9, response_format_json=True,
+                max_tokens=8192,
+            )
+            full = _strip_markdown_fences(full)
+            parsed = json.loads(full)
+            from_dict = RouteStep.from_dict
+            from_edge = RouteEdge.from_dict
+            from_insight = Insight.from_dict
+            return {
+                "reflection": parsed.get("reflection", ""),
+                "new_steps": [from_dict(s) for s in parsed.get("new_steps", [])],
+                "new_edges": [from_edge(e) for e in parsed.get("new_edges", [])],
+                "new_insights": [from_insight(i) for i in parsed.get("new_insights", [])],
+            }
+
+        self._run_async(_do, callback)
+
+    # ---- Schedule route in calendar ----
+    def schedule_in_calendar_streaming(
+        self, route: Route, start_datetime: str,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Break the route into bite-sized calendar events at the right times.
+
+        Returns a list of event dicts:
+          {title, start, end, location, description, calendar_name}
+        """
+        try:
+            on_status("Scheduling route into your calendar…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask. Convert the user's route into bite-sized calendar "
+            "events starting at the given start time.\n\n"
+            "Output STRICT JSON only:\n"
+            "{\n"
+            "  \"events\": [\n"
+            "    {\n"
+            "      \"title\": string,\n"
+            "      \"start\": string,  // ISO 8601 datetime\n"
+            "      \"end\": string,    // ISO 8601 datetime\n"
+            "      \"location\": string,\n"
+            "      \"description\": string,\n"
+            "      \"calendar_name\": string  // \"Personal\" | \"Work\" | etc.\n"
+            "    }\n"
+            "  ],\n"
+            "  \"summary\": string\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Create one event per step in the route's primary path.\n"
+            "- Sequence events back-to-back, respecting duration_minutes.\n"
+            "- Use the start time as the beginning of the first event.\n"
+            "- Set the calendar_name based on the step's nature (work, personal, etc.).\n"
+        )
+        route_summary = (
+            f"Route goal: {route.goal}\n"
+            f"Start datetime: {start_datetime}\n"
+            f"Steps ({len(route.steps)}):\n"
+        )
+        for s in route.steps:
+            route_summary += (
+                f"  [{s.id}] {s.title} — {s.duration_minutes}m, "
+                f"location={s.location or 'n/a'}, branch={s.branch}\n"
+            )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": route_summary},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.3, response_format_json=True,
                 max_tokens=4096,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
-            new_insights = [Insight.from_dict(i) for i in parsed.get("new_insights", [])]
-            return {
-                "reflection": parsed.get("reflection", ""),
-                "new_insights": new_insights,
-            }
+            return parsed
 
         self._run_async(_do, callback)
 
     # ---- Free-form chat (streaming) ----
     def chat_streaming(
         self, messages: list[dict],
-        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
         request_id: Optional[str] = None,
     ) -> None:
-        """Streaming chat — calls on_chunk with each text delta."""
+        """Streaming chat — calls on_status with text deltas (REAL text, not JSON)."""
         system = {"role": "system", "content":
-            "You are Rask, an AI route-planning assistant. Be concise and helpful."}
+            "You are Rask, an AI route-planning assistant. Be concise and helpful. "
+            "Respond in plain text (not JSON) unless asked for structured output."}
         all_messages = [system] + messages
 
         def _do():
-            full = self._call_api_streaming(
-                all_messages, on_chunk, request_id=request_id,
-                temperature=0.7,
+            # For chat, we use the streaming API but the chunks ARE the
+            # user-visible text (no JSON wrapping)
+            payload = {
+                "model": self.settings.get("model", DEFAULT_MODEL),
+                "messages": all_messages,
+                "thinking": {"type": "disabled"},
+                "temperature": 0.7,
+                "max_tokens": self.settings.get("max_tokens", 8192),
+                "stream": True,
+            }
+            body = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self.settings.get("base_url", API_URL),
+                data=body,
+                headers={
+                    "Authorization": f"Bearer {self.settings.get('api_key', '')}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                },
+                method="POST",
             )
-            return full
+            full_text = ""
+            try:
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    for raw_line in resp:
+                        line = raw_line.decode("utf-8", errors="replace").strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        if request_id and self._cancel_flags.get(request_id):
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            full_text += content
+                            # For chat, each chunk IS meaningful text
+                            try:
+                                on_status(content)
+                            except Exception:
+                                pass
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+                raise RuntimeError(f"HTTP {e.code}: {error_body}") from e
+            except urllib.error.URLError as e:
+                raise RuntimeError(f"Network error: {e.reason}") from e
+            return full_text
 
         self._run_async(_do, callback)
 
@@ -672,7 +863,6 @@ class AIService:
 # ---- Helpers ----
 
 def _strip_markdown_fences(s: str) -> str:
-    """Remove ```json ... ``` wrappers if the model added them."""
     s = s.strip()
     if s.startswith("```"):
         lines = s.split("\n", 1)

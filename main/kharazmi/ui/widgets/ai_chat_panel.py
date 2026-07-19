@@ -1,17 +1,15 @@
 """
-AIChatPanel — a Cursor IDE-style chat panel for the AI Planner.
+AIChatPanel — a professional Cursor IDE-style chat panel.
 
 Features:
-  - Streaming responses (text appears token-by-token)
+  - Streaming responses with REAL text (not JSON)
+  - For structured operations (route generation), shows meaningful
+    status boxes like 'Building fallback branches…' instead of raw JSON
   - Role icons (✦ for AI, ○ for user)
-  - Markdown rendering (basic)
-  - "Stop generating" button while streaming
   - Multi-line input with auto-resize
+  - Stop button while streaming
   - Suggested follow-up prompts
-  - Conversation history persists during the session
-
-The panel is intentionally compact — it sits on the right side of
-the AI Planner view.
+  - Clean, professional styling
 """
 from __future__ import annotations
 
@@ -21,7 +19,7 @@ from typing import Optional, Callable
 from PySide6.QtCore import Qt, Signal, QTimer, QSize
 from PySide6.QtGui import (
     QFont, QColor, QTextCursor, QTextCharFormat, QKeyEvent,
-    QPalette, QBrush, QPixmap, QPainter, QIcon, QTextOption,
+    QTextOption, QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -33,16 +31,85 @@ from ...ai import AIService
 from ..theme import Palette
 
 
+class StatusBox(QFrame):
+    """A small status box shown during structured operations.
+    Displays messages like 'Building fallback branches…' instead of raw JSON."""
+
+    def __init__(self, text: str = "", parent: QWidget = None) -> None:
+        super().__init__(parent)
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {Palette.BG_TERTIARY};
+                border: 1px solid {Palette.BORDER_GOLD};
+                border-left: 3px solid {Palette.GOLD_BRIGHT};
+                border-radius: 4px;
+                margin: 2px 0;
+            }}
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(8)
+
+        # Spinner icon (animated)
+        self._spinner = QLabel("◐")
+        self._spinner.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 14px; "
+            f"background: transparent; border: none;"
+        )
+        layout.addWidget(self._spinner)
+
+        self._label = QLabel(text)
+        self._label.setStyleSheet(
+            f"color: {Palette.TEXT_PRIMARY}; font-size: 12px; "
+            f"background: transparent; border: none;"
+        )
+        self._label.setWordWrap(True)
+        layout.addWidget(self._label, stretch=1)
+
+        # Animate the spinner
+        self._spinner_chars = ["◐", "◓", "◑", "◒"]
+        self._spinner_idx = 0
+        self._spinner_timer = QTimer(self)
+        self._spinner_timer.setInterval(150)
+        self._spinner_timer.timeout.connect(self._tick_spinner)
+        self._spinner_timer.start()
+
+    def _tick_spinner(self) -> None:
+        self._spinner_idx = (self._spinner_idx + 1) % len(self._spinner_chars)
+        self._spinner.setText(self._spinner_chars[self._spinner_idx])
+
+    def set_text(self, text: str) -> None:
+        self._label.setText(text)
+
+    def stop_spinner(self) -> None:
+        self._spinner_timer.stop()
+        self._spinner.setText("✓")
+        self._spinner.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 14px; "
+            f"background: transparent; border: none;"
+        )
+
+
 class ChatMessage(QFrame):
-    """A single chat message bubble (user or assistant)."""
+    """A chat message bubble (user or assistant). Auto-sizes to content."""
 
     def __init__(self, role: str = "assistant", parent: QWidget = None) -> None:
         super().__init__(parent)
         self.role = role
-        self._streaming = False
 
-        bg_color = Palette.BG_TERTIARY if role == "assistant" else Palette.BG_SELECTED
-        border_color = Palette.GOLD_PRIMARY if role == "assistant" else Palette.BORDER_NORMAL
+        if role == "assistant":
+            bg_color = Palette.BG_TERTIARY
+            border_color = Palette.GOLD_PRIMARY
+            icon = "✦"
+            name = "Rask"
+            icon_color = Palette.GOLD_BRIGHT
+        else:
+            bg_color = Palette.BG_SELECTED
+            border_color = Palette.BORDER_NORMAL
+            icon = "○"
+            name = "You"
+            icon_color = Palette.TEXT_SECONDARY
+
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {bg_color};
@@ -54,27 +121,25 @@ class ChatMessage(QFrame):
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(4)
 
         # Header row
         header = QHBoxLayout()
         header.setSpacing(6)
-        icon = QLabel("✦" if role == "assistant" else "○")
-        icon.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT if role == 'assistant' else Palette.TEXT_SECONDARY}; "
-            f"font-size: 14px; font-weight: bold; background: transparent; border: none;"
-        )
-        header.addWidget(icon)
-        name = QLabel("Rask" if role == "assistant" else "You")
-        name.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT if role == 'assistant' else Palette.TEXT_PRIMARY}; "
-            f"font-size: 11px; font-weight: bold; letter-spacing: 1px; "
+        icon_label = QLabel(icon)
+        icon_label.setStyleSheet(
+            f"color: {icon_color}; font-size: 14px; font-weight: bold; "
             f"background: transparent; border: none;"
         )
-        header.addWidget(name)
+        header.addWidget(icon_label)
+        name_label = QLabel(name)
+        name_label.setStyleSheet(
+            f"color: {icon_color}; font-size: 11px; font-weight: bold; "
+            f"letter-spacing: 1px; background: transparent; border: none;"
+        )
+        header.addWidget(name_label)
         header.addStretch()
-        # Timestamp
         ts = QLabel(datetime.now().strftime("%H:%M"))
         ts.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 9px; "
@@ -92,7 +157,6 @@ class ChatMessage(QFrame):
                 color: {Palette.TEXT_PRIMARY};
                 border: none;
                 font-size: 12px;
-                line-height: 160%;
             }}
         """)
         self._body.setWordWrapMode(QTextOption.WordWrap)
@@ -100,51 +164,35 @@ class ChatMessage(QFrame):
         self._body.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addWidget(self._body)
 
-        # Adjust height to fit content
         self._body.document().contentsChanged.connect(self._adjust_height)
 
     def _adjust_height(self) -> None:
-        # Set the body's height to fit its content
         doc_height = self._body.document().size().height()
         self._body.setFixedHeight(int(doc_height) + 8)
 
     def append_text(self, text: str) -> None:
-        """Append streaming text. Called on each token."""
         cursor = self._body.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self._body.setTextCursor(cursor)
 
     def set_text(self, text: str) -> None:
-        """Set the full message text (replaces existing)."""
         self._body.setPlainText(text)
 
     def set_html(self, html: str) -> None:
-        """Set the message body as HTML (for rich formatting)."""
         self._body.setHtml(html)
 
     def get_text(self) -> str:
         return self._body.toPlainText()
 
-    def set_streaming(self, streaming: bool) -> None:
-        self._streaming = streaming
-        if streaming:
-            self.setStyleSheet(self.styleSheet() + f"""
-                QFrame {{
-                    border-color: {Palette.GOLD_BRIGHT};
-                }}
-            """)
-
 
 class ChatInput(QPlainTextEdit):
-    """Multi-line input with Enter-to-send, Shift+Enter for newline."""
+    """Multi-line input. Enter sends, Shift+Enter for newline."""
     sendMessage = Signal(str)
-    stopRequested = Signal()
 
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
-        self.setPlaceholderText("Ask Rask anything about this route…  (Enter to send, Shift+Enter for newline)")
-        self.setFixedHeight(80)
+        self.setPlaceholderText("Ask Rask about this route…  (Enter to send, Shift+Enter for newline)")
         self.setStyleSheet(f"""
             QPlainTextEdit {{
                 background-color: {Palette.BG_TERTIARY};
@@ -158,6 +206,7 @@ class ChatInput(QPlainTextEdit):
                 border: 1px solid {Palette.GOLD_PRIMARY};
             }}
         """)
+        self.setFixedHeight(60)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):
@@ -170,20 +219,17 @@ class ChatInput(QPlainTextEdit):
 
 
 class AIChatPanel(QWidget):
-    """
-    The full chat panel — Cursor IDE-style.
+    """Professional Cursor IDE-style chat panel."""
 
-    Shows a scrolling conversation with streaming responses.
-    """
-
-    sendRequested = Signal(str)  # user-typed message
+    sendRequested = Signal(str)
     stopRequested = Signal()
 
     def __init__(self, ai_service: AIService, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.ai = ai_service
-        self._messages: list[dict] = []  # conversation history
+        self._messages: list[dict] = []
         self._current_streaming_msg: Optional[ChatMessage] = None
+        self._current_status_box: Optional[StatusBox] = None
         self._current_request_id: Optional[str] = None
 
         self.setStyleSheet(f"background-color: {Palette.BG_SECONDARY};")
@@ -193,12 +239,49 @@ class AIChatPanel(QWidget):
         layout.setSpacing(0)
 
         # Header
-        header = QLabel("AI CHAT")
+        header = QFrame()
         header.setStyleSheet(
-            f"background-color: {Palette.BG_TERTIARY}; color: {Palette.GOLD_PRIMARY}; "
-            f"font-size: 11px; font-weight: bold; letter-spacing: 2px; "
-            f"padding: 8px 12px; border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
+            f"background-color: {Palette.BG_TERTIARY}; "
+            f"border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
         )
+        header.setFixedHeight(36)
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 4, 12, 4)
+        header_layout.setSpacing(8)
+
+        icon = QLabel("✦")
+        icon.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 14px; "
+            f"font-weight: bold; background: transparent; border: none;"
+        )
+        header_layout.addWidget(icon)
+        title = QLabel("RASK ASSISTANT")
+        title.setStyleSheet(
+            f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
+            f"font-weight: bold; letter-spacing: 2px; "
+            f"background: transparent; border: none;"
+        )
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+
+        # Clear button
+        clear_btn = QToolButton()
+        clear_btn.setText("Clear")
+        clear_btn.setStyleSheet(f"""
+            QToolButton {{
+                background: transparent;
+                color: {Palette.TEXT_TERTIARY};
+                border: none;
+                font-size: 10px;
+                padding: 2px 6px;
+            }}
+            QToolButton:hover {{
+                color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+        clear_btn.clicked.connect(self.clear_conversation)
+        header_layout.addWidget(clear_btn)
+
         layout.addWidget(header)
 
         # Conversation scroll area
@@ -218,7 +301,10 @@ class AIChatPanel(QWidget):
 
         # Input area
         input_frame = QFrame()
-        input_frame.setStyleSheet(f"background-color: {Palette.BG_TERTIARY}; border-top: 1px solid {Palette.BORDER_SUBTLE};")
+        input_frame.setStyleSheet(
+            f"background-color: {Palette.BG_TERTIARY}; "
+            f"border-top: 1px solid {Palette.BORDER_SUBTLE};"
+        )
         input_layout = QVBoxLayout(input_frame)
         input_layout.setContentsMargins(8, 8, 8, 8)
         input_layout.setSpacing(4)
@@ -227,7 +313,6 @@ class AIChatPanel(QWidget):
         self._input.sendMessage.connect(self._on_send)
         input_layout.addWidget(self._input)
 
-        # Action row
         action_row = QHBoxLayout()
         action_row.addStretch()
 
@@ -262,7 +347,6 @@ class AIChatPanel(QWidget):
         text = text.strip()
         if not text:
             return
-        # Add user message to UI
         self.add_message(text, role="user")
         self.sendRequested.emit(text)
 
@@ -286,10 +370,35 @@ class AIChatPanel(QWidget):
         self._messages.append({"role": role, "content": text})
         return msg
 
+    def start_status_box(self, initial_text: str = "Working…") -> StatusBox:
+        """Show a status box (used during structured operations like route generation).
+        Shows meaningful status text instead of raw JSON."""
+        box = StatusBox(initial_text)
+        self._conv_layout.insertWidget(self._conv_layout.count() - 1, box)
+        self._scroll_to_bottom()
+        self._current_status_box = box
+        self._stop_btn.show()
+        self._send_btn.hide()
+        return box
+
+    def update_status(self, text: str) -> None:
+        """Update the current status box's text."""
+        if self._current_status_box is not None:
+            self._current_status_box.set_text(text)
+
+    def finish_status_box(self, final_text: Optional[str] = None) -> None:
+        """Mark the status box as done (changes spinner to checkmark)."""
+        if self._current_status_box is not None:
+            self._current_status_box.stop_spinner()
+            if final_text:
+                self._current_status_box.set_text(final_text)
+            self._current_status_box = None
+        self._stop_btn.hide()
+        self._send_btn.show()
+
     def start_streaming_message(self) -> ChatMessage:
-        """Create a new assistant message bubble and prepare to stream into it."""
+        """Start a streaming assistant message (for free-form chat, not structured ops)."""
         msg = ChatMessage("assistant")
-        msg.set_streaming(True)
         self._conv_layout.insertWidget(self._conv_layout.count() - 1, msg)
         self._scroll_to_bottom()
         self._current_streaming_msg = msg
@@ -304,9 +413,7 @@ class AIChatPanel(QWidget):
             self._scroll_to_bottom()
 
     def finish_streaming(self, full_text: Optional[str] = None) -> None:
-        """Finish the current streaming message."""
         if self._current_streaming_msg is not None:
-            self._current_streaming_msg.set_streaming(False)
             if full_text is not None:
                 self._current_streaming_msg.set_text(full_text)
             self._messages.append({
@@ -317,20 +424,17 @@ class AIChatPanel(QWidget):
         self._stop_btn.hide()
         self._send_btn.show()
 
-    def _finish_streaming(self) -> None:
-        """Alias for backward compat."""
-        self.finish_streaming()
-
     def set_request_id(self, request_id: str) -> None:
         self._current_request_id = request_id
 
     def clear_conversation(self) -> None:
-        # Remove all messages (preserve stretch)
         while self._conv_layout.count() > 1:
             item = self._conv_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         self._messages.clear()
+        self._current_streaming_msg = None
+        self._current_status_box = None
 
     def _scroll_to_bottom(self) -> None:
         QTimer.singleShot(10, lambda: self._scroll.verticalScrollBar().setValue(
