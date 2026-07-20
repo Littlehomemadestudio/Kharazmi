@@ -94,6 +94,7 @@ class RouteNodeItem(QGraphicsObject):
     nodeMoved = Signal(str, float, float)
     nodeEdited = Signal(str, str, str)  # step_id, new_title, new_desc
     nodeEditRequested = Signal(str)      # step_id — requests opening modal edit dialog
+    nodePositionChanged = Signal(str)    # step_id — fired during drag for live edge updates
 
     def __init__(self, step: RouteStep, parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -470,6 +471,12 @@ class RouteNodeItem(QGraphicsObject):
             if (new_pos - self._drag_started_pos).manhattanLength() > 2:
                 self.nodeMoved.emit(self.step.id, new_pos.x(), new_pos.y())
             self._drag_started_pos = None
+
+    def itemChange(self, change, value):
+        """Emit position change signal during drag for live edge updates."""
+        if change == QGraphicsItem.ItemPositionHasChanged:
+            self.nodePositionChanged.emit(self.step.id)
+        return super().itemChange(change, value)
 
     # ---- Anchors ----
     @property

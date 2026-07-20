@@ -52,12 +52,13 @@ EDGE_STYLES = {
 }
 
 # Generous spacing — large enough so nodes NEVER overlap
-X_SPACING = 520
-Y_SPACING = 320
+# Nodes can be up to 580px wide and ~400px tall, so spacing must exceed that
+X_SPACING = 620
+Y_SPACING = 420
 
 
 class UnifiedEdgeItem(QGraphicsPathItem):
-    """An edge between two nodes (route or task)."""
+    """A beautiful edge between two nodes with gradient, glow, arrowhead, and label."""
 
     def __init__(self, edge: RouteEdge, source: RouteNodeItem,
                  target: RouteNodeItem, is_critical: bool = False,
@@ -69,77 +70,186 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         self._is_critical = is_critical
 
         style = EDGE_STYLES.get(edge.kind, EDGE_STYLES["primary"])
-        color = QColor(style["color"])
-        if is_critical:
-            color = QColor("#F5C842")
+        self._style = style
+        self._base_color = QColor("#F5C842") if is_critical else QColor(style["color"])
+        self._glow_color = QColor(self._base_color)
+        self._glow_color.setAlpha(60)
 
-        pen = QPen(color, style["width"] + (0.5 if is_critical else 0), style["style"])
+        pen = QPen(self._base_color, style["width"] + (0.8 if is_critical else 0), style["style"])
         pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
         self.setPen(pen)
         self.setZValue(0)
+        self.setAcceptHoverEvents(True)
 
-        # Arrow head
-        self._arrow_color = color
+        # Arrow head color
+        self._arrow_color = QColor(self._base_color)
+
+        # Label text
+        self._label = edge.label or ""
 
         self._update_path()
 
     def _update_path(self) -> None:
-        src = self._source.anchor_out
-        tgt = self._target.anchor_in
+        """Compute a smooth bezier curve from source anchor to target anchor.
+
+        Picks the best anchor points depending on relative positions:
+          - source → right side (anchor_out) or bottom (anchor_bottom)
+          - target → left side (anchor_in) or top (anchor_top)
+        Then creates a smooth S-curve or horizontal bezier.
+        """
+        src_pos = self._source.pos()
+        tgt_pos = self._target.pos()
+        src_size = self._source.size
+        tgt_size = self._target.size
+
+        dx = tgt_pos.x() - src_pos.x()
+        dy = tgt_pos.y() - src_pos.y()
+
+        # Choose best anchor points based on relative position
+        if dx >= 0:
+            # Target is to the right — use right→left anchors
+            src_anchor = self._source.anchor_out
+            tgt_anchor = self._target.anchor_in
+        else:
+            # Target is to the left — use left→right anchors
+            src_anchor = QPointF(self._source.mapToScene(QPointF(0, src_size.height() / 2)))
+            tgt_anchor = QPointF(self._target.mapToScene(QPointF(tgt_size.width(), tgt_size.height() / 2)))
+
+        # If mostly vertical, use top/bottom anchors instead
+        if abs(dy) > abs(dx) * 2.5:
+            if dy >= 0:
+                src_anchor = self._source.anchor_bottom
+                tgt_anchor = self._target.anchor_top
+            else:
+                src_anchor = QPointF(self._source.mapToScene(QPointF(src_size.width() / 2, 0)))
+                tgt_anchor = QPointF(self._target.mapToScene(QPointF(tgt_size.width() / 2, tgt_size.height())))
 
         path = QPainterPath()
-        path.moveTo(src)
+        path.moveTo(src_anchor)
 
-        dx = tgt.x() - src.x()
-        dy = tgt.y() - src.y()
+        adx = tgt_anchor.x() - src_anchor.x()
+        ady = tgt_anchor.y() - src_anchor.y()
 
-        if abs(dx) > abs(dy) * 0.3:
-            # Horizontal-ish: use cubic bezier
-            mid_x = src.x() + dx * 0.5
-            path.cubicTo(
-                QPointF(mid_x, src.y()),
-                QPointF(mid_x, tgt.y()),
-                tgt,
-            )
+        # Control point offsets — make curves generous and smooth
+        if abs(adx) > 20:
+            # Horizontal-ish connection
+            cp_offset = max(abs(adx) * 0.4, 60)
+            if dx >= 0:
+                cp1 = QPointF(src_anchor.x() + cp_offset, src_anchor.y())
+                cp2 = QPointF(tgt_anchor.x() - cp_offset, tgt_anchor.y())
+            else:
+                cp1 = QPointF(src_anchor.x() - cp_offset, src_anchor.y())
+                cp2 = QPointF(tgt_anchor.x() + cp_offset, tgt_anchor.y())
+            path.cubicTo(cp1, cp2, tgt_anchor)
         else:
-            # Vertical: use a simple S-curve
-            mid_y = src.y() + dy * 0.5
-            path.cubicTo(
-                QPointF(src.x(), mid_y),
-                QPointF(tgt.x(), mid_y),
-                tgt,
-            )
+            # Vertical connection
+            cp_offset = max(abs(ady) * 0.4, 60)
+            if dy >= 0:
+                cp1 = QPointF(src_anchor.x(), src_anchor.y() + cp_offset)
+                cp2 = QPointF(tgt_anchor.x(), tgt_anchor.y() - cp_offset)
+            else:
+                cp1 = QPointF(src_anchor.x(), src_anchor.y() - cp_offset)
+                cp2 = QPointF(tgt_anchor.x(), tgt_anchor.y() + cp_offset)
+            path.cubicTo(cp1, cp2, tgt_anchor)
 
         self.setPath(path)
 
     def paint(self, painter: QPainter, option, widget=None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
-        super().paint(painter, option, widget)
 
-        # Draw arrowhead
         path = self.path()
         if path.elementCount() < 2:
             return
 
-        # Get angle at end
-        tgt = self._target.anchor_in
-        pt_before = path.pointAtPercent(max(0, 1.0 - 0.05))
-        angle = math.atan2(tgt.y() - pt_before.y(), tgt.x() - pt_before.x())
+        # 1. Draw glow/shadow for critical edges
+        if self._is_critical:
+            glow_pen = QPen(QColor(245, 200, 66, 40), self._style["width"] + 6, Qt.SolidLine)
+            glow_pen.setCapStyle(Qt.RoundCap)
+            painter.setPen(glow_pen)
+            painter.drawPath(path)
+            # Inner glow
+            glow_pen2 = QPen(QColor(245, 200, 66, 25), self._style["width"] + 12, Qt.SolidLine)
+            glow_pen2.setCapStyle(Qt.RoundCap)
+            painter.setPen(glow_pen2)
+            painter.drawPath(path)
 
-        arrow_size = 10
+        # 2. Draw the main edge line
+        painter.setPen(self.pen())
+        painter.drawPath(path)
+
+        # 3. Draw arrowhead — larger and more elegant
+        tgt_anchor = self._target.anchor_in
+        # Recalculate target anchor based on same logic as _update_path
+        src_pos = self._source.pos()
+        tgt_pos = self._target.pos()
+        tgt_size = self._target.size
+        dx = tgt_pos.x() - src_pos.x()
+        dy = tgt_pos.y() - src_pos.y()
+
+        if abs(dy) > abs(dx) * 2.5:
+            if dy >= 0:
+                tgt_anchor = self._target.anchor_top
+            else:
+                tgt_anchor = QPointF(self._target.mapToScene(QPointF(tgt_size.width() / 2, tgt_size.height())))
+        elif dx < 0:
+            tgt_anchor = QPointF(self._target.mapToScene(QPointF(tgt_size.width(), tgt_size.height() / 2)))
+
+        pt_before = path.pointAtPercent(max(0, 1.0 - 0.04))
+        angle = math.atan2(tgt_anchor.y() - pt_before.y(), tgt_anchor.x() - pt_before.x())
+
+        arrow_size = 13
         p1 = QPointF(
-            tgt.x() - arrow_size * math.cos(angle - math.pi / 6),
-            tgt.y() - arrow_size * math.sin(angle - math.pi / 6),
+            tgt_anchor.x() - arrow_size * math.cos(angle - math.pi / 7),
+            tgt_anchor.y() - arrow_size * math.sin(angle - math.pi / 7),
         )
         p2 = QPointF(
-            tgt.x() - arrow_size * math.cos(angle + math.pi / 6),
-            tgt.y() - arrow_size * math.sin(angle + math.pi / 6),
+            tgt_anchor.x() - arrow_size * math.cos(angle + math.pi / 7),
+            tgt_anchor.y() - arrow_size * math.sin(angle + math.pi / 7),
         )
 
-        arrow = QPolygonF([tgt, p1, p2])
+        # Draw arrow with slight gradient
+        arrow = QPolygonF([tgt_anchor, p1, p2])
         painter.setBrush(QBrush(self._arrow_color))
         painter.setPen(Qt.NoPen)
         painter.drawPolygon(arrow)
+
+        # 4. Draw edge label if present
+        if self._label:
+            mid = path.pointAtPercent(0.5)
+            label_font = QFont("Inter", 8)
+            painter.setFont(label_font)
+            # Background pill
+            fm = painter.fontMetrics()
+            label_w = fm.horizontalAdvance(self._label) + 12
+            label_h = fm.height() + 6
+            label_rect = QRectF(mid.x() - label_w / 2, mid.y() - label_h / 2 - 2, label_w, label_h)
+            painter.setBrush(QBrush(QColor(Palette.BG_ELEVATED)))
+            painter.setPen(QPen(QColor(self._base_color.red(), self._base_color.green(),
+                                       self._base_color.blue(), 120), 1))
+            painter.drawRoundedRect(label_rect, 6, 6)
+            # Label text
+            painter.setPen(QPen(self._base_color))
+            painter.drawText(label_rect, Qt.AlignCenter, self._label)
+
+    def hoverEnterEvent(self, event) -> None:
+        # Brighten on hover
+        bright = QColor(self._base_color)
+        bright = bright.lighter(140)
+        pen = QPen(bright, self._style["width"] + 1.0, self._style["style"])
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        self.setPen(pen)
+        self.setZValue(5)
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event) -> None:
+        pen = QPen(self._base_color, self._style["width"] + (0.8 if self._is_critical else 0), self._style["style"])
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        self.setPen(pen)
+        self.setZValue(0)
+        super().hoverLeaveEvent(event)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSceneHasChanged:
@@ -188,6 +298,10 @@ class UnifiedGraphView(QGraphicsView):
 
         self._panning = False
         self._pan_last = None
+        self._click_timer = QTimer()
+        self._click_timer.setSingleShot(True)
+        self._click_timer.setInterval(200)  # wait to distinguish single from double click
+        self._pending_click_step_id = None
 
         # Toolbar for auto-layout
         self._build_toolbar()
@@ -398,6 +512,7 @@ class UnifiedGraphView(QGraphicsView):
         item.nodeMoved.connect(self._on_node_moved)
         item.nodeEdited.connect(self._on_node_edited)
         item.nodeEditRequested.connect(self._on_node_edit_requested)
+        item.nodePositionChanged.connect(self._on_node_position_changed)
         self._scene.addItem(item)
         self._node_items[step.id] = item
         if animate:
@@ -440,7 +555,8 @@ class UnifiedGraphView(QGraphicsView):
         """Add a single edge (for streaming)."""
         if edge.source_id not in self._node_items or edge.target_id not in self._node_items:
             # Defer — wait for both nodes to exist
-            QTimer.singleShot(200, lambda: self._try_add_deferred_edge(edge))
+            # Use default arg to capture edge value (avoid closure bug)
+            QTimer.singleShot(200, lambda e=edge: self._try_add_deferred_edge(e))
             return
         # Check if already exists
         for existing in self._edge_items:
@@ -461,6 +577,62 @@ class UnifiedGraphView(QGraphicsView):
         if self._route is not None:
             self._route.insights.append(insight)
         self._add_insight(insight)
+
+    def finalize_route(self, route: Route) -> None:
+        """After streaming adds all steps, ensure ALL edges exist.
+
+        This creates edges from both route.edges AND step.depends_on,
+        similar to set_route() but without removing/re-adding existing nodes.
+        Also recomputes the critical path and updates edge critical styling.
+        """
+        # Replace the partial route with the complete one
+        self._route = route
+
+        # Compute critical path for edge styling
+        critical_path = self._compute_critical_path(route)
+        critical_set = set(critical_path)
+
+        seen_edges: set[tuple[str, str, str]] = set()
+
+        # Track existing edges
+        for existing in self._edge_items:
+            key = (existing.edge.source_id, existing.edge.target_id, existing.edge.kind)
+            seen_edges.add(key)
+
+        # Add edges from route.edges (explicit edges)
+        for edge in route.edges:
+            key = (edge.source_id, edge.target_id, edge.kind)
+            if key in seen_edges:
+                continue
+            seen_edges.add(key)
+            is_crit = edge.source_id in critical_set and edge.target_id in critical_set
+            self._add_edge(edge, is_crit=is_crit)
+
+        # Add implicit edges from step.depends_on
+        for step in route.steps:
+            for dep_id in step.depends_on:
+                key = (dep_id, step.id, "primary")
+                if key in seen_edges:
+                    continue
+                seen_edges.add(key)
+                # Only add if both nodes exist
+                if dep_id in self._node_items and step.id in self._node_items:
+                    edge = RouteEdge(source_id=dep_id, target_id=step.id, kind="primary")
+                    is_crit = dep_id in critical_set and step.id in critical_set
+                    self._add_edge(edge, is_crit=is_crit)
+
+        # Update existing edges' critical path styling
+        for edge_item in self._edge_items:
+            src_id = edge_item.edge.source_id
+            tgt_id = edge_item.edge.target_id
+            is_crit = src_id in critical_set and tgt_id in critical_set
+            style = EDGE_STYLES.get(edge_item.edge.kind, EDGE_STYLES["primary"])
+            color = QColor("#F5C842") if is_crit else QColor(style["color"])
+            pen = QPen(color, style["width"] + (0.5 if is_crit else 0), style["style"])
+            pen.setCapStyle(Qt.RoundCap)
+            edge_item.setPen(pen)
+            edge_item._arrow_color = color
+            edge_item._is_critical = is_crit
 
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
@@ -498,6 +670,7 @@ class UnifiedGraphView(QGraphicsView):
 
         Uses a topological ranking with generous X/Y spacing to prevent
         any overlap, even for routes with many parallel branches.
+        Accounts for actual node sizes and adds overlap elimination.
         """
         if not route.steps:
             return {}
@@ -553,20 +726,89 @@ class UnifiedGraphView(QGraphicsView):
                 return (3, "")
             return (4, b)
 
+        # Get actual node sizes for overlap-aware spacing
+        node_sizes: dict[str, tuple[float, float]] = {}
+        for sid in steps_by_id:
+            item = self._node_items.get(sid)
+            if item is not None:
+                node_sizes[sid] = (item._width, item._height)
+            else:
+                node_sizes[sid] = (280, 160)  # default min size
+
         positions: dict[str, tuple[float, float]] = {}
         max_rank = max(by_rank.keys()) if by_rank else 0
         for rank in sorted(by_rank.keys()):
             sids = by_rank[rank]
             sids.sort(key=branch_sort_key)
             n = len(sids)
+            # Use dynamic Y spacing based on the tallest node in this column
+            max_h_in_col = max(node_sizes.get(sid, (280, 160))[1] for sid in sids)
+            col_y_spacing = max(Y_SPACING, max_h_in_col + 60)
             # Center vertically with generous Y spacing
-            total_h = (n - 1) * Y_SPACING
+            total_h = (n - 1) * col_y_spacing
             start_y = -total_h / 2
-            # X position based on rank
-            x = rank * X_SPACING - (max_rank * X_SPACING) / 2
+            # X position based on rank, with dynamic spacing
+            max_w_in_col = max(node_sizes.get(sid, (280, 160))[0] for sid in sids)
+            x = rank * max(X_SPACING, max_w_in_col + 100) - (max_rank * X_SPACING) / 2
             for i, sid in enumerate(sids):
-                positions[sid] = (x, start_y + i * Y_SPACING)
+                positions[sid] = (x, start_y + i * col_y_spacing)
+
+        # Overlap elimination: check all pairs and push overlapping nodes apart
+        positions = self._eliminate_overlaps(positions, node_sizes)
+
         return positions
+
+    def _eliminate_overlaps(self, positions: dict[str, tuple[float, float]],
+                            node_sizes: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float]]:
+        """Push overlapping nodes apart until no two nodes overlap.
+
+        Uses a simple iterative repulsion approach: for each pair of
+        overlapping nodes, push them apart by the minimum amount needed.
+        """
+        pos = {k: list(v) for k, v in positions.items()}  # mutable
+        ids = list(pos.keys())
+        padding = 40  # minimum gap between nodes
+
+        for _iteration in range(20):  # max 20 passes
+            any_overlap = False
+            for i in range(len(ids)):
+                for j in range(i + 1, len(ids)):
+                    a, b = ids[i], ids[j]
+                    ax, ay = pos[a]
+                    bx, by = pos[b]
+                    aw, ah = node_sizes.get(a, (280, 160))
+                    bw, bh = node_sizes.get(b, (280, 160))
+
+                    # Check bounding rect overlap
+                    overlap_x = (ax + aw + padding) - bx if ax < bx else (bx + bw + padding) - ax
+                    overlap_y = (ay + ah + padding) - by if ay < by else (by + bh + padding) - ay
+
+                    if overlap_x > 0 and overlap_y > 0:
+                        any_overlap = True
+                        # Push apart in the direction of minimum overlap
+                        if overlap_x < overlap_y:
+                            # Push horizontally
+                            push = overlap_x / 2 + 10
+                            if ax < bx:
+                                pos[a][0] -= push
+                                pos[b][0] += push
+                            else:
+                                pos[a][0] += push
+                                pos[b][0] -= push
+                        else:
+                            # Push vertically
+                            push = overlap_y / 2 + 10
+                            if ay < by:
+                                pos[a][1] -= push
+                                pos[b][1] += push
+                            else:
+                                pos[a][1] += push
+                                pos[b][1] -= push
+
+            if not any_overlap:
+                break
+
+        return {k: (v[0], v[1]) for k, v in pos.items()}
 
     def _compute_critical_path(self, route: Route) -> list[str]:
         if not route.steps:
@@ -611,6 +853,18 @@ class UnifiedGraphView(QGraphicsView):
 
     # ---- Interaction ----
     def _on_node_clicked(self, step_id: str) -> None:
+        # Delay showing popup to allow double-click detection
+        self._pending_click_step_id = step_id
+        self._click_timer.timeout.connect(self._deferred_show_popup)
+        self._click_timer.start()
+
+    def _deferred_show_popup(self) -> None:
+        """Show the details popup after the click timer expires (no double-click came)."""
+        self._click_timer.timeout.disconnect(self._deferred_show_popup)
+        step_id = self._pending_click_step_id
+        self._pending_click_step_id = None
+        if step_id is None:
+            return
         step = None
         if self._route is not None:
             step = next((s for s in self._route.steps if s.id == step_id), None)
@@ -636,6 +890,14 @@ class UnifiedGraphView(QGraphicsView):
             self._show_details_popup(step)
 
     def _on_node_double_clicked(self, step_id: str) -> None:
+        # Cancel the pending popup from the first click
+        self._click_timer.stop()
+        try:
+            self._click_timer.timeout.disconnect(self._deferred_show_popup)
+        except RuntimeError:
+            pass
+        self._pending_click_step_id = None
+
         # Double-click just emits the signal; actual dialog is opened
         # by _on_node_edit_requested
         step = None
@@ -724,6 +986,10 @@ class UnifiedGraphView(QGraphicsView):
                 self.stepFieldChanged.emit(step_id, key, value)
 
     def _on_node_moved(self, step_id: str, x: float, y: float) -> None:
+        # Update connected edges' paths
+        for edge_item in self._edge_items:
+            if edge_item.edge.source_id == step_id or edge_item.edge.target_id == step_id:
+                edge_item._update_path()
         # Update the underlying Task position if it's a task
         if self._project is not None:
             try:
@@ -734,6 +1000,12 @@ class UnifiedGraphView(QGraphicsView):
                     task.touch()
             except Exception:
                 pass
+
+    def _on_node_position_changed(self, step_id: str) -> None:
+        """Live edge update during drag — called on every position change."""
+        for edge_item in self._edge_items:
+            if edge_item.edge.source_id == step_id or edge_item.edge.target_id == step_id:
+                edge_item._update_path()
 
     def _on_node_edited(self, step_id: str, new_title: str, new_desc: str) -> None:
         # Update the underlying Task if it's a task
@@ -1024,8 +1296,14 @@ class UnifiedGraphView(QGraphicsView):
             pos = self._compute_bubble_position(bubble.insight, bubble)
             self._animate_node_to(bubble, pos.x(), pos.y())
 
-        # Fit all after animation
-        QTimer.singleShot(600, self.fit_all)
+        # Fit all after animation, and update edges
+        QTimer.singleShot(600, self._post_layout_update)
+
+    def _post_layout_update(self) -> None:
+        """Called after layout animation finishes — update edges and fit view."""
+        for edge_item in self._edge_items:
+            edge_item._update_path()
+        self.fit_all()
 
     def _auto_layout_all_nodes(self) -> None:
         """Layout all nodes on the canvas, even without a route."""
@@ -1040,7 +1318,7 @@ class UnifiedGraphView(QGraphicsView):
             x = col * X_SPACING - (cols * X_SPACING) / 2
             y = row * Y_SPACING - ((len(items) // cols) * Y_SPACING) / 2
             self._animate_node_to(item, x, y)
-        QTimer.singleShot(600, self.fit_all)
+        QTimer.singleShot(600, self._post_layout_update)
 
     def _animate_node_to(self, item, x: float, y: float) -> None:
         """Smoothly animate a QGraphicsItem to a new position."""

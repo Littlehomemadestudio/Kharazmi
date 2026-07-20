@@ -540,9 +540,10 @@ class AIPlannerView(QWidget):
 
         self._current_route = result
         # The graph view has already been adding nodes incrementally
-        # via _on_step_added. Now set the route to update edges/insights.
-        # But we need to be careful not to re-add nodes. Let's just
-        # update stats and save to journal.
+        # via _on_step_added. Now finalize the route to ensure ALL
+        # edges are created (from both route.edges AND step.depends_on),
+        # and compute the critical path for edge styling.
+        self.graph_view.finalize_route(result)
         self._update_stats(result)
         self._schedule_btn.setEnabled(True)
 
