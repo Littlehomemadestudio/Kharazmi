@@ -903,10 +903,7 @@ class UnifiedGraphView(QGraphicsView):
     def _on_node_clicked(self, step_id: str) -> None:
         # Update selection UI whenever a node is clicked
         self._update_selection_ui()
-        # Delay showing popup to allow double-click detection
-        self._pending_click_step_id = step_id
-        self._click_timer.timeout.connect(self._deferred_show_popup)
-        self._click_timer.start()
+        # No popup on single-click — double-click opens the edit dialog instead
 
     def _deferred_show_popup(self) -> None:
         """Show the details popup after the click timer expires (no double-click came)."""
