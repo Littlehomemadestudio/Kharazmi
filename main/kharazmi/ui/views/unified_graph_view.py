@@ -290,6 +290,7 @@ class UnifiedGraphView(QGraphicsView):
         self._details_popup: Optional[StepDetailsPopup] = None
         self._layout_anims: list[QPropertyAnimation] = []  # track layout animations for cleanup
         self._pending_edges: list[RouteEdge] = []  # edges waiting for both nodes to exist
+        self._deleted_step_ids: set[str] = set()  # steps explicitly deleted by user — never re-add
 
         self._scene = QGraphicsScene(self)
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
@@ -555,6 +556,14 @@ class UnifiedGraphView(QGraphicsView):
 
     # ---- Loading ----
     def set_route(self, route: Optional[Route]) -> None:
+        # Clear the deleted-step set when a brand-new route is set
+        self._deleted_step_ids.clear()
+        # Filter out any previously-deleted steps (shouldn't happen but be safe)
+        if route is not None and self._deleted_step_ids:
+            route.steps = [s for s in route.steps if s.id not in self._deleted_step_ids]
+            route.edges = [e for e in route.edges
+                           if e.source_id not in self._deleted_step_ids
+                           and e.target_id not in self._deleted_step_ids]
         self._route = route
         if route is None:
             return
@@ -705,6 +714,10 @@ class UnifiedGraphView(QGraphicsView):
         """Add a single step to the canvas (for TRUE streaming — one at a time)."""
         if step.id in self._node_items:
             return
+        # Skip if user explicitly deleted this step
+        if step.id in self._deleted_step_ids:
+            logger.debug("Skipping re-add of deleted step %s", step.id)
+            return
         # Find a position — use rank-based layout
         if self._route is None:
             self._route = Route(goal="", steps=[], edges=[])
@@ -795,6 +808,12 @@ class UnifiedGraphView(QGraphicsView):
         Adds fallback sequential edges when no explicit edges exist.
         """
         # Replace the partial route with the complete one
+        # Filter out any steps the user has explicitly deleted
+        if self._deleted_step_ids:
+            route.steps = [s for s in route.steps if s.id not in self._deleted_step_ids]
+            route.edges = [e for e in route.edges
+                           if e.source_id not in self._deleted_step_ids
+                           and e.target_id not in self._deleted_step_ids]
         self._route = route
 
         # Process any pending edges from streaming
@@ -879,6 +898,11 @@ class UnifiedGraphView(QGraphicsView):
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
         """Add multiple steps/edges/insights (for 'continue working')."""
+        # Filter out steps the user has explicitly deleted
+        steps = [s for s in steps if s.id not in self._deleted_step_ids]
+        edges = [e for e in edges
+                 if e.source_id not in self._deleted_step_ids
+                 and e.target_id not in self._deleted_step_ids]
         for i, step in enumerate(steps):
             self.add_step(step)
         for edge in edges:
@@ -1199,7 +1223,7 @@ class UnifiedGraphView(QGraphicsView):
         start_nodes = by_rank.get(0, [])
 
         # Assign angular sectors per branch
-        branches = set(steps_by_id[sid].branch or "main" for sid in route.steps)
+        branches = set(step.branch or "main" for step in route.steps)
         branch_list = sorted(branches, key=lambda b: 0 if b == "main" else (1 if b.startswith("alt") else 2))
         num_branches = max(len(branch_list), 1)
 
@@ -1287,10 +1311,10 @@ class UnifiedGraphView(QGraphicsView):
 
         # Group all non-start nodes by branch
         branches: dict[str, list[str]] = defaultdict(list)
-        for sid in route.steps:
-            if sid not in {s for s in start_nodes}:
-                b = steps_by_id[sid].branch or "main"
-                branches[b].append(sid)
+        for step in route.steps:
+            if step.id not in set(start_nodes):
+                b = step.branch or "main"
+                branches[b].append(step.id)
 
         # Assign each branch an angular direction from center
         branch_list = list(branches.keys())
@@ -2127,7 +2151,11 @@ class UnifiedGraphView(QGraphicsView):
 
         This is a thorough cleanup that stops animations, disconnects signals,
         removes edges, and ensures no ghost items remain.
+        Also tracks the deletion so streaming/finalize won't re-add the node.
         """
+        # 0. Remember that this step was deleted by the user
+        self._deleted_step_ids.add(step_id)
+
         # 1. Remove from route data model
         if self._route is not None:
             self._route.steps = [s for s in self._route.steps if s.id != step_id]
@@ -2366,6 +2394,16 @@ class UnifiedGraphView(QGraphicsView):
 
     def _animate_node_to(self, item, x: float, y: float) -> None:
         """Smoothly animate a QGraphicsItem to a new position."""
+        # Prune already-deleted animations first (safe cleanup)
+        alive: list[QPropertyAnimation] = []
+        for a in self._layout_anims:
+            try:
+                if a.state() != QPropertyAnimation.Stopped:
+                    alive.append(a)
+            except RuntimeError:
+                pass  # C++ object already deleted — just drop it
+        self._layout_anims = alive
+
         anim = QPropertyAnimation(item, b"pos")
         anim.setDuration(400)
         anim.setStartValue(item.pos())
@@ -2375,5 +2413,3 @@ class UnifiedGraphView(QGraphicsView):
         anim.finished.connect(anim.deleteLater)
         anim.start()
         self._layout_anims.append(anim)
-        # Clean up completed animations from the list
-        self._layout_anims = [a for a in self._layout_anims if a.state() == QPropertyAnimation.Running]

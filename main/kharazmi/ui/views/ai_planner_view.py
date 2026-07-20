@@ -420,11 +420,11 @@ class AIPlannerView(QWidget):
     def _on_tab_changed(self, index: int) -> None:
         """Fade animation when switching between Chat and Health tabs."""
         anim = QPropertyAnimation(self._tab_opacity, b"opacity")
-        anim.setDuration(200)
-        anim.setStartValue(0.15)
+        anim.setDuration(250)
+        anim.setStartValue(0.0)
         anim.setEndValue(1.0)
         anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        anim.start(self)
+        anim.start()
         # Keep a reference so it doesn't get GC'd mid-animation
         self._tab_anim = anim
 
