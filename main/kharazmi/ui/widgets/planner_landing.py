@@ -15,64 +15,13 @@ Uses the Kharazmi gold-on-dark theme throughout.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QColor, QPainter
+from PySide6.QtGui import QFont, QColor, QPainter, QPen, QBrush
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSizePolicy, QGraphicsOpacityEffect,
 )
 
 from ..theme import Palette
-
-
-# ---- Animated background particles ----
-class _ParticleLayer(QWidget):
-    """Subtle floating particle animation behind the landing page."""
-
-    def __init__(self, parent: QWidget = None) -> None:
-        super().__init__(parent)
-        self._particles: list[dict] = []
-        self._tick = 0
-        import random
-        rng = random.Random(42)
-        for _ in range(30):
-            self._particles.append({
-                "x": rng.uniform(0, 1),
-                "y": rng.uniform(0, 1),
-                "size": rng.uniform(1.5, 4.0),
-                "speed": rng.uniform(0.0003, 0.0015),
-                "alpha": rng.uniform(15, 50),
-                "drift": rng.uniform(-0.0005, 0.0005),
-            })
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._advance)
-        self._timer.start(33)  # ~30fps
-
-    def _advance(self) -> None:
-        self._tick += 1
-        for p in self._particles:
-            p["y"] -= p["speed"]
-            p["x"] += p["drift"]
-            if p["y"] < -0.02:
-                p["y"] = 1.02
-                p["x"] += 0.1  # re-scatter horizontally
-                if p["x"] > 1:
-                    p["x"] -= 1
-        self.update()
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        w, h = self.width(), self.height()
-        gold = QColor(Palette.GOLD_PRIMARY)
-        for p in self._particles:
-            gold.setAlpha(int(p["alpha"]))
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(gold)
-            painter.drawEllipse(
-                int(p["x"] * w), int(p["y"] * h),
-                int(p["size"] * 2), int(p["size"] * 2),
-            )
-        painter.end()
 
 
 # ---- Category tab button ----
@@ -126,22 +75,66 @@ class PlannerLanding(QWidget):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._selected_category = "plan"
+        self._particles: list[dict] = []
+        self._tick = 0
+
+        # Initialize particles
+        import random
+        rng = random.Random(42)
+        for _ in range(35):
+            self._particles.append({
+                "x": rng.uniform(0, 1),
+                "y": rng.uniform(0, 1),
+                "size": rng.uniform(1.5, 4.0),
+                "speed": rng.uniform(0.0003, 0.0015),
+                "alpha": rng.uniform(15, 50),
+                "drift": rng.uniform(-0.0005, 0.0005),
+            })
+
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
         self._build_ui()
+
+        # Particle animation timer
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._advance_particles)
+        self._timer.start(33)  # ~30fps
+
+    def _advance_particles(self) -> None:
+        self._tick += 1
+        for p in self._particles:
+            p["y"] -= p["speed"]
+            p["x"] += p["drift"]
+            if p["y"] < -0.02:
+                p["y"] = 1.02
+                p["x"] += 0.1
+                if p["x"] > 1:
+                    p["x"] -= 1
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        """Draw floating gold particles behind all content."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        w, h = self.width(), self.height()
+        gold = QColor(Palette.GOLD_PRIMARY)
+        for p in self._particles:
+            gold.setAlpha(int(p["alpha"]))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(gold)
+            painter.drawEllipse(
+                int(p["x"] * w), int(p["y"] * h),
+                int(p["size"] * 2), int(p["size"] * 2),
+            )
+        painter.end()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # Particle background
-        self._particles = _ParticleLayer(self)
-        self._particles.lower()  # send to back
-        self._particles.setGeometry(self.rect())
-
-        # Central content container
+        # Central content container — transparent so particles show through
         content = QWidget(self)
-        content.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        content.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(60, 0, 60, 40)
         layout.setSpacing(0)
@@ -316,6 +309,9 @@ class PlannerLanding(QWidget):
         """)
         layout.addWidget(hint)
 
+        # IMPORTANT: Add content to the outer layout so it actually shows!
+        outer.addWidget(content, stretch=1)
+
     def _on_tab_clicked(self, key: str) -> None:
         self._selected_category = key
         for tab in self._tab_buttons:
@@ -330,10 +326,6 @@ class PlannerLanding(QWidget):
     def focus_input(self) -> None:
         """Set focus to the input field."""
         self._input.setFocus()
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        self._particles.setGeometry(self.rect())
 
     def animate_out(self) -> None:
         """Fade out animation before switching to workspace."""
