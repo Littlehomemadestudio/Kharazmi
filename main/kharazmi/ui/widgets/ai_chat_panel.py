@@ -31,6 +31,12 @@ from ...ai import AIService
 from ..theme import Palette
 
 
+def _is_rtl(text: str) -> bool:
+    """Detect if text is primarily RTL (Persian/Arabic)."""
+    rtl_count = sum(1 for ch in text if '\u0600' <= ch <= '\u06FF' or '\uFB50' <= ch <= '\uFDFF' or '\uFE70' <= ch <= '\uFEFF')
+    return rtl_count > len(text) * 0.3
+
+
 class StatusBox(QFrame):
     """A small status box shown during structured operations.
     Displays messages like 'Building fallback branches…' instead of raw JSON."""
@@ -178,9 +184,18 @@ class ChatMessage(QFrame):
 
     def set_text(self, text: str) -> None:
         self._body.setPlainText(text)
+        if _is_rtl(text):
+            self._body.setLayoutDirection(Qt.RightToLeft)
+        else:
+            self._body.setLayoutDirection(Qt.LeftToRight)
 
     def set_html(self, html: str) -> None:
         self._body.setHtml(html)
+        plain = self._body.toPlainText()
+        if _is_rtl(plain):
+            self._body.setLayoutDirection(Qt.RightToLeft)
+        else:
+            self._body.setLayoutDirection(Qt.LeftToRight)
 
     def get_text(self) -> str:
         return self._body.toPlainText()
@@ -206,7 +221,9 @@ class ChatInput(QPlainTextEdit):
                 border: 1px solid {Palette.GOLD_PRIMARY};
             }}
         """)
-        self.setFixedHeight(60)
+        self.setMaximumHeight(120)
+        self.setMinimumHeight(40)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):

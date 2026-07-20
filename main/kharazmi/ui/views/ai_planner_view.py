@@ -233,8 +233,7 @@ class AIPlannerView(QWidget):
 
         # Right: Tabbed panel (Chat + Health)
         self.chat_panel = AIChatPanel(self.ai)
-        self.chat_panel.setMinimumWidth(360)
-        self.chat_panel.setMaximumWidth(520)
+
         self.chat_panel.sendRequested.connect(self._on_chat_send)
         self.chat_panel.stopRequested.connect(self._on_chat_stop)
 
@@ -275,13 +274,12 @@ class AIPlannerView(QWidget):
         """)
         right_tabs.addTab(self.chat_panel, "Chat")
         right_tabs.addTab(self._health_dashboard, "Health")
-        right_tabs.setMinimumWidth(360)
-        right_tabs.setMaximumWidth(520)
+        right_tabs.setMinimumWidth(280)
 
         splitter.addWidget(right_tabs)
 
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(0, 7)
+        splitter.setStretchFactor(1, 3)
         splitter.setSizes([1100, 460])
 
         layout.addWidget(splitter, stretch=1)
