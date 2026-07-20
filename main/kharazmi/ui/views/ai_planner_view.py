@@ -38,12 +38,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QColor, QGraphicsOpacityEffect
+from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
     QSizePolicy, QMessageBox, QApplication, QToolButton, QInputDialog,
-    QTabWidget,
+    QTabWidget, QGraphicsOpacityEffect,
 )
 
 from ...ai import (
