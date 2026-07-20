@@ -20,6 +20,8 @@ Features:
 from __future__ import annotations
 
 import math
+import random
+import logging
 import uuid
 from collections import defaultdict, deque
 from typing import Optional
@@ -27,21 +29,23 @@ from typing import Optional
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QTimer, QSizeF, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath, QPolygonF,
-    QMouseEvent, QWheelEvent, QKeyEvent, QPainterPathStroker, QAction,
+    QMouseEvent, QWheelEvent, QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
-    QGraphicsItem, QGraphicsRectItem, QGraphicsPathItem, QGraphicsTextItem,
+    QGraphicsItem, QGraphicsRectItem, QGraphicsPathItem,
     QFrame, QPushButton, QToolButton, QSizePolicy, QApplication, QMenu,
     QComboBox,
 )
 
 from ...ai import Route, RouteStep, RouteEdge, Insight
-from ...core import Project, Task, TaskId, DependencyType
+from ...core import Project, Task, TaskId
 from ..theme import Palette
 from ..widgets.route_node_item import RouteNodeItem
 from ..widgets.insight_bubble import InsightBubble
 from ..widgets.step_details_popup import StepDetailsPopup
+
+logger = logging.getLogger(__name__)
 
 
 # Edge style by kind
@@ -281,8 +285,11 @@ class UnifiedGraphView(QGraphicsView):
         self._project: Optional[Project] = None
         self._node_items: dict[str, RouteNodeItem] = {}  # unified: both route steps and tasks
         self._edge_items: list[UnifiedEdgeItem] = []
+        self._edges_by_node: dict[str, list[UnifiedEdgeItem]] = {}  # step_id -> list of edges for O(1) lookup
         self._bubble_items: dict[str, InsightBubble] = {}
         self._details_popup: Optional[StepDetailsPopup] = None
+        self._layout_anims: list[QPropertyAnimation] = []  # track layout animations for cleanup
+        self._pending_edges: list[RouteEdge] = []  # edges waiting for both nodes to exist
 
         self._scene = QGraphicsScene(self)
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
@@ -525,22 +532,25 @@ class UnifiedGraphView(QGraphicsView):
             # Create new node for this task
             x, y = task.x, task.y
             if x == 0 and y == 0:
-                # Place at a good default position
-                import random
                 x = random.randint(-200, 200)
                 y = random.randint(-200, 200)
-            step = RouteStep(
-                id=str(task.id),
-                title=task.title,
-                duration_minutes=task.duration.minutes,
-                success_probability=0.5,
-                location="",
-                description=task.description,
-                fallback="",
-                branch="tasks",
-                kind="action",
-            )
+            step = self._task_to_step(task)
             self._add_node(step, x=task.x, y=task.y, animate=True)
+
+    @staticmethod
+    def _task_to_step(task) -> RouteStep:
+        """Convert a Task to a RouteStep for display on the canvas."""
+        return RouteStep(
+            id=str(task.id),
+            title=task.title,
+            duration_minutes=task.duration.minutes,
+            success_probability=0.5,
+            location="",
+            description=task.description,
+            fallback="",
+            branch="tasks",
+            kind="action",
+        )
 
     # ---- Loading ----
     def set_route(self, route: Optional[Route]) -> None:
@@ -621,6 +631,9 @@ class UnifiedGraphView(QGraphicsView):
         edge_item = UnifiedEdgeItem(edge, source, target, is_critical=is_crit)
         self._scene.addItem(edge_item)
         self._edge_items.append(edge_item)
+        # Maintain edge lookup index for O(1) access during drag
+        self._edges_by_node.setdefault(edge.source_id, []).append(edge_item)
+        self._edges_by_node.setdefault(edge.target_id, []).append(edge_item)
 
     def _add_insight(self, insight: Insight) -> None:
         bubble_id = f"ib-{uuid.uuid4().hex[:8]}"
@@ -644,13 +657,18 @@ class UnifiedGraphView(QGraphicsView):
         layout = self._compute_layout(self._route)
         x, y = layout.get(step.id, (0, 0))
         self._add_node(step, x, y, animate=True, delay_ms=0)
+        # Process any pending edges that were waiting for this node
+        self._process_pending_edges()
 
     def add_edge(self, edge: RouteEdge) -> None:
-        """Add a single edge (for streaming)."""
+        """Add a single edge (for streaming).
+
+        If both nodes don't exist yet, queues the edge in _pending_edges.
+        It will be retried in finalize_route() or when the missing node arrives.
+        """
         if edge.source_id not in self._node_items or edge.target_id not in self._node_items:
-            # Defer — wait for both nodes to exist
-            # Use default arg to capture edge value (avoid closure bug)
-            QTimer.singleShot(200, lambda e=edge: self._try_add_deferred_edge(e))
+            # Queue for later — don't lose it
+            self._pending_edges.append(edge)
             return
         # Check if already exists
         for existing in self._edge_items:
@@ -662,9 +680,23 @@ class UnifiedGraphView(QGraphicsView):
             self._route.edges.append(edge)
         self._add_edge(edge)
 
-    def _try_add_deferred_edge(self, edge: RouteEdge) -> None:
-        if edge.source_id in self._node_items and edge.target_id in self._node_items:
-            self.add_edge(edge)
+    def _process_pending_edges(self) -> None:
+        """Try to add all pending edges whose nodes now exist."""
+        still_pending: list[RouteEdge] = []
+        for edge in self._pending_edges:
+            if edge.source_id in self._node_items and edge.target_id in self._node_items:
+                # Check duplicate
+                exists = any(
+                    existing.edge.source_id == edge.source_id and
+                    existing.edge.target_id == edge.target_id and
+                    existing.edge.kind == edge.kind
+                    for existing in self._edge_items
+                )
+                if not exists:
+                    self._add_edge(edge)
+            else:
+                still_pending.append(edge)
+        self._pending_edges = still_pending
 
     def add_insight(self, insight: Insight) -> None:
         """Add a single insight bubble (for streaming)."""
@@ -677,10 +709,14 @@ class UnifiedGraphView(QGraphicsView):
 
         This creates edges from both route.edges AND step.depends_on,
         similar to set_route() but without removing/re-adding existing nodes.
+        Also processes any pending edges that were queued during streaming.
         Also recomputes the critical path and updates edge critical styling.
         """
         # Replace the partial route with the complete one
         self._route = route
+
+        # Process any pending edges from streaming
+        self._process_pending_edges()
 
         # Compute critical path for edge styling
         critical_path = self._compute_critical_path(route)
@@ -784,7 +820,6 @@ class UnifiedGraphView(QGraphicsView):
         """Build topological data structures shared by all layouts.
         Returns (steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes).
         """
-        import random
         rng = random.Random(42)
 
         steps_by_id = {s.id: s for s in route.steps}
@@ -865,7 +900,6 @@ class UnifiedGraphView(QGraphicsView):
     # ---- 1. Organic Flow (default) ----
     def _layout_organic(self, route: Route) -> dict[str, tuple[float, float]]:
         """Organic flow: branches spread wide with heavy jitter, RTL direction."""
-        import random
         rng = random.Random(42)
 
         if not route.steps:
@@ -933,7 +967,6 @@ class UnifiedGraphView(QGraphicsView):
         """Radial: start nodes at center, branches radiate outward like a starburst.
         RTL: start center-right, end outer-left.
         """
-        import random
         rng = random.Random(42)
 
         if not route.steps:
@@ -1019,7 +1052,6 @@ class UnifiedGraphView(QGraphicsView):
         """Mind map: start node(s) in center, branches go in different directions.
         Each branch gets its own angular sector radiating from center.
         """
-        import random
         rng = random.Random(42)
 
         if not route.steps:
@@ -1106,7 +1138,6 @@ class UnifiedGraphView(QGraphicsView):
         RTL: start on right, end on left. Each layer is a vertical column.
         Nodes within a layer are spread with barycenter ordering.
         """
-        import random
         rng = random.Random(42)
 
         if not route.steps:
@@ -1173,7 +1204,6 @@ class UnifiedGraphView(QGraphicsView):
         Starts with topological positions, then runs a physics simulation.
         Produces very organic, complex-looking layouts.
         """
-        import random
         rng = random.Random(42)
 
         if not route.steps:
@@ -1363,6 +1393,24 @@ class UnifiedGraphView(QGraphicsView):
                 best_overall = (length, path)
         return best_overall[1]
 
+    # ---- Step lookup helper ----
+    def _find_step(self, step_id: str):
+        """Find a RouteStep by ID — checks route steps first, then tasks.
+        Returns (step, is_task). Returns (None, False) if not found.
+        """
+        if self._route is not None:
+            step = next((s for s in self._route.steps if s.id == step_id), None)
+            if step is not None:
+                return step, False
+        if self._project is not None:
+            try:
+                task = self._project.get_task(TaskId(step_id))
+                if task is not None:
+                    return self._task_to_step(task), True
+            except Exception:
+                logger.debug("Failed to look up task for step %s", step_id, exc_info=True)
+        return None, False
+
     # ---- Interaction ----
     def _on_node_clicked(self, step_id: str) -> None:
         # Update selection UI whenever a node is clicked
@@ -1376,26 +1424,7 @@ class UnifiedGraphView(QGraphicsView):
         self._pending_click_step_id = None
         if step_id is None:
             return
-        step = None
-        if self._route is not None:
-            step = next((s for s in self._route.steps if s.id == step_id), None)
-        if step is None and self._project is not None:
-            # It's a Task — convert to RouteStep for display
-            try:
-                task = self._project.get_task(TaskId(step_id))
-                if task is not None:
-                    step = RouteStep(
-                        id=str(task.id), title=task.title,
-                        duration_minutes=task.duration.minutes,
-                        success_probability=0.5,
-                        location="",
-                        description=task.description,
-                        fallback="",
-                        depends_on=[str(d.predecessor_id) for d in self._project.dependencies_of(task.id)],
-                        branch="tasks", kind="action",
-                    )
-            except Exception:
-                pass
+        step, _ = self._find_step(step_id)
         if step is not None:
             self.stepSelected.emit(step)
             self._show_details_popup(step)
@@ -1409,49 +1438,13 @@ class UnifiedGraphView(QGraphicsView):
             pass
         self._pending_click_step_id = None
 
-        # Double-click just emits the signal; actual dialog is opened
-        # by _on_node_edit_requested
-        step = None
-        if self._route is not None:
-            step = next((s for s in self._route.steps if s.id == step_id), None)
-        if step is None and self._project is not None:
-            try:
-                task = self._project.get_task(TaskId(step_id))
-                if task is not None:
-                    step = RouteStep(
-                        id=str(task.id), title=task.title,
-                        duration_minutes=task.duration.minutes,
-                        success_probability=0.5,
-                        location="",
-                        description=task.description,
-                        fallback="",
-                        branch="tasks", kind="action",
-                    )
-            except Exception:
-                pass
+        step, _ = self._find_step(step_id)
         if step is not None:
             self.stepDoubleClicked.emit(step)
 
     def _on_node_edit_requested(self, step_id: str) -> None:
         """Open the modal NodeEditDialog for the given step."""
-        step = None
-        if self._route is not None:
-            step = next((s for s in self._route.steps if s.id == step_id), None)
-        if step is None and self._project is not None:
-            try:
-                task = self._project.get_task(TaskId(step_id))
-                if task is not None:
-                    step = RouteStep(
-                        id=str(task.id), title=task.title,
-                        duration_minutes=task.duration.minutes,
-                        success_probability=0.5,
-                        location="",
-                        description=task.description,
-                        fallback="",
-                        branch="tasks", kind="action",
-                    )
-            except Exception:
-                pass
+        step, is_task = self._find_step(step_id)
         if step is None:
             return
 
@@ -1497,10 +1490,9 @@ class UnifiedGraphView(QGraphicsView):
                 self.stepFieldChanged.emit(step_id, key, value)
 
     def _on_node_moved(self, step_id: str, x: float, y: float) -> None:
-        # Update connected edges' paths
-        for edge_item in self._edge_items:
-            if edge_item.edge.source_id == step_id or edge_item.edge.target_id == step_id:
-                edge_item._update_path()
+        # Update connected edges' paths using O(1) index lookup
+        for edge_item in self._edges_by_node.get(step_id, []):
+            edge_item._update_path()
         # Update the underlying Task position if it's a task
         if self._project is not None:
             try:
@@ -1510,13 +1502,12 @@ class UnifiedGraphView(QGraphicsView):
                     task.y = y
                     task.touch()
             except Exception:
-                pass
+                logger.debug("Failed to update task position for %s", step_id, exc_info=True)
 
     def _on_node_position_changed(self, step_id: str) -> None:
         """Live edge update during drag — called on every position change."""
-        for edge_item in self._edge_items:
-            if edge_item.edge.source_id == step_id or edge_item.edge.target_id == step_id:
-                edge_item._update_path()
+        for edge_item in self._edges_by_node.get(step_id, []):
+            edge_item._update_path()
 
     def _on_node_edited(self, step_id: str, new_title: str, new_desc: str) -> None:
         # Update the underlying Task if it's a task
@@ -1528,7 +1519,7 @@ class UnifiedGraphView(QGraphicsView):
                     task.description = new_desc
                     task.touch()
             except Exception:
-                pass
+                logger.debug("Failed to look up task for step %s", step_id, exc_info=True)
         # Update route step if it's a route step
         if self._route is not None:
             for step in self._route.steps:
@@ -1569,19 +1560,21 @@ class UnifiedGraphView(QGraphicsView):
             for step in self._route.steps:
                 if step.id == step_id:
                     if hasattr(step, field):
-                        # Convert value to the right type
                         current = getattr(step, field)
+                        converted = value
                         if isinstance(current, int) and not isinstance(value, int):
                             try:
-                                value = int(value)
-                            except Exception:
-                                pass
+                                converted = int(value)
+                            except (ValueError, TypeError):
+                                logger.warning("Cannot convert %r to int for field %s", value, field)
+                                continue
                         elif isinstance(current, float) and not isinstance(value, float):
                             try:
-                                value = float(value)
-                            except Exception:
-                                pass
-                        setattr(step, field, value)
+                                converted = float(value)
+                            except (ValueError, TypeError):
+                                logger.warning("Cannot convert %r to float for field %s", value, field)
+                                continue
+                        setattr(step, field, converted)
                     break
         # Update the underlying Task if it's a task
         if self._project is not None:
@@ -1597,7 +1590,7 @@ class UnifiedGraphView(QGraphicsView):
                         task.duration = Duration(int(value))
                     task.touch()
             except Exception:
-                pass
+                logger.debug("Failed to update task field for %s", step_id, exc_info=True)
         # Update the node item
         item = self._node_items.get(step_id)
         if item is not None:
@@ -1834,21 +1827,38 @@ class UnifiedGraphView(QGraphicsView):
         menu.exec(event.globalPos())
 
     def _remove_step(self, step_id: str) -> None:
-        """Remove a step from the route and the canvas."""
+        """Remove a step from the route and the canvas, cleaning up all references."""
         if self._route is not None:
             self._route.steps = [s for s in self._route.steps if s.id != step_id]
             self._route.edges = [e for e in self._route.edges
                                   if e.source_id != step_id and e.target_id != step_id]
+            # Clean up depends_on references in remaining steps
+            for s in self._route.steps:
+                if step_id in s.depends_on:
+                    s.depends_on = [d for d in s.depends_on if d != step_id]
         # Remove from canvas
         item = self._node_items.pop(step_id, None)
         if item is not None:
+            # Stop any running animations/timers to prevent callbacks on dead item
+            if hasattr(item, '_pulse_timer') and item._pulse_timer.isActive():
+                item._pulse_timer.stop()
             self._scene.removeItem(item)
-        # Remove connected edges
+        # Remove connected edges and clean up edge index
         to_remove = [e for e in self._edge_items
                      if e.edge.source_id == step_id or e.edge.target_id == step_id]
         for edge in to_remove:
             self._scene.removeItem(edge)
             self._edge_items.remove(edge)
+            # Clean up edge index
+            src = edge.edge.source_id
+            tgt = edge.edge.target_id
+            if src in self._edges_by_node:
+                self._edges_by_node[src] = [e for e in self._edges_by_node[src] if e is not edge]
+            if tgt in self._edges_by_node:
+                self._edges_by_node[tgt] = [e for e in self._edges_by_node[tgt] if e is not edge]
+        # Clean up pending edges for this node
+        self._pending_edges = [e for e in self._pending_edges
+                               if e.source_id != step_id and e.target_id != step_id]
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
@@ -1956,16 +1966,14 @@ class UnifiedGraphView(QGraphicsView):
 
     def _animate_node_to(self, item, x: float, y: float) -> None:
         """Smoothly animate a QGraphicsItem to a new position."""
-        # Use QPropertyAnimation for smooth movement
         anim = QPropertyAnimation(item, b"pos")
         anim.setDuration(400)
         anim.setStartValue(item.pos())
         anim.setEndValue(QPointF(x, y))
         anim.setEasingCurve(QEasingCurve.OutCubic)
+        # Auto-cleanup when animation finishes
+        anim.finished.connect(anim.deleteLater)
         anim.start()
-        # Keep reference to prevent garbage collection
-        if not hasattr(self, '_layout_anims'):
-            self._layout_anims = []
         self._layout_anims.append(anim)
-        # Clean up old animations
+        # Clean up completed animations from the list
         self._layout_anims = [a for a in self._layout_anims if a.state() == QPropertyAnimation.Running]
