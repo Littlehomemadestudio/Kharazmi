@@ -285,6 +285,7 @@ class UnifiedGraphView(QGraphicsView):
 
         self._scene = QGraphicsScene(self)
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
+        self._scene.selectionChanged.connect(self._update_selection_ui)
         self.setScene(self._scene)
         self.setRenderHint(QPainter.Antialiasing, True)
         self.setRenderHint(QPainter.TextAntialiasing, True)
@@ -302,6 +303,15 @@ class UnifiedGraphView(QGraphicsView):
         self._click_timer.setSingleShot(True)
         self._click_timer.setInterval(200)  # wait to distinguish single from double click
         self._pending_click_step_id = None
+
+        # Rubber band selection state
+        self._rubber_band_active = False
+        self._rubber_band_start = None  # scene coords
+        self._rubber_band_rect: Optional[QGraphicsRectItem] = None
+        self._rubber_band_color = QColor(Palette.GOLD_PRIMARY)
+        self._rubber_band_color.setAlpha(30)
+        self._rubber_band_border = QColor(Palette.GOLD_BRIGHT)
+        self._rubber_band_border.setAlpha(160)
 
         # Toolbar for auto-layout
         self._build_toolbar()
@@ -390,6 +400,44 @@ class UnifiedGraphView(QGraphicsView):
         """)
         zoom_out_btn.clicked.connect(lambda: self.scale(1/1.2, 1/1.2))
         toolbar_layout.addWidget(zoom_out_btn)
+
+        # Separator
+        sep = QFrame()
+        sep.setFixedWidth(1)
+        sep.setFixedHeight(20)
+        sep.setStyleSheet(f"background-color: {Palette.BORDER_NORMAL}; border: none;")
+        toolbar_layout.addWidget(sep)
+
+        # Delete Selected button
+        self._delete_sel_btn = QPushButton("🗑 Delete")
+        self._delete_sel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Palette.STATUS_BLOCKED};
+                color: {Palette.TEXT_PRIMARY};
+                border: none;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: #C04040;
+            }}
+        """)
+        self._delete_sel_btn.clicked.connect(self._delete_selected_nodes)
+        self._delete_sel_btn.setVisible(False)  # Only visible when nodes are selected
+        toolbar_layout.addWidget(self._delete_sel_btn)
+
+        # Selection count label
+        self._sel_count_label = QLabel("")
+        self._sel_count_label.setStyleSheet(f"""
+            color: {Palette.TEXT_TERTIARY};
+            font-size: 10px;
+            background: transparent;
+            border: none;
+        """)
+        self._sel_count_label.setVisible(False)
+        toolbar_layout.addWidget(self._sel_count_label)
 
         self._toolbar = toolbar
 
@@ -853,6 +901,8 @@ class UnifiedGraphView(QGraphicsView):
 
     # ---- Interaction ----
     def _on_node_clicked(self, step_id: str) -> None:
+        # Update selection UI whenever a node is clicked
+        self._update_selection_ui()
         # Delay showing popup to allow double-click detection
         self._pending_click_step_id = step_id
         self._click_timer.timeout.connect(self._deferred_show_popup)
@@ -1115,15 +1165,25 @@ class UnifiedGraphView(QGraphicsView):
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
             return
-        item = self.itemAt(event.position().toPoint())
-        if item is None:
-            self.stepSelected.emit(None)
-            self.insightSelected.emit(None)
-            self._scene.clearSelection()
-            # Close popup if clicking outside
-            if self._details_popup is not None:
-                self._details_popup.close()
-                self._details_popup = None
+        if event.button() == Qt.LeftButton:
+            item = self.itemAt(event.position().toPoint())
+            if item is None:
+                # Clicking on empty canvas — start rubber band selection
+                self.stepSelected.emit(None)
+                self.insightSelected.emit(None)
+                # Close popup if clicking outside
+                if self._details_popup is not None:
+                    self._details_popup.close()
+                    self._details_popup = None
+                # If not holding Ctrl, clear previous selection
+                if not (event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+                    self._scene.clearSelection()
+                # Start rubber band
+                self._rubber_band_active = True
+                self._rubber_band_start = self.mapToScene(event.position().toPoint())
+                self._start_rubber_band(self._rubber_band_start)
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -1138,6 +1198,11 @@ class UnifiedGraphView(QGraphicsView):
             )
             event.accept()
             return
+        if self._rubber_band_active and self._rubber_band_start is not None:
+            current = self.mapToScene(event.position().toPoint())
+            self._update_rubber_band(self._rubber_band_start, current)
+            event.accept()
+            return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
@@ -1147,7 +1212,92 @@ class UnifiedGraphView(QGraphicsView):
             self.setCursor(Qt.ArrowCursor)
             event.accept()
             return
+        if self._rubber_band_active and event.button() == Qt.LeftButton:
+            self._finish_rubber_band()
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
+
+    # ---- Rubber band selection ----
+    def _start_rubber_band(self, start: QPointF) -> None:
+        """Create the rubber band rectangle at the start position."""
+        if self._rubber_band_rect is not None:
+            self._scene.removeItem(self._rubber_band_rect)
+        rect = QRectF(start, start)
+        self._rubber_band_rect = self._scene.addRect(
+            rect,
+            QPen(self._rubber_band_border, 1.5, Qt.DashLine),
+            QBrush(self._rubber_band_color),
+        )
+        self._rubber_band_rect.setZValue(1000)
+        self._rubber_band_rect.setOpacity(0.0)  # Start invisible, show on move
+
+    def _update_rubber_band(self, start: QPointF, current: QPointF) -> None:
+        """Update the rubber band rectangle as the mouse moves."""
+        if self._rubber_band_rect is None:
+            return
+        rect = QRectF(
+            min(start.x(), current.x()),
+            min(start.y(), current.y()),
+            abs(current.x() - start.x()),
+            abs(current.y() - start.y()),
+        )
+        self._rubber_band_rect.setRect(rect)
+        self._rubber_band_rect.setOpacity(1.0)
+
+        # Live preview: highlight nodes that would be selected
+        sel_rect = rect.adjusted(-5, -5, 5, 5)  # slight padding
+        for nid, item in self._node_items.items():
+            node_rect = item.sceneBoundingRect()
+            would_select = sel_rect.intersects(node_rect)
+            if would_select and not item.isSelected():
+                item.setSelected(True)
+            elif not would_select and item.isSelected() and not (QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier):
+                # Only deselect if Ctrl isn't held (Ctrl = additive selection)
+                item.setSelected(False)
+
+    def _finish_rubber_band(self) -> None:
+        """Finish rubber band selection — select all nodes within the rect."""
+        self._rubber_band_active = False
+
+        if self._rubber_band_rect is not None:
+            rect = self._rubber_band_rect.rect()
+            self._scene.removeItem(self._rubber_band_rect)
+            self._rubber_band_rect = None
+
+            if rect.width() > 5 or rect.height() > 5:
+                # Select all RouteNodeItems whose bounding rect intersects
+                sel_rect = rect.adjusted(-5, -5, 5, 5)
+                for nid, item in self._node_items.items():
+                    if sel_rect.intersects(item.sceneBoundingRect()):
+                        item.setSelected(True)
+
+        self._update_selection_ui()
+
+    def _update_selection_ui(self) -> None:
+        """Update the Delete button and selection count in toolbar."""
+        if not hasattr(self, '_delete_sel_btn') or self._delete_sel_btn is None:
+            return
+        selected = [item for item in self._node_items.values() if item.isSelected()]
+        count = len(selected)
+        self._delete_sel_btn.setVisible(count > 0)
+        self._sel_count_label.setVisible(count > 0)
+        if count > 0:
+            self._sel_count_label.setText(f"{count} selected")
+
+    # ---- Delete selected nodes ----
+    def _delete_selected_nodes(self) -> None:
+        """Delete all currently selected nodes and their connected edges."""
+        selected_ids = [
+            item.step.id for item in self._node_items.values()
+            if item.isSelected()
+        ]
+        if not selected_ids:
+            return
+        # Remove each selected node
+        for step_id in selected_ids:
+            self._remove_step(step_id)
+        self._update_selection_ui()
 
     def contextMenuEvent(self, event) -> None:
         """Right-click context menu on nodes."""
@@ -1161,6 +1311,9 @@ class UnifiedGraphView(QGraphicsView):
                 route_node_item = item
                 break
             item = item.parentItem()
+
+        # Count currently selected nodes
+        selected_count = sum(1 for it in self._node_items.values() if it.isSelected())
 
         menu = QMenu(self)
         menu.setStyleSheet(f"""
@@ -1197,6 +1350,12 @@ class UnifiedGraphView(QGraphicsView):
                 # Delete action
                 delete_action = menu.addAction(f"🗑 Remove: {step.title}")
                 delete_action.triggered.connect(lambda: self._remove_step(step_id))
+
+                # If multiple nodes are selected, offer bulk delete
+                if selected_count > 1:
+                    menu.addSeparator()
+                    bulk_delete_action = menu.addAction(f"🗑 Delete {selected_count} Selected Nodes")
+                    bulk_delete_action.triggered.connect(self._delete_selected_nodes)
             else:
                 menu.addAction("No actions available")
         else:
@@ -1205,6 +1364,11 @@ class UnifiedGraphView(QGraphicsView):
             add_task_action.triggered.connect(
                 lambda: self.taskCreated.emit("New Task", scene_pos.x(), scene_pos.y())
             )
+            # If nodes are selected, offer bulk delete even on empty canvas
+            if selected_count > 0:
+                menu.addSeparator()
+                bulk_delete_action = menu.addAction(f"🗑 Delete {selected_count} Selected Nodes")
+                bulk_delete_action.triggered.connect(self._delete_selected_nodes)
 
         menu.exec(event.globalPos())
 
@@ -1240,6 +1404,15 @@ class UnifiedGraphView(QGraphicsView):
             if self._details_popup is not None:
                 self._details_popup.close()
                 self._details_popup = None
+            self._update_selection_ui()
+        elif key in (Qt.Key_Delete, Qt.Key_Backspace):
+            # Delete selected nodes
+            self._delete_selected_nodes()
+        elif key == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
+            # Ctrl+A — select all nodes
+            for item in self._node_items.values():
+                item.setSelected(True)
+            self._update_selection_ui()
         else:
             super().keyPressEvent(event)
 

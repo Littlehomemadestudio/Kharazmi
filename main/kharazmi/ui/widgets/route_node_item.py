@@ -101,6 +101,7 @@ class RouteNodeItem(QGraphicsObject):
         self.step = step
         self._hovered = False
         self._drag_started_pos: Optional[QPointF] = None
+        self._double_click_occurred: bool = False
         self._width: float = MIN_NODE_WIDTH
         self._height: float = 140
         self._glow_phase = 0.0
@@ -455,22 +456,33 @@ class RouteNodeItem(QGraphicsObject):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_started_pos = self.pos()
-            self.nodeClicked.emit(self.step.id)
+            # Don't emit nodeClicked here — wait until release to
+            # distinguish click from drag
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
+            self._double_click_occurred = True
             self.nodeDoubleClicked.emit(self.step.id)
             self.nodeEditRequested.emit(self.step.id)
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
-        if self._drag_started_pos is not None:
+        if event.button() == Qt.LeftButton and self._drag_started_pos is not None:
             new_pos = self.pos()
-            if (new_pos - self._drag_started_pos).manhattanLength() > 2:
+            distance = (new_pos - self._drag_started_pos).manhattanLength()
+            if distance > 2:
+                # It was a drag — emit nodeMoved, NOT nodeClicked
                 self.nodeMoved.emit(self.step.id, new_pos.x(), new_pos.y())
+            else:
+                # It was a genuine click (no significant movement)
+                # But skip if a double-click just occurred (the edit dialog
+                # is already opening — no need for the popup too)
+                if not self._double_click_occurred:
+                    self.nodeClicked.emit(self.step.id)
             self._drag_started_pos = None
+            self._double_click_occurred = False
 
     def itemChange(self, change, value):
         """Emit position change signal during drag for live edge updates."""
