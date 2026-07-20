@@ -629,6 +629,9 @@ class UnifiedGraphView(QGraphicsView):
         # Auto-layout after a short delay so animations finish first
         QTimer.singleShot(len(route.steps) * 80 + 300, self.auto_layout)
 
+        # Auto-select AI Creative layout if the route has AI position hints
+        self._auto_select_ai_layout(route)
+
     def _add_node(self, step: RouteStep, x: float = 0, y: float = 0,
                   animate: bool = False, delay_ms: int = 0) -> RouteNodeItem:
         """Add a single node to the canvas."""
@@ -869,6 +872,10 @@ class UnifiedGraphView(QGraphicsView):
             except RuntimeError:
                 pass  # edge item already deleted
 
+        # Auto-select the AI Creative layout after route generation
+        # if the AI provided position hints
+        self._auto_select_ai_layout(route)
+
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
         """Add multiple steps/edges/insights (for 'continue working')."""
@@ -905,6 +912,31 @@ class UnifiedGraphView(QGraphicsView):
         if hasattr(self, '_layout_combo') and self._layout_combo is not None:
             return self._layout_combo.currentData() or "organic"
         return "organic"
+
+    def _auto_select_ai_layout(self, route: Route) -> None:
+        """Auto-select the AI Creative layout after route generation.
+        
+        If the AI provided x_hint/y_hint positions for most steps, switch
+        the layout combo to 'AI Creative' so the user sees the AI's intended
+        layout on the next auto_layout call.
+        """
+        if not route.steps:
+            return
+        steps_with_hints = sum(
+            1 for s in route.steps
+            if abs(s.x_hint) > 1.0 or abs(s.y_hint) > 1.0
+        )
+        threshold = max(1, len(route.steps) // 2)
+        if steps_with_hints >= threshold and hasattr(self, '_layout_combo'):
+            # Find and select the AI Creative option
+            for i in range(self._layout_combo.count()):
+                if self._layout_combo.itemData(i) == "ai_creative":
+                    self._layout_combo.setCurrentIndex(i)
+                    logger.info(
+                        "Auto-selected AI Creative layout (layout_style=%s, %d/%d steps have hints)",
+                        route.layout_style, steps_with_hints, len(route.steps),
+                    )
+                    break
 
     def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
         """Dispatch to the selected layout algorithm.
@@ -1486,12 +1518,15 @@ class UnifiedGraphView(QGraphicsView):
 
         Uses a simple iterative repulsion approach: for each pair of
         overlapping nodes, push them apart by the minimum amount needed.
+        Also adds padding for insight bubbles (200px extra vertical clearance)
+        and checks edge-line crossings after initial overlap resolution.
         """
         pos = {k: list(v) for k, v in positions.items()}  # mutable
         ids = list(pos.keys())
-        padding = 40  # minimum gap between nodes
+        padding = 50  # minimum gap between nodes (was 40)
+        bubble_padding_y = 200  # extra vertical clearance for insight bubbles
 
-        for _iteration in range(20):  # max 20 passes
+        for _iteration in range(40):  # max 40 passes (was 20)
             any_overlap = False
             for i in range(len(ids)):
                 for j in range(i + 1, len(ids)):
@@ -1501,16 +1536,22 @@ class UnifiedGraphView(QGraphicsView):
                     aw, ah = node_sizes.get(a, (280, 160))
                     bw, bh = node_sizes.get(b, (280, 160))
 
-                    # Check bounding rect overlap
+                    # Add extra vertical padding for insight bubble clearance
+                    # Bubbles typically appear above or below nodes, so we need
+                    # more vertical space between nodes
+                    eff_ah = ah + bubble_padding_y
+                    eff_bh = bh + bubble_padding_y
+
+                    # Check bounding rect overlap with effective (bubble-aware) heights
                     overlap_x = (ax + aw + padding) - bx if ax < bx else (bx + bw + padding) - ax
-                    overlap_y = (ay + ah + padding) - by if ay < by else (by + bh + padding) - ay
+                    overlap_y = (ay + eff_ah + padding) - by if ay < by else (by + eff_bh + padding) - ay
 
                     if overlap_x > 0 and overlap_y > 0:
                         any_overlap = True
                         # Push apart in the direction of minimum overlap
                         if overlap_x < overlap_y:
                             # Push horizontally
-                            push = overlap_x / 2 + 10
+                            push = overlap_x / 2 + 15
                             if ax < bx:
                                 pos[a][0] -= push
                                 pos[b][0] += push
@@ -1519,7 +1560,7 @@ class UnifiedGraphView(QGraphicsView):
                                 pos[b][0] -= push
                         else:
                             # Push vertically
-                            push = overlap_y / 2 + 10
+                            push = overlap_y / 2 + 15
                             if ay < by:
                                 pos[a][1] -= push
                                 pos[b][1] += push
@@ -1529,6 +1570,81 @@ class UnifiedGraphView(QGraphicsView):
 
             if not any_overlap:
                 break
+
+        # ---- Edge-crossing resolution ----
+        # After overlap elimination, also push nodes apart if their edge lines
+        # would cross through other nodes. We do a lightweight check for this.
+        if self._route is not None:
+            # Build edge pairs from route
+            edge_pairs: list[tuple[str, str]] = []
+            for e in self._route.edges:
+                if e.source_id in pos and e.target_id in pos:
+                    edge_pairs.append((e.source_id, e.target_id))
+            for s in self._route.steps:
+                for dep_id in s.depends_on:
+                    if dep_id in pos and s.id in pos:
+                        pair = (dep_id, s.id)
+                        if pair not in edge_pairs:
+                            edge_pairs.append(pair)
+
+            # For each edge, check if any non-endpoint node's bounding rect
+            # intersects the edge line segment. If so, push that node away.
+            for src_id, tgt_id in edge_pairs:
+                sx, sy = pos[src_id]
+                tx, ty = pos[tgt_id]
+                sw, sh = node_sizes.get(src_id, (280, 160))
+                tw, th = node_sizes.get(tgt_id, (280, 160))
+                # Use center points of nodes for edge line
+                src_cx, src_cy = sx + sw / 2, sy + sh / 2
+                tgt_cx, tgt_cy = tx + tw / 2, ty + th / 2
+
+                for mid_id in ids:
+                    if mid_id == src_id or mid_id == tgt_id:
+                        continue
+                    mx, my = pos[mid_id]
+                    mw, mh = node_sizes.get(mid_id, (280, 160))
+                    # Check if the midpoint node's bounding rect (with padding)
+                    # is near the line segment between src center and tgt center
+                    # Use a simplified distance check: project the node center
+                    # onto the line segment and check distance
+                    mid_cx, mid_cy = mx + mw / 2, my + mh / 2
+
+                    # Vector from src to tgt
+                    dx = tgt_cx - src_cx
+                    dy = tgt_cy - src_cy
+                    seg_len_sq = dx * dx + dy * dy
+                    if seg_len_sq < 1.0:
+                        continue
+
+                    # Project mid center onto the line segment
+                    t = ((mid_cx - src_cx) * dx + (mid_cy - src_cy) * dy) / seg_len_sq
+                    t = max(0.0, min(1.0, t))
+
+                    # Closest point on the line segment
+                    closest_x = src_cx + t * dx
+                    closest_y = src_cy + t * dy
+
+                    # Distance from mid node center to closest point
+                    dist_x = mid_cx - closest_x
+                    dist_y = mid_cy - closest_y
+                    dist = math.sqrt(dist_x * dist_x + dist_y * dist_y)
+
+                    # Threshold: if the node is too close to the edge line,
+                    # push it away. Use half the diagonal of the node as threshold.
+                    threshold = max(mw, mh) * 0.6 + padding
+                    if dist < threshold:
+                        # Push the node perpendicular to the edge line
+                        if dist > 0.1:
+                            push_x = dist_x / dist * (threshold - dist + 20)
+                            push_y = dist_y / dist * (threshold - dist + 20)
+                        else:
+                            # Node is exactly on the line — push in perpendicular direction
+                            perp_x = -dy / math.sqrt(seg_len_sq)
+                            perp_y = dx / math.sqrt(seg_len_sq)
+                            push_x = perp_x * (threshold + 20)
+                            push_y = perp_y * (threshold + 20)
+                        pos[mid_id][0] += push_x
+                        pos[mid_id][1] += push_y
 
         return {k: (v[0], v[1]) for k, v in pos.items()}
 
