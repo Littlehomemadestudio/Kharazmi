@@ -107,6 +107,23 @@ class RouteStep:
         _ctrl_pat = _re.compile(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069]')
         def _clean(val: str) -> str:
             return _ctrl_pat.sub('', val)
+        def _ensure_list(val):
+            """Ensure a value is a list of strings.
+            The AI sometimes returns a plain string instead of a list for
+            fields like sub_goals/depends_on. Iterating a string yields
+            individual characters (♦ب ♦ر ♦س ♦ی bug), so we wrap it.
+            """
+            if isinstance(val, list):
+                return val
+            if isinstance(val, str):
+                # Split by comma if it looks like a comma-separated list
+                if ',' in val:
+                    return [v.strip() for v in val.split(',') if v.strip()]
+                # Single string — wrap in a list
+                return [val] if val.strip() else []
+            return []
+        raw_depends = data.get("depends_on", [])
+        raw_sub_goals = data.get("sub_goals", [])
         return cls(
             id=_clean(str(data.get("id", ""))),
             title=_clean(str(data.get("title", "Untitled step"))),
@@ -115,8 +132,8 @@ class RouteStep:
             location=_clean(str(data.get("location", ""))),
             description=_clean(str(data.get("description", ""))),
             fallback=_clean(str(data.get("fallback", ""))),
-            depends_on=[_clean(str(x)) for x in data.get("depends_on", [])],
-            sub_goals=[_clean(str(x)) for x in data.get("sub_goals", [])],
+            depends_on=[_clean(str(x)) for x in _ensure_list(raw_depends)],
+            sub_goals=[_clean(str(x)) for x in _ensure_list(raw_sub_goals)],
             cost_estimate=_clean(str(data.get("cost_estimate", ""))),
             risk_level=_clean(str(data.get("risk_level", "low"))),
             branch=_clean(str(data.get("branch", "main"))),
