@@ -39,7 +39,9 @@ from ..theme import Palette
 
 _KIND_COLORS = {
     "alternative":  "#5A7FA8",   # blue
-    "breakthrough": "#F5C842",   # bright gold
+    "breakthrough": "#3C8CFF",   # vivid blue (matches BreakthroughFlash)
+    "skip":         "#FF8C1E",   # vivid orange (matches SkipWhirl)
+    "loop":         "#3CDC78",  # vivid green (matches LoopCurl)
     "question":     "#5AA8A8",   # teal
     "warning":      "#A85A5A",   # red
     "improvement":  "#D4AF37",   # muted gold
@@ -47,7 +49,9 @@ _KIND_COLORS = {
 
 _KIND_ICONS = {
     "alternative":  "⇄",   # alternative
-    "breakthrough": "✦",   # breakthrough
+    "breakthrough": "⚡",  # lightning
+    "skip":         "↻",   # skip
+    "loop":         "⟳",   # loop
     "question":     "?",   # question
     "warning":      "⚠",   # warning
     "improvement":  "↗",   # improvement

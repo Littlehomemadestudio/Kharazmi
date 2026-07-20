@@ -43,6 +43,7 @@ from ...core import Project, Task, TaskId
 from ..theme import Palette
 from ..widgets.route_node_item import RouteNodeItem
 from ..widgets.insight_bubble import InsightBubble
+from ..widgets.route_annotation import BreakthroughFlash, SkipWhirl, LoopCurl
 from ..widgets.step_details_popup import StepDetailsPopup
 
 logger = logging.getLogger(__name__)
@@ -287,6 +288,7 @@ class UnifiedGraphView(QGraphicsView):
         self._edge_items: list[UnifiedEdgeItem] = []
         self._edges_by_node: dict[str, list[UnifiedEdgeItem]] = {}  # step_id -> list of edges for O(1) lookup
         self._bubble_items: dict[str, InsightBubble] = {}
+        self._annotation_items: list = []  # BreakthroughFlash / SkipWhirl / LoopCurl
         self._details_popup: Optional[StepDetailsPopup] = None
         self._layout_anims: list[QPropertyAnimation] = []  # track layout animations for cleanup
         self._pending_edges: list[RouteEdge] = []  # edges waiting for both nodes to exist
@@ -588,6 +590,17 @@ class UnifiedGraphView(QGraphicsView):
         for bubble in list(self._bubble_items.values()):
             self._scene.removeItem(bubble)
         self._bubble_items.clear()
+        # Clear annotation items (Breakthrough/Skip/Loop)
+        for ann in list(self._annotation_items):
+            try:
+                if hasattr(ann, '_pulse_timer') and ann._pulse_timer.isActive():
+                    ann._pulse_timer.stop()
+                if hasattr(ann, '_spin_timer') and ann._spin_timer.isActive():
+                    ann._spin_timer.stop()
+            except RuntimeError:
+                pass
+            self._scene.removeItem(ann)
+        self._annotation_items.clear()
 
         # Add route nodes (will be added incrementally via add_step)
         layout = self._compute_layout(route)
@@ -676,6 +689,17 @@ class UnifiedGraphView(QGraphicsView):
         self._edges_by_node.setdefault(edge.target_id, []).append(edge_item)
 
     def _add_insight(self, insight: Insight) -> None:
+        # Special annotation types get their own distinctive visual items
+        if insight.kind == "breakthrough":
+            self._add_breakthrough(insight)
+            return
+        if insight.kind == "skip":
+            self._add_skip(insight)
+            return
+        if insight.kind == "loop":
+            self._add_loop(insight)
+            return
+        # Default: regular insight bubble
         bubble_id = f"ib-{uuid.uuid4().hex[:8]}"
         bubble = InsightBubble(insight, bubble_id)
         pos = self._compute_bubble_position(insight, bubble)
@@ -683,6 +707,61 @@ class UnifiedGraphView(QGraphicsView):
         bubble.bubbleClicked.connect(self._on_bubble_clicked)
         self._scene.addItem(bubble)
         self._bubble_items[bubble_id] = bubble
+
+    def _add_breakthrough(self, insight: Insight) -> None:
+        """Add a BreakthroughFlash annotation near the anchored node."""
+        anchor = insight.anchor_step_id or ""
+        item = BreakthroughFlash(insight, anchor)
+        pos = self._compute_annotation_position(insight, item, offset_side="left")
+        item.setPos(pos)
+        self._scene.addItem(item)
+        self._annotation_items.append(item)
+        logger.debug("Added BreakthroughFlash anchored to %s", anchor)
+
+    def _add_skip(self, insight: Insight) -> None:
+        """Add a SkipWhirl annotation near the anchored node."""
+        anchor = insight.anchor_step_id or ""
+        item = SkipWhirl(insight, anchor)
+        pos = self._compute_annotation_position(insight, item, offset_side="above")
+        item.setPos(pos)
+        self._scene.addItem(item)
+        self._annotation_items.append(item)
+        logger.debug("Added SkipWhirl anchored to %s", anchor)
+
+    def _add_loop(self, insight: Insight) -> None:
+        """Add a LoopCurl annotation near the anchored node."""
+        anchor = insight.anchor_step_id or ""
+        item = LoopCurl(insight, anchor)
+        pos = self._compute_annotation_position(insight, item, offset_side="below")
+        item.setPos(pos)
+        self._scene.addItem(item)
+        self._annotation_items.append(item)
+        logger.debug("Added LoopCurl anchored to %s", anchor)
+
+    def _compute_annotation_position(self, insight: Insight, item,
+                                      offset_side: str = "left") -> QPointF:
+        """Position an annotation near its anchor node with an offset."""
+        anchor_id = insight.anchor_step_id
+        if anchor_id and anchor_id in self._node_items:
+            node = self._node_items[anchor_id]
+            node_pos = node.pos()
+            node_w = node._width if hasattr(node, '_width') else 280
+            node_h = node._height if hasattr(node, '_height') else 160
+            if offset_side == "left":
+                return QPointF(node_pos.x() - 130, node_pos.y() + 20)
+            elif offset_side == "above":
+                return QPointF(node_pos.x() + node_w / 2 - 60, node_pos.y() - 130)
+            elif offset_side == "below":
+                return QPointF(node_pos.x() + node_w / 2 - 60, node_pos.y() + node_h + 10)
+            else:
+                return QPointF(node_pos.x() - 130, node_pos.y() + 20)
+        # No anchor — place above scene
+        items_rect = self._scene.itemsBoundingRect()
+        if items_rect.isNull():
+            return QPointF(insight.x_hint * 800 - 400, insight.y_hint * 600 - 300)
+        x = items_rect.left() + insight.x_hint * items_rect.width()
+        y = items_rect.top() - 150 - insight.y_hint * 120
+        return QPointF(x, y)
 
     # ---- Incremental addition (for streaming) ----
     def _fuzzy_match_step_id(self, ref_id: str) -> Optional[str]:

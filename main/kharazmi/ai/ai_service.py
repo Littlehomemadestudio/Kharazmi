@@ -158,8 +158,18 @@ class RouteEdge:
 
 @dataclass
 class Insight:
-    """A floating insight box that appears around the route graph."""
-    kind: str  # "improvement" | "alternative" | "breakthrough" | "question" | "warning"
+    """A floating insight box that appears around the route graph.
+
+    kind can be:
+      - "improvement"  — a suggested improvement
+      - "alternative"  — an alternative approach
+      - "breakthrough" — a BIG BLUE FLASH: a radical alternative way to achieve the goal
+      - "skip"         — a WHIRLY ARROW: you can skip this part entirely
+      - "loop"         — a CIRCLING ARROW: this step can be repeated/looped
+      - "question"     — an open question
+      - "warning"      — a risk or warning
+    """
+    kind: str  # "improvement" | "alternative" | "breakthrough" | "skip" | "loop" | "question" | "warning"
     title: str
     body: str
     anchor_step_id: Optional[str] = None
@@ -512,11 +522,11 @@ class AIService:
             "Rules:\n"
             "- If the goal is clear (specific time, location, constraint), set "
             "is_clear=true and leave questions empty.\n"
-            "- Otherwise, generate 2-4 multiple-choice questions.\n"
+            "- Otherwise, generate 2-8 multiple-choice questions.\n"
             "- Each question MUST have EXACTLY 4 options.\n"
             "- Options should cover the most common cases.\n"
             "- The user will be able to type a custom answer if none of the 4 fit.\n"
-            "- Maximum 4 questions.\n"
+            "- Maximum 8 questions. Ask as many as needed to fully understand the goal.\n"
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -646,7 +656,15 @@ class AIService:
             "4. Use edge kinds: 'primary' (normal), 'alternative' (different option), "
             "'fallback' (if step fails), 'merge' (branches rejoin).\n"
             "5. Titles and descriptions should be COMPLETE — never truncate.\n"
-            "6. Generate 2-4 floating insights.\n"
+            "6. Generate 3-6 floating insights. Include these special annotation types:\n"
+            "   - 'breakthrough': A radical alternative way — a completely different approach that could "
+            "shortcut the entire plan. Use when there's a creative or unexpected path.\n"
+            "   - 'skip': A step or section that can be entirely skipped with an explanation of why. "
+            "Use when something is optional or can be bypassed.\n"
+            "   - 'loop': A step that can be repeated/looped multiple times to accumulate results. "
+            "Use when repetition helps achieve the goal faster.\n"
+            "   Also include regular insights: 'improvement', 'alternative', 'warning', 'question'.\n"
+            "   Each insight MUST have an 'anchor_step_id' pointing to the relevant step.\n"
             "7. Be efficient with tokens — keep descriptions concise but complete.\n"
             "8. Each step's 'depends_on' array MUST list the IDs of steps it depends on. "
             "These MUST match the step IDs exactly.\n\n"

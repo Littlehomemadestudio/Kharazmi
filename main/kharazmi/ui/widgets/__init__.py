@@ -23,6 +23,7 @@ from .multiple_choice_question import MultipleChoiceQuestionWidget
 from .step_details_popup import StepDetailsPopup
 from .route_health_dashboard import RouteHealthDashboard
 from .planner_landing import PlannerLanding
+from .route_annotation import BreakthroughFlash, SkipWhirl, LoopCurl
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -44,4 +45,5 @@ __all__ = [
     "StepDetailsPopup",
     "RouteHealthDashboard",
     "PlannerLanding",
+    "BreakthroughFlash", "SkipWhirl", "LoopCurl",
 ]
