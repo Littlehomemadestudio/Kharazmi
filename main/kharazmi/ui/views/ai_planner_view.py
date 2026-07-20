@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
     QSizePolicy, QMessageBox, QApplication, QToolButton, QInputDialog,
-    QTabWidget, QGraphicsOpacityEffect,
+    QTabWidget, QGraphicsOpacityEffect, QStackedWidget,
 )
 
 from ...ai import (
@@ -64,6 +64,7 @@ from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
 from ..widgets.route_health_dashboard import RouteHealthDashboard
 from ..widgets.credits_panel import CreditsPanel
 from ..widgets.feedback_dialog import FeedbackDialog
+from ..widgets.planner_landing import PlannerLanding
 
 
 class AIPlannerView(QWidget):
@@ -139,11 +140,25 @@ class AIPlannerView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        # Stacked widget: page 0 = landing, page 1 = workspace
+        self._stack = QStackedWidget()
+
+        # ---- Page 0: Landing page ----
+        self._landing = PlannerLanding()
+        self._landing.goalSubmitted.connect(self._on_landing_goal)
+        self._stack.addWidget(self._landing)
+
+        # ---- Page 1: Workspace ----
+        workspace = QWidget()
+        ws_layout = QVBoxLayout(workspace)
+        ws_layout.setContentsMargins(0, 0, 0, 0)
+        ws_layout.setSpacing(0)
+
         # Top: goal input + stats
-        layout.addWidget(self._build_goal_bar())
+        ws_layout.addWidget(self._build_goal_bar())
 
         # Middle: graph + chat
-        splitter = QSplitter(Qt.Horizontal, self)
+        splitter = QSplitter(Qt.Horizontal, workspace)
         splitter.setHandleWidth(2)
         splitter.setStyleSheet(
             f"QSplitter::handle {{ background: {Palette.BG_DEEPEST}; }}"
@@ -289,7 +304,33 @@ class AIPlannerView(QWidget):
         splitter.setStretchFactor(1, 3)
         splitter.setSizes([1100, 460])
 
-        layout.addWidget(splitter, stretch=1)
+        ws_layout.addWidget(splitter, stretch=1)
+
+        self._stack.addWidget(workspace)
+
+        # Start on the landing page
+        self._stack.setCurrentIndex(0)
+        layout.addWidget(self._stack, stretch=1)
+
+    def _on_landing_goal(self, goal: str) -> None:
+        """User submitted a goal from the landing page — switch to workspace and start planning."""
+        # Animate landing out
+        self._landing.animate_out()
+        # Switch to workspace after a short delay for the animation
+        QTimer.singleShot(300, lambda: self._switch_to_workspace(goal))
+
+    def _switch_to_workspace(self, goal: str) -> None:
+        """Switch from landing page to workspace and trigger plan."""
+        self._stack.setCurrentIndex(1)
+        # Put the goal into the goal input and trigger planning
+        self._goal_input.setText(goal)
+        self._on_plan_clicked()
+
+    def show_landing(self) -> None:
+        """Switch back to the landing page (e.g. when user wants to start a new plan)."""
+        self._stack.setCurrentIndex(0)
+        self._landing.animate_in()
+        self._landing.focus_input()
 
     def _build_goal_bar(self) -> QWidget:
         bar = QFrame()
@@ -310,6 +351,28 @@ class AIPlannerView(QWidget):
         )
         header_row.addWidget(label)
         header_row.addStretch()
+
+        # New Plan button — go back to landing
+        new_plan_btn = QPushButton("✦ New Plan")
+        new_plan_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {Palette.TEXT_TERTIARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 3px;
+                padding: 2px 10px;
+                font-size: 10px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                color: {Palette.GOLD_BRIGHT};
+                border: 1px solid {Palette.BORDER_GOLD};
+                background-color: {Palette.BG_TERTIARY};
+            }}
+        """)
+        new_plan_btn.setFixedHeight(22)
+        new_plan_btn.clicked.connect(self.show_landing)
+        header_row.addWidget(new_plan_btn)
 
         self._stat_steps = QLabel("○ steps: 0")
         self._stat_steps.setStyleSheet(

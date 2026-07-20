@@ -22,6 +22,7 @@ from .ai_chat_panel import AIChatPanel, ChatMessage, ChatInput
 from .multiple_choice_question import MultipleChoiceQuestionWidget
 from .step_details_popup import StepDetailsPopup
 from .route_health_dashboard import RouteHealthDashboard
+from .planner_landing import PlannerLanding
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -42,4 +43,5 @@ __all__ = [
     "MultipleChoiceQuestionWidget",
     "StepDetailsPopup",
     "RouteHealthDashboard",
+    "PlannerLanding",
 ]
