@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGraphicsView, QGraphicsScene,
     QGraphicsItem, QGraphicsRectItem, QGraphicsPathItem, QGraphicsTextItem,
     QFrame, QPushButton, QToolButton, QSizePolicy, QApplication, QMenu,
+    QComboBox,
 )
 
 from ...ai import Route, RouteStep, RouteEdge, Insight
@@ -317,7 +318,7 @@ class UnifiedGraphView(QGraphicsView):
         self._build_toolbar()
 
     def _build_toolbar(self) -> None:
-        """Build a floating toolbar with auto-layout and zoom controls."""
+        """Build a floating toolbar with layout style selector, zoom controls."""
         toolbar = QFrame(self)
         toolbar.setStyleSheet(f"""
             QFrame {{
@@ -330,7 +331,52 @@ class UnifiedGraphView(QGraphicsView):
         toolbar_layout.setContentsMargins(6, 4, 6, 4)
         toolbar_layout.setSpacing(4)
 
-        auto_layout_btn = QPushButton("⊞ Auto Layout")
+        # Layout style selector
+        layout_label = QLabel("Layout:")
+        layout_label.setStyleSheet(f"""
+            color: {Palette.TEXT_TERTIARY};
+            font-size: 10px;
+            font-weight: bold;
+            background: transparent;
+            border: none;
+        """)
+        toolbar_layout.addWidget(layout_label)
+
+        self._layout_combo = QComboBox()
+        self._layout_combo.addItem("🌊 Organic Flow", "organic")
+        self._layout_combo.addItem("🌀 Radial Burst", "radial")
+        self._layout_combo.addItem("🔀 Mind Map", "mindmap")
+        self._layout_combo.addItem("⚡ Layered DAG", "layered")
+        self._layout_combo.addItem("💫 Force Field", "force")
+        self._layout_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                min-width: 130px;
+            }}
+            QComboBox:hover {{
+                border: 1px solid {Palette.GOLD_PRIMARY};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {Palette.BG_DEEPEST};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                selection-background-color: {Palette.BG_HOVER};
+                selection-color: {Palette.GOLD_BRIGHT};
+                padding: 4px;
+            }}
+        """)
+        toolbar_layout.addWidget(self._layout_combo)
+
+        auto_layout_btn = QPushButton("⊞ Layout")
         auto_layout_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.GOLD_PRIMARY};
@@ -348,7 +394,7 @@ class UnifiedGraphView(QGraphicsView):
         auto_layout_btn.clicked.connect(self.auto_layout)
         toolbar_layout.addWidget(auto_layout_btn)
 
-        fit_btn = QPushButton("⊡ Fit All")
+        fit_btn = QPushButton("⊡ Fit")
         fit_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -713,24 +759,35 @@ class UnifiedGraphView(QGraphicsView):
         return QPointF(x, y)
 
     # ---- Layout & analysis ----
-    def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
-        """Compute an organic, spread-out layout that shows graph complexity.
+    def _get_layout_style(self) -> str:
+        """Get the currently selected layout style from the combo box."""
+        if hasattr(self, '_layout_combo') and self._layout_combo is not None:
+            return self._layout_combo.currentData() or "organic"
+        return "organic"
 
-        Key design goals:
-          - RIGHT-TO-LEFT flow: start nodes on the right, end on the left
-          - Branches spread vertically across the canvas, not crammed in columns
-          - Organic feel: slight jitter prevents a rigid grid look
-          - Main path stays centered, alternative/fallback branches fan out
-          - No overlaps
+    def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Dispatch to the selected layout algorithm."""
+        style = self._get_layout_style()
+        if style == "radial":
+            return self._layout_radial(route)
+        elif style == "mindmap":
+            return self._layout_mindmap(route)
+        elif style == "layered":
+            return self._layout_layered(route)
+        elif style == "force":
+            return self._layout_force(route)
+        else:
+            return self._layout_organic(route)
+
+    # ---- Shared helpers for layouts ----
+    def _build_topology(self, route: Route):
+        """Build topological data structures shared by all layouts.
+        Returns (steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes).
         """
         import random
-        rng = random.Random(42)  # deterministic seed for consistency
+        rng = random.Random(42)
 
-        if not route.steps:
-            return {}
         steps_by_id = {s.id: s for s in route.steps}
-
-        # --- 1. Build topological ranks (0 = start, higher = deeper) ---
         ranks: dict[str, int] = {}
         in_degree: dict[str, int] = {s.id: 0 for s in route.steps}
         succ: dict[str, list[str]] = {s.id: [] for s in route.steps}
@@ -766,44 +823,35 @@ class UnifiedGraphView(QGraphicsView):
             if s.id not in ranks:
                 ranks[s.id] = 0
 
-        max_rank = max(ranks.values()) if ranks else 0
-
-        # --- 2. Assign each branch a vertical "lane" ---
-        # Collect unique branches and sort them: main in center, others fanning out
+        # Branch lanes
         branches_seen: list[str] = []
         for s in route.steps:
             b = s.branch or "main"
             if b not in branches_seen:
                 branches_seen.append(b)
 
-        def branch_lane_priority(b: str) -> int:
-            if b == "main":
-                return 0
-            elif b.startswith("alt"):
-                return 1
-            elif b.startswith("fallback"):
-                return 2
-            elif b == "tasks":
-                return 3
+        def branch_priority(b: str) -> int:
+            if b == "main": return 0
+            elif b.startswith("alt"): return 1
+            elif b.startswith("fallback"): return 2
+            elif b == "tasks": return 3
             return 4
 
-        branches_seen.sort(key=branch_lane_priority)
+        branches_seen.sort(key=branch_priority)
 
-        # Assign lanes: main=0, then alternate up/down for visual spread
         branch_lanes: dict[str, float] = {}
         lane = 0
         for i, b in enumerate(branches_seen):
             if i == 0:
-                branch_lanes[b] = 0.0  # main in center
+                branch_lanes[b] = 0.0
             else:
-                # Alternate: 1, -1, 2, -2, 3, -3 ...
                 if i % 2 == 1:
                     lane += 1
                     branch_lanes[b] = float(lane)
                 else:
                     branch_lanes[b] = float(-lane)
 
-        # --- 3. Compute node sizes ---
+        # Node sizes
         node_sizes: dict[str, tuple[float, float]] = {}
         for sid in steps_by_id:
             item = self._node_items.get(sid)
@@ -812,20 +860,31 @@ class UnifiedGraphView(QGraphicsView):
             else:
                 node_sizes[sid] = (280, 160)
 
-        # --- 4. Place nodes ---
-        LANE_SPACING = 380  # vertical distance between branch lanes
-        RANK_SPACING = 580  # horizontal distance between topological levels
+        return steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes
+
+    # ---- 1. Organic Flow (default) ----
+    def _layout_organic(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Organic flow: branches spread wide with heavy jitter, RTL direction."""
+        import random
+        rng = random.Random(42)
+
+        if not route.steps:
+            return {}
+
+        steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes = \
+            self._build_topology(route)
+        max_rank = max(ranks.values()) if ranks else 0
+
+        LANE_SPACING = 480
+        RANK_SPACING = 620
         positions: dict[str, tuple[float, float]] = {}
 
         by_rank: dict[int, list[str]] = defaultdict(list)
         for sid, r in ranks.items():
             by_rank[r].append(sid)
-
-        # Within each rank, sort by branch lane for consistent ordering
         for rank in by_rank:
             by_rank[rank].sort(key=lambda sid: branch_lanes.get(steps_by_id[sid].branch or "main", 0))
 
-        # Compute how many nodes share each lane+rank (for sub-offsetting)
         lane_rank_count: dict[tuple[float, int], int] = defaultdict(int)
         lane_rank_index: dict[tuple[float, int, str], int] = {}
         for rank in by_rank:
@@ -842,45 +901,374 @@ class UnifiedGraphView(QGraphicsView):
                 b = step.branch or "main"
                 lane = branch_lanes.get(b, 0)
 
-                # RIGHT-TO-LEFT: rank 0 (start) goes on the right
                 x = (max_rank - rank) * RANK_SPACING - (max_rank * RANK_SPACING) / 2
-
-                # Vertical position based on lane
                 y = lane * LANE_SPACING
 
-                # If multiple nodes share same lane+rank, sub-offset them
                 key = (lane, rank)
                 count = lane_rank_count[key]
                 idx = lane_rank_index.get((lane, rank, sid), 0)
                 if count > 1:
-                    sub_offset = (idx - (count - 1) / 2) * 200
-                    y += sub_offset
+                    y += (idx - (count - 1) / 2) * 220
 
-                # Add organic jitter — small random offsets to avoid rigid grid
-                jitter_x = rng.uniform(-30, 30)
-                jitter_y = rng.uniform(-25, 25)
-                x += jitter_x
-                y += jitter_y
+                # Heavy organic jitter
+                x += rng.uniform(-80, 80)
+                y += rng.uniform(-60, 60)
 
                 positions[sid] = (x, y)
 
-        # --- 5. Pull connected nodes closer vertically ---
-        # For each edge, nudge the target slightly toward the source's Y
+        # Pull connected nodes closer
         for _ in range(3):
             for src, tgt in edge_pairs:
                 if src in positions and tgt in positions:
                     sx, sy = positions[src]
                     tx, ty = positions[tgt]
-                    # Only nudge Y, not X (X is determined by rank)
-                    dy = sy - ty
-                    nudge = dy * 0.08  # gentle pull
-                    tx_new, ty_new = positions[tgt]
-                    positions[tgt] = (tx_new, ty_new + nudge)
+                    nudge = (sy - ty) * 0.1
+                    positions[tgt] = (positions[tgt][0], positions[tgt][1] + nudge)
 
-        # --- 6. Eliminate overlaps ---
         positions = self._eliminate_overlaps(positions, node_sizes)
-
         return positions
+
+    # ---- 2. Radial Burst ----
+    def _layout_radial(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Radial: start nodes at center, branches radiate outward like a starburst.
+        RTL: start center-right, end outer-left.
+        """
+        import random
+        rng = random.Random(42)
+
+        if not route.steps:
+            return {}
+
+        steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes = \
+            self._build_topology(route)
+        max_rank = max(ranks.values()) if ranks else 0
+
+        RADIUS_PER_RANK = 350
+        positions: dict[str, tuple[float, float]] = {}
+
+        by_rank: dict[int, list[str]] = defaultdict(list)
+        for sid, r in ranks.items():
+            by_rank[r].append(sid)
+
+        # Find start nodes (rank 0)
+        start_nodes = by_rank.get(0, [])
+
+        # Assign angular sectors per branch
+        branches = set(steps_by_id[sid].branch or "main" for sid in route.steps)
+        branch_list = sorted(branches, key=lambda b: 0 if b == "main" else (1 if b.startswith("alt") else 2))
+        num_branches = max(len(branch_list), 1)
+
+        # Spread branches across angles (centered on right side = 0 degrees, going RTL)
+        branch_angles: dict[str, float] = {}
+        if num_branches == 1:
+            branch_angles[branch_list[0]] = 0.0
+        else:
+            angle_span = math.pi * 1.4  # ~250 degrees of spread
+            angle_start = -angle_span / 2
+            for i, b in enumerate(branch_list):
+                branch_angles[b] = angle_start + (i / (num_branches - 1)) * angle_span
+
+        for rank in sorted(by_rank.keys()):
+            sids_in_rank = by_rank[rank]
+            radius = (rank + 1) * RADIUS_PER_RANK
+
+            # Group by branch within this rank
+            by_branch: dict[str, list[str]] = defaultdict(list)
+            for sid in sids_in_rank:
+                b = steps_by_id[sid].branch or "main"
+                by_branch[b].append(sid)
+
+            for b, sids in by_branch.items():
+                base_angle = branch_angles.get(b, 0)
+                # Slight angle progression per rank (spiral effect)
+                base_angle += rank * 0.15
+
+                for i, sid in enumerate(sids):
+                    # Fan out if multiple nodes in same branch+rank
+                    if len(sids) > 1:
+                        sub_angle = base_angle + (i - (len(sids) - 1) / 2) * 0.2
+                    else:
+                        sub_angle = base_angle
+
+                    # Add jitter to angle and radius
+                    sub_angle += rng.uniform(-0.12, 0.12)
+                    radius_jittered = radius + rng.uniform(-60, 60)
+
+                    # RTL: flip so start (rank 0) is on the right
+                    x = -radius_jittered * math.cos(sub_angle)
+                    y = radius_jittered * math.sin(sub_angle)
+
+                    positions[sid] = (x, y)
+
+        # Pull connected nodes closer
+        for _ in range(4):
+            for src, tgt in edge_pairs:
+                if src in positions and tgt in positions:
+                    sx, sy = positions[src]
+                    tx, ty = positions[tgt]
+                    nudge_x = (sx - tx) * 0.06
+                    nudge_y = (sy - ty) * 0.06
+                    positions[tgt] = (positions[tgt][0] + nudge_x,
+                                      positions[tgt][1] + nudge_y)
+
+        positions = self._eliminate_overlaps(positions, node_sizes)
+        return positions
+
+    # ---- 3. Mind Map ----
+    def _layout_mindmap(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Mind map: start node(s) in center, branches go in different directions.
+        Each branch gets its own angular sector radiating from center.
+        """
+        import random
+        rng = random.Random(42)
+
+        if not route.steps:
+            return {}
+
+        steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes = \
+            self._build_topology(route)
+
+        positions: dict[str, tuple[float, float]] = {}
+
+        # Find start nodes
+        by_rank: dict[int, list[str]] = defaultdict(list)
+        for sid, r in ranks.items():
+            by_rank[r].append(sid)
+        start_nodes = by_rank.get(0, [])
+        max_rank = max(ranks.values()) if ranks else 0
+
+        # Place start node(s) at center
+        for i, sid in enumerate(start_nodes):
+            positions[sid] = (rng.uniform(-30, 30), (i - (len(start_nodes) - 1) / 2) * 200)
+
+        # Group all non-start nodes by branch
+        branches: dict[str, list[str]] = defaultdict(list)
+        for sid in route.steps:
+            if sid not in {s for s in start_nodes}:
+                b = steps_by_id[sid].branch or "main"
+                branches[b].append(sid)
+
+        # Assign each branch an angular direction from center
+        branch_list = list(branches.keys())
+        branch_list.sort(key=lambda b: 0 if b == "main" else (1 if b.startswith("alt") else 2))
+
+        num_branches = max(len(branch_list), 1)
+        # Spread branches: main goes right, others fan around
+        branch_direction: dict[str, float] = {}
+        if num_branches == 1:
+            branch_direction[branch_list[0]] = 0.0  # right
+        else:
+            # Main at 0 (right), others spread evenly
+            for i, b in enumerate(branch_list):
+                if b == "main":
+                    branch_direction[b] = 0.0
+                else:
+                    # Alternate above and below
+                    idx = i  # 0-based among all branches
+                    angle = (idx / num_branches) * 2 * math.pi
+                    branch_direction[b] = angle
+
+        SPACING = 320
+        for b, sids in branches.items():
+            direction = branch_direction.get(b, 0)
+            # Sort sids by rank within this branch
+            sids.sort(key=lambda sid: ranks.get(sid, 0))
+
+            for i, sid in enumerate(sids):
+                distance = (i + 1) * SPACING
+                # Slight spiral: each step rotates a tiny bit
+                angle = direction + i * 0.18 + rng.uniform(-0.15, 0.15)
+                distance += rng.uniform(-50, 50)
+
+                x = distance * math.cos(angle)
+                y = distance * math.sin(angle)
+
+                # If multiple nodes at same distance, fan them
+                positions[sid] = (x, y)
+
+        # Pull connected nodes closer
+        for _ in range(5):
+            for src, tgt in edge_pairs:
+                if src in positions and tgt in positions:
+                    sx, sy = positions[src]
+                    tx, ty = positions[tgt]
+                    nudge_x = (sx - tx) * 0.05
+                    nudge_y = (sy - ty) * 0.05
+                    positions[tgt] = (positions[tgt][0] + nudge_x,
+                                      positions[tgt][1] + nudge_y)
+
+        positions = self._eliminate_overlaps(positions, node_sizes)
+        return positions
+
+    # ---- 4. Layered DAG ----
+    def _layout_layered(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Classic Sugiyama-style layered DAG layout with proper layering.
+        RTL: start on right, end on left. Each layer is a vertical column.
+        Nodes within a layer are spread with barycenter ordering.
+        """
+        import random
+        rng = random.Random(42)
+
+        if not route.steps:
+            return {}
+
+        steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes = \
+            self._build_topology(route)
+        max_rank = max(ranks.values()) if ranks else 0
+
+        RANK_SPACING = 550
+        positions: dict[str, tuple[float, float]] = {}
+
+        by_rank: dict[int, list[str]] = defaultdict(list)
+        for sid, r in ranks.items():
+            by_rank[r].append(sid)
+
+        # Barycenter heuristic: order nodes within each rank to minimize crossings
+        # Initialize with branch-based ordering
+        for rank in by_rank:
+            by_rank[rank].sort(key=lambda sid: branch_lanes.get(steps_by_id[sid].branch or "main", 0))
+
+        # 3 passes of barycenter refinement
+        for _ in range(3):
+            for rank in sorted(by_rank.keys()):
+                if rank == 0:
+                    continue
+                prev_rank = rank - 1
+                prev_sids = by_rank[prev_rank]
+                prev_pos = {sid: i for i, sid in enumerate(prev_sids)}
+
+                # For each node in this rank, compute barycenter of predecessors
+                def barycenter(sid: str) -> float:
+                    preds = pred.get(sid, [])
+                    if not preds:
+                        return float('inf')
+                    positions_sum = sum(prev_pos.get(p, 0) for p in preds if p in prev_pos)
+                    return positions_sum / max(len(preds), 1)
+
+                by_rank[rank].sort(key=barycenter)
+
+        # Assign positions with generous vertical spread
+        for rank in sorted(by_rank.keys()):
+            sids = by_rank[rank]
+            n = len(sids)
+            x = (max_rank - rank) * RANK_SPACING - (max_rank * RANK_SPACING) / 2
+
+            # Spread vertically with generous spacing
+            total_height = (n - 1) * 420
+            start_y = -total_height / 2
+
+            for i, sid in enumerate(sids):
+                y = start_y + i * 420
+                # Slight jitter
+                y += rng.uniform(-35, 35)
+                x_jittered = x + rng.uniform(-25, 25)
+                positions[sid] = (x_jittered, y)
+
+        positions = self._eliminate_overlaps(positions, node_sizes)
+        return positions
+
+    # ---- 5. Force Field (physics simulation) ----
+    def _layout_force(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Force-directed layout: nodes repel each other, edges act as springs.
+        Starts with topological positions, then runs a physics simulation.
+        Produces very organic, complex-looking layouts.
+        """
+        import random
+        rng = random.Random(42)
+
+        if not route.steps:
+            return {}
+
+        steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes = \
+            self._build_topology(route)
+        max_rank = max(ranks.values()) if ranks else 0
+
+        # Start from organic positions as initial state
+        positions = self._layout_organic(route)
+
+        # Convert to mutable
+        pos = {k: list(v) for k, v in positions.items()}
+        ids = list(pos.keys())
+        n = len(ids)
+
+        # Physics parameters
+        REPULSION = 800000  # how strongly nodes push apart
+        SPRING_LENGTH = 400  # ideal edge length
+        SPRING_K = 0.04  # spring stiffness
+        DAMPING = 0.85  # velocity damping
+        ITERATIONS = 120  # simulation steps
+
+        # Initialize velocities
+        vel = {sid: [0.0, 0.0] for sid in ids}
+
+        for iteration in range(ITERATIONS):
+            forces = {sid: [0.0, 0.0] for sid in ids}
+
+            # Repulsion: every pair of nodes pushes apart
+            for i in range(n):
+                for j in range(i + 1, n):
+                    a, b = ids[i], ids[j]
+                    dx = pos[a][0] - pos[b][0]
+                    dy = pos[a][1] - pos[b][1]
+                    dist_sq = dx * dx + dy * dy
+                    dist = math.sqrt(dist_sq) if dist_sq > 0 else 1.0
+                    # Coulomb's law
+                    force = REPULSION / max(dist_sq, 100)
+                    fx = force * dx / dist
+                    fy = force * dy / dist
+                    forces[a][0] += fx
+                    forces[a][1] += fy
+                    forces[b][0] -= fx
+                    forces[b][1] -= fy
+
+            # Spring: connected nodes attract
+            for src, tgt in edge_pairs:
+                if src not in pos or tgt not in pos:
+                    continue
+                dx = pos[tgt][0] - pos[src][0]
+                dy = pos[tgt][1] - pos[src][1]
+                dist = math.sqrt(dx * dx + dy * dy) if (dx * dx + dy * dy) > 0 else 1.0
+                displacement = dist - SPRING_LENGTH
+                force = SPRING_K * displacement
+                fx = force * dx / dist
+                fy = force * dy / dist
+                forces[src][0] += fx
+                forces[src][1] += fy
+                forces[tgt][0] -= fx
+                forces[tgt][1] -= fy
+
+            # Gentle gravity toward center (prevent drift)
+            for sid in ids:
+                forces[sid][0] -= pos[sid][0] * 0.001
+                forces[sid][1] -= pos[sid][1] * 0.001
+
+            # RTL bias: gently push start nodes right, end nodes left
+            for sid in ids:
+                rank = ranks.get(sid, 0)
+                bias = (max_rank / 2 - rank) * 0.5
+                forces[sid][0] += bias
+
+            # Apply forces with damping
+            for sid in ids:
+                vel[sid][0] = (vel[sid][0] + forces[sid][0]) * DAMPING
+                vel[sid][1] = (vel[sid][1] + forces[sid][1]) * DAMPING
+                # Limit max velocity
+                max_v = 50
+                speed = math.sqrt(vel[sid][0]**2 + vel[sid][1]**2)
+                if speed > max_v:
+                    vel[sid][0] *= max_v / speed
+                    vel[sid][1] *= max_v / speed
+                pos[sid][0] += vel[sid][0]
+                pos[sid][1] += vel[sid][1]
+
+        # Add final jitter for organic feel
+        for sid in ids:
+            pos[sid][0] += rng.uniform(-20, 20)
+            pos[sid][1] += rng.uniform(-20, 20)
+
+        result = {k: (v[0], v[1]) for k, v in pos.items()}
+        result = self._eliminate_overlaps(result, node_sizes)
+        return result
 
     def _eliminate_overlaps(self, positions: dict[str, tuple[float, float]],
                             node_sizes: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float]]:
