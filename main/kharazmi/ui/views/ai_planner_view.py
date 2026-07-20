@@ -32,6 +32,7 @@ TRUE STREAMING: nodes appear one-by-one as the AI generates them.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional
@@ -55,6 +56,8 @@ from ...calendar import CalendarStore, Event as CalendarEvent, EventType, Availa
 from ...core import Project, Task, TaskId, Duration, DurationUnit, Priority, TaskStatus
 from ...core.shamsi import ShamsiDate
 from ..theme import Palette
+
+logger = logging.getLogger(__name__)
 from ..views.unified_graph_view import UnifiedGraphView
 from ..widgets.ai_chat_panel import AIChatPanel
 from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
@@ -539,6 +542,28 @@ class AIPlannerView(QWidget):
             return
 
         self._current_route = result
+
+        # Log edge diagnostics
+        step_ids = {s.id for s in result.steps}
+        edge_src_ids = {e.source_id for e in result.edges}
+        edge_tgt_ids = {e.target_id for e in result.edges}
+        all_edge_ids = edge_src_ids | edge_tgt_ids
+        unmatched = all_edge_ids - step_ids
+        dep_ids = set()
+        for s in result.steps:
+            dep_ids.update(s.depends_on)
+        unmatched_deps = dep_ids - step_ids
+
+        logger.info(
+            "Route received: %d steps, %d explicit edges, %d steps with depends_on",
+            len(result.steps), len(result.edges),
+            sum(1 for s in result.steps if s.depends_on),
+        )
+        if unmatched:
+            logger.warning("Edge IDs not matching any step: %s (step IDs: %s)", unmatched, step_ids)
+        if unmatched_deps:
+            logger.warning("depends_on IDs not matching any step: %s", unmatched_deps)
+
         # The graph view has already been adding nodes incrementally
         # via _on_step_added. Now finalize the route to ensure ALL
         # edges are created (from both route.edges AND step.depends_on),

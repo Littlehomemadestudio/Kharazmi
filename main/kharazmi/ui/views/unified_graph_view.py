@@ -564,11 +564,16 @@ class UnifiedGraphView(QGraphicsView):
                      if nid in route_node_ids]
         for nid in to_remove:
             item = self._node_items.pop(nid)
+            # Stop animations/timers
+            if hasattr(item, '_pulse_timer') and item._pulse_timer.isActive():
+                item._pulse_timer.stop()
             self._scene.removeItem(item)
+            item.deleteLater()
         # Clear route edges
         for edge in list(self._edge_items):
             self._scene.removeItem(edge)
         self._edge_items.clear()
+        self._edges_by_node.clear()
         # Clear insight bubbles
         for bubble in list(self._bubble_items.values()):
             self._scene.removeItem(bubble)
@@ -582,9 +587,14 @@ class UnifiedGraphView(QGraphicsView):
             self._add_node(step, *layout.get(step.id, (0, 0)),
                            animate=True, delay_ms=i * 80)
 
-        # Add edges
-        seen_edges = set()
+        # Add edges — with fuzzy ID matching
+        seen_edges: set[tuple[str, str, str]] = set()
         for edge in route.edges:
+            src = self._fuzzy_match_step_id(edge.source_id) or edge.source_id
+            tgt = self._fuzzy_match_step_id(edge.target_id) or edge.target_id
+            if src != edge.source_id or tgt != edge.target_id:
+                edge = RouteEdge(source_id=src, target_id=tgt,
+                                 kind=edge.kind, label=edge.label)
             key = (edge.source_id, edge.target_id, edge.kind)
             if key in seen_edges:
                 continue
@@ -592,12 +602,24 @@ class UnifiedGraphView(QGraphicsView):
             self._add_edge(edge, is_crit=edge.source_id in critical_path and edge.target_id in critical_path)
         for step in route.steps:
             for dep_id in step.depends_on:
-                key = (dep_id, step.id, "primary")
+                resolved_dep = self._fuzzy_match_step_id(dep_id) or dep_id
+                key = (resolved_dep, step.id, "primary")
                 if key in seen_edges:
                     continue
                 seen_edges.add(key)
-                edge = RouteEdge(source_id=dep_id, target_id=step.id, kind="primary")
-                self._add_edge(edge, is_crit=dep_id in critical_path and step.id in critical_path)
+                edge = RouteEdge(source_id=resolved_dep, target_id=step.id, kind="primary")
+                self._add_edge(edge, is_crit=resolved_dep in critical_path and step.id in critical_path)
+
+        # FALLBACK: If no edges were created, connect steps sequentially
+        if not self._edge_items and len(route.steps) > 1:
+            for i in range(len(route.steps) - 1):
+                src = route.steps[i]
+                tgt = route.steps[i + 1]
+                key = (src.id, tgt.id, "primary")
+                if key not in seen_edges:
+                    seen_edges.add(key)
+                    edge = RouteEdge(source_id=src.id, target_id=tgt.id, kind="primary")
+                    self._add_edge(edge, is_crit=src.id in critical_path and tgt.id in critical_path)
 
         # Add insight bubbles
         for insight in route.insights:
@@ -627,6 +649,11 @@ class UnifiedGraphView(QGraphicsView):
         source = self._node_items.get(edge.source_id)
         target = self._node_items.get(edge.target_id)
         if source is None or target is None:
+            logger.debug(
+                "Edge dropped: source=%s (%s), target=%s (%s) — node missing",
+                edge.source_id, "exists" if edge.source_id in self._node_items else "MISSING",
+                edge.target_id, "exists" if edge.target_id in self._node_items else "MISSING",
+            )
             return
         edge_item = UnifiedEdgeItem(edge, source, target, is_critical=is_crit)
         self._scene.addItem(edge_item)
@@ -645,6 +672,31 @@ class UnifiedGraphView(QGraphicsView):
         self._bubble_items[bubble_id] = bubble
 
     # ---- Incremental addition (for streaming) ----
+    def _fuzzy_match_step_id(self, ref_id: str) -> Optional[str]:
+        """Try to find a step ID on the canvas that matches *ref_id* even if
+        the exact string differs.  Handles cases like the AI using 'step_1'
+        in the edges array but '1' in the steps array (or vice versa).
+        Returns the matched step_id or None.
+        """
+        if ref_id in self._node_items:
+            return ref_id
+        # Try common prefixes/suffixes
+        for candidate in (f"step_{ref_id}", ref_id.replace("step_", ""),
+                          ref_id.replace("step-", ""), f"step-{ref_id}",
+                          ref_id.lstrip("0"), f"0{ref_id}"):
+            if candidate in self._node_items:
+                return candidate
+        # Try numeric match — extract the trailing number
+        import re as _re
+        m = _re.search(r'(\d+)', ref_id)
+        if m:
+            num = m.group(1)
+            for nid in self._node_items:
+                m2 = _re.search(r'(\d+)', nid)
+                if m2 and m2.group(1) == num:
+                    return nid
+        return None
+
     def add_step(self, step: RouteStep) -> None:
         """Add a single step to the canvas (for TRUE streaming — one at a time)."""
         if step.id in self._node_items:
@@ -665,7 +717,21 @@ class UnifiedGraphView(QGraphicsView):
 
         If both nodes don't exist yet, queues the edge in _pending_edges.
         It will be retried in finalize_route() or when the missing node arrives.
+        Uses fuzzy ID matching to handle AI ID format inconsistencies.
         """
+        # Try fuzzy matching for source/target IDs
+        resolved_src = self._fuzzy_match_step_id(edge.source_id)
+        resolved_tgt = self._fuzzy_match_step_id(edge.target_id)
+
+        if resolved_src and resolved_src != edge.source_id:
+            logger.debug("Fuzzy matched edge source: %s -> %s", edge.source_id, resolved_src)
+            edge = RouteEdge(source_id=resolved_src, target_id=edge.target_id,
+                             kind=edge.kind, label=edge.label)
+        if resolved_tgt and resolved_tgt != edge.target_id:
+            logger.debug("Fuzzy matched edge target: %s -> %s", edge.target_id, resolved_tgt)
+            edge = RouteEdge(source_id=edge.source_id, target_id=resolved_tgt,
+                             kind=edge.kind, label=edge.label)
+
         if edge.source_id not in self._node_items or edge.target_id not in self._node_items:
             # Queue for later — don't lose it
             self._pending_edges.append(edge)
@@ -684,6 +750,16 @@ class UnifiedGraphView(QGraphicsView):
         """Try to add all pending edges whose nodes now exist."""
         still_pending: list[RouteEdge] = []
         for edge in self._pending_edges:
+            # Try fuzzy matching again
+            resolved_src = self._fuzzy_match_step_id(edge.source_id)
+            resolved_tgt = self._fuzzy_match_step_id(edge.target_id)
+            if resolved_src and resolved_src != edge.source_id:
+                edge = RouteEdge(source_id=resolved_src, target_id=edge.target_id,
+                                 kind=edge.kind, label=edge.label)
+            if resolved_tgt and resolved_tgt != edge.target_id:
+                edge = RouteEdge(source_id=edge.source_id, target_id=resolved_tgt,
+                                 kind=edge.kind, label=edge.label)
+
             if edge.source_id in self._node_items and edge.target_id in self._node_items:
                 # Check duplicate
                 exists = any(
@@ -711,6 +787,8 @@ class UnifiedGraphView(QGraphicsView):
         similar to set_route() but without removing/re-adding existing nodes.
         Also processes any pending edges that were queued during streaming.
         Also recomputes the critical path and updates edge critical styling.
+        Uses fuzzy ID matching for robustness against AI ID format inconsistencies.
+        Adds fallback sequential edges when no explicit edges exist.
         """
         # Replace the partial route with the complete one
         self._route = route
@@ -729,8 +807,15 @@ class UnifiedGraphView(QGraphicsView):
             key = (existing.edge.source_id, existing.edge.target_id, existing.edge.kind)
             seen_edges.add(key)
 
-        # Add edges from route.edges (explicit edges)
+        # Add edges from route.edges (explicit edges) — with fuzzy ID matching
         for edge in route.edges:
+            src = self._fuzzy_match_step_id(edge.source_id) or edge.source_id
+            tgt = self._fuzzy_match_step_id(edge.target_id) or edge.target_id
+            if src != edge.source_id or tgt != edge.target_id:
+                logger.debug("finalize_route fuzzy: %s->%s, %s->%s",
+                             edge.source_id, src, edge.target_id, tgt)
+                edge = RouteEdge(source_id=src, target_id=tgt,
+                                 kind=edge.kind, label=edge.label)
             key = (edge.source_id, edge.target_id, edge.kind)
             if key in seen_edges:
                 continue
@@ -738,31 +823,50 @@ class UnifiedGraphView(QGraphicsView):
             is_crit = edge.source_id in critical_set and edge.target_id in critical_set
             self._add_edge(edge, is_crit=is_crit)
 
-        # Add implicit edges from step.depends_on
+        # Add implicit edges from step.depends_on — with fuzzy matching
         for step in route.steps:
             for dep_id in step.depends_on:
-                key = (dep_id, step.id, "primary")
+                resolved_dep = self._fuzzy_match_step_id(dep_id) or dep_id
+                key = (resolved_dep, step.id, "primary")
                 if key in seen_edges:
                     continue
                 seen_edges.add(key)
                 # Only add if both nodes exist
-                if dep_id in self._node_items and step.id in self._node_items:
-                    edge = RouteEdge(source_id=dep_id, target_id=step.id, kind="primary")
-                    is_crit = dep_id in critical_set and step.id in critical_set
+                if resolved_dep in self._node_items and step.id in self._node_items:
+                    edge = RouteEdge(source_id=resolved_dep, target_id=step.id, kind="primary")
+                    is_crit = resolved_dep in critical_set and step.id in critical_set
                     self._add_edge(edge, is_crit=is_crit)
 
+        # FALLBACK: If no edges were created at all, connect steps sequentially
+        # This handles the case where the AI generates no edges and no depends_on
+        if not self._edge_items and len(route.steps) > 1:
+            logger.warning("No edges found — creating sequential fallback edges")
+            for i in range(len(route.steps) - 1):
+                src = route.steps[i]
+                tgt = route.steps[i + 1]
+                if src.id in self._node_items and tgt.id in self._node_items:
+                    key = (src.id, tgt.id, "primary")
+                    if key not in seen_edges:
+                        seen_edges.add(key)
+                        edge = RouteEdge(source_id=src.id, target_id=tgt.id, kind="primary")
+                        is_crit = src.id in critical_set and tgt.id in critical_set
+                        self._add_edge(edge, is_crit=is_crit)
+
         # Update existing edges' critical path styling
-        for edge_item in self._edge_items:
-            src_id = edge_item.edge.source_id
-            tgt_id = edge_item.edge.target_id
-            is_crit = src_id in critical_set and tgt_id in critical_set
-            style = EDGE_STYLES.get(edge_item.edge.kind, EDGE_STYLES["primary"])
-            color = QColor("#F5C842") if is_crit else QColor(style["color"])
-            pen = QPen(color, style["width"] + (0.5 if is_crit else 0), style["style"])
-            pen.setCapStyle(Qt.RoundCap)
-            edge_item.setPen(pen)
-            edge_item._arrow_color = color
-            edge_item._is_critical = is_crit
+        for edge_item in list(self._edge_items):
+            try:
+                src_id = edge_item.edge.source_id
+                tgt_id = edge_item.edge.target_id
+                is_crit = src_id in critical_set and tgt_id in critical_set
+                style = EDGE_STYLES.get(edge_item.edge.kind, EDGE_STYLES["primary"])
+                color = QColor("#F5C842") if is_crit else QColor(style["color"])
+                pen = QPen(color, style["width"] + (0.5 if is_crit else 0), style["style"])
+                pen.setCapStyle(Qt.RoundCap)
+                edge_item.setPen(pen)
+                edge_item._arrow_color = color
+                edge_item._is_critical = is_crit
+            except RuntimeError:
+                pass  # edge item already deleted
 
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
@@ -1827,7 +1931,12 @@ class UnifiedGraphView(QGraphicsView):
         menu.exec(event.globalPos())
 
     def _remove_step(self, step_id: str) -> None:
-        """Remove a step from the route and the canvas, cleaning up all references."""
+        """Remove a step from the route and the canvas, cleaning up ALL references.
+
+        This is a thorough cleanup that stops animations, disconnects signals,
+        removes edges, and ensures no ghost items remain.
+        """
+        # 1. Remove from route data model
         if self._route is not None:
             self._route.steps = [s for s in self._route.steps if s.id != step_id]
             self._route.edges = [e for e in self._route.edges
@@ -1836,29 +1945,86 @@ class UnifiedGraphView(QGraphicsView):
             for s in self._route.steps:
                 if step_id in s.depends_on:
                     s.depends_on = [d for d in s.depends_on if d != step_id]
-        # Remove from canvas
-        item = self._node_items.pop(step_id, None)
-        if item is not None:
-            # Stop any running animations/timers to prevent callbacks on dead item
-            if hasattr(item, '_pulse_timer') and item._pulse_timer.isActive():
-                item._pulse_timer.stop()
-            self._scene.removeItem(item)
-        # Remove connected edges and clean up edge index
+
+        # 2. Cancel any running layout animations targeting this node
+        for anim in list(self._layout_anims):
+            if anim.state() == QPropertyAnimation.Running:
+                try:
+                    target = anim.targetObject()
+                    if target is not None and (
+                        (isinstance(target, RouteNodeItem) and target.step.id == step_id) or
+                        target is self._node_items.get(step_id)
+                    ):
+                        anim.stop()
+                except RuntimeError:
+                    pass  # target already deleted
+
+        # 3. Remove connected edges FIRST (before removing node, so edge _update_path won't crash)
         to_remove = [e for e in self._edge_items
                      if e.edge.source_id == step_id or e.edge.target_id == step_id]
         for edge in to_remove:
             self._scene.removeItem(edge)
-            self._edge_items.remove(edge)
+            if edge in self._edge_items:
+                self._edge_items.remove(edge)
             # Clean up edge index
             src = edge.edge.source_id
             tgt = edge.edge.target_id
             if src in self._edges_by_node:
                 self._edges_by_node[src] = [e for e in self._edges_by_node[src] if e is not edge]
+                if not self._edges_by_node[src]:
+                    del self._edges_by_node[src]
             if tgt in self._edges_by_node:
                 self._edges_by_node[tgt] = [e for e in self._edges_by_node[tgt] if e is not edge]
-        # Clean up pending edges for this node
+                if not self._edges_by_node[tgt]:
+                    del self._edges_by_node[tgt]
+
+        # 4. Remove the node item with full cleanup
+        item = self._node_items.pop(step_id, None)
+        if item is not None:
+            # Stop pulse timer
+            if hasattr(item, '_pulse_timer') and item._pulse_timer.isActive():
+                item._pulse_timer.stop()
+            # Stop all property animations on the item
+            for attr_name in ('_opacity_anim', '_scale_anim', '_pos_anim'):
+                anim = getattr(item, attr_name, None)
+                if anim is not None and hasattr(anim, 'state'):
+                    try:
+                        if anim.state() == QPropertyAnimation.Running:
+                            anim.stop()
+                    except RuntimeError:
+                        pass
+            # Disconnect all signals to prevent callbacks on dead item
+            try:
+                item.nodeClicked.disconnect()
+                item.nodeDoubleClicked.disconnect()
+                item.nodeMoved.disconnect()
+                item.nodeEdited.disconnect()
+                item.nodeEditRequested.disconnect()
+                item.nodePositionChanged.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            # Deselect
+            item.setSelected(False)
+            # Remove from scene
+            self._scene.removeItem(item)
+            # Schedule deletion to free memory
+            item.deleteLater()
+
+        # 5. Clean up pending edges for this node
         self._pending_edges = [e for e in self._pending_edges
                                if e.source_id != step_id and e.target_id != step_id]
+
+        # 6. Close details popup if it references this step
+        if self._details_popup is not None:
+            try:
+                if hasattr(self._details_popup, '_step') and self._details_popup._step.id == step_id:
+                    self._details_popup.close()
+                    self._details_popup = None
+            except RuntimeError:
+                self._details_popup = None
+
+        # 7. Force scene update to clear any ghost rendering
+        self._scene.update()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
@@ -1920,14 +2086,63 @@ class UnifiedGraphView(QGraphicsView):
             items_rect = QRectF(-400, -300, 800, 600)
         self.fitInView(items_rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
+    def _build_canvas_route(self) -> Route:
+        """Build a synthetic Route that includes ALL nodes currently on the canvas.
+
+        This ensures the layout algorithms work on every visible node, not just
+        the ones in self._route.steps.  Orphan nodes (e.g. tasks not in the
+        route, or nodes whose steps were removed) are included with stub edges
+        inferred from their depends_on fields.
+        """
+        # Start from the real route if we have one
+        if self._route is not None:
+            steps = list(self._route.steps)
+            edges = list(self._route.edges)
+            step_ids_in_route = {s.id for s in steps}
+        else:
+            steps = []
+            edges = []
+            step_ids_in_route = set()
+
+        # Add any canvas nodes that are NOT in the route yet
+        for nid, item in self._node_items.items():
+            if nid not in step_ids_in_route:
+                steps.append(item.step)
+                step_ids_in_route.add(nid)
+                # Create implicit edges from the step's depends_on
+                for dep_id in item.step.depends_on:
+                    if dep_id in step_ids_in_route:
+                        edges.append(RouteEdge(source_id=dep_id, target_id=nid, kind="primary"))
+
+        return Route(
+            goal=self._route.goal if self._route else "",
+            steps=steps,
+            edges=edges,
+        )
+
     def auto_layout(self) -> None:
-        """Auto-layout all nodes with generous spacing and smooth animation."""
-        if self._route is None or not self._route.steps:
-            # Even if no route, layout any task nodes
-            if self._node_items:
-                self._auto_layout_all_nodes()
+        """Auto-layout ALL nodes on the canvas with generous spacing and smooth animation.
+
+        Uses the selected layout style.  Works even when nodes have been deleted
+        or when task-only nodes exist without a full route.
+        """
+        if not self._node_items:
             return
-        layout = self._compute_layout(self._route)
+
+        # Build a comprehensive route that includes ALL canvas nodes
+        canvas_route = self._build_canvas_route()
+
+        if not canvas_route.steps:
+            return
+
+        # Sync the route reference so _compute_layout can access it
+        old_route = self._route
+        self._route = canvas_route
+
+        layout = self._compute_layout(canvas_route)
+
+        # Restore the real route
+        self._route = old_route
 
         # Animate nodes to new positions
         for step_id, (x, y) in layout.items():
@@ -1945,24 +2160,17 @@ class UnifiedGraphView(QGraphicsView):
 
     def _post_layout_update(self) -> None:
         """Called after layout animation finishes — update edges and fit view."""
-        for edge_item in self._edge_items:
-            edge_item._update_path()
+        for edge_item in list(self._edge_items):
+            try:
+                edge_item._update_path()
+            except RuntimeError:
+                pass  # edge already deleted
         self.fit_all()
 
     def _auto_layout_all_nodes(self) -> None:
-        """Layout all nodes on the canvas, even without a route."""
-        if not self._node_items:
-            return
-        # Simple grid layout
-        items = list(self._node_items.values())
-        cols = max(1, int(math.ceil(math.sqrt(len(items)))))
-        for i, item in enumerate(items):
-            col = i % cols
-            row = i // cols
-            x = col * X_SPACING - (cols * X_SPACING) / 2
-            y = row * Y_SPACING - ((len(items) // cols) * Y_SPACING) / 2
-            self._animate_node_to(item, x, y)
-        QTimer.singleShot(600, self._post_layout_update)
+        """Layout all nodes on the canvas using the selected layout style."""
+        # Delegate to auto_layout which now handles all nodes
+        self.auto_layout()
 
     def _animate_node_to(self, item, x: float, y: float) -> None:
         """Smoothly animate a QGraphicsItem to a new position."""
