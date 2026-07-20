@@ -45,16 +45,21 @@ from ..widgets.route_node_item import RouteNodeItem
 from ..widgets.insight_bubble import InsightBubble
 from ..widgets.route_annotation import BreakthroughFlash, SkipWhirl, LoopCurl
 from ..widgets.step_details_popup import StepDetailsPopup
+from ..widgets.special_edge_item import BreakthroughEdge, SkipEdge, LoopEdge
+from ..dialogs.new_node_dialog import NewNodeDialog
 
 logger = logging.getLogger(__name__)
 
 
 # Edge style by kind
 EDGE_STYLES = {
-    "primary":     {"color": "#D4AF37", "width": 2.2, "style": Qt.SolidLine},
-    "alternative": {"color": "#5A7FA8", "width": 1.8, "style": Qt.DashLine},
-    "fallback":    {"color": "#A85A5A", "width": 1.5, "style": Qt.DotLine},
-    "merge":       {"color": "#F5C842", "width": 2.5, "style": Qt.SolidLine},
+    "primary":       {"color": "#D4AF37", "width": 2.2, "style": Qt.SolidLine},
+    "alternative":   {"color": "#5A7FA8", "width": 1.8, "style": Qt.DashLine},
+    "fallback":      {"color": "#A85A5A", "width": 1.5, "style": Qt.DotLine},
+    "merge":         {"color": "#F5C842", "width": 2.5, "style": Qt.SolidLine},
+    "breakthrough":  {"color": "#3C8CFF", "width": 3.0, "style": Qt.SolidLine},
+    "skip":          {"color": "#FF8C1E", "width": 2.5, "style": Qt.DashLine},
+    "loop":          {"color": "#3CDC78", "width": 2.5, "style": Qt.DashDotLine},
 }
 
 # Generous spacing — large enough so nodes NEVER overlap
@@ -294,6 +299,11 @@ class UnifiedGraphView(QGraphicsView):
         self._pending_edges: list[RouteEdge] = []  # edges waiting for both nodes to exist
         self._deleted_step_ids: set[str] = set()  # steps explicitly deleted by user — never re-add
 
+        # Manual edge drawing state
+        self._edge_drawing_mode: str = ""  # "primary", "alternative", "breakthrough", "skip", "loop"
+        self._edge_source_item: Optional[RouteNodeItem] = None  # source node when drawing edge
+        self._edge_preview: Optional[QGraphicsPathItem] = None  # preview line while drawing edge
+
         self._scene = QGraphicsScene(self)
         self._scene.setSceneRect(-5000, -5000, 10000, 10000)
         self._scene.selectionChanged.connect(self._update_selection_ui)
@@ -458,6 +468,62 @@ class UnifiedGraphView(QGraphicsView):
         zoom_out_btn.clicked.connect(lambda: self.scale(1/1.2, 1/1.2))
         toolbar_layout.addWidget(zoom_out_btn)
 
+        # ---- Add Node button ----
+        add_node_btn = QPushButton("＋ Add Node")
+        add_node_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Palette.GOLD_PRIMARY};
+                color: {Palette.TEXT_ON_GOLD};
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+        add_node_btn.clicked.connect(self._on_add_node_clicked)
+        toolbar_layout.addWidget(add_node_btn)
+
+        # ---- Connect Edge dropdown ----
+        self._connect_combo = QComboBox()
+        self._connect_combo.addItem("🔗 Connect…", "")
+        self._connect_combo.addItem("→  Primary", "primary")
+        self._connect_combo.addItem("⇢  Alternative", "alternative")
+        self._connect_combo.addItem("⚡ Breakthrough", "breakthrough")
+        self._connect_combo.addItem("↻  Skip", "skip")
+        self._connect_combo.addItem("⟳ Loop", "loop")
+        self._connect_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                min-width: 120px;
+            }}
+            QComboBox:hover {{
+                border: 1px solid {Palette.GOLD_PRIMARY};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {Palette.BG_DEEPEST};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                selection-background-color: {Palette.BG_HOVER};
+                selection-color: {Palette.GOLD_BRIGHT};
+                padding: 4px;
+            }}
+        """)
+        self._connect_combo.currentIndexChanged.connect(self._on_connect_mode_changed)
+        toolbar_layout.addWidget(self._connect_combo)
+
         # Separator
         sep = QFrame()
         sep.setFixedWidth(1)
@@ -581,8 +647,20 @@ class UnifiedGraphView(QGraphicsView):
                 item._pulse_timer.stop()
             self._scene.removeItem(item)
             item.deleteLater()
-        # Clear route edges
+        # Clear route edges (stop timers on special edges)
         for edge in list(self._edge_items):
+            if hasattr(edge, '_pulse_timer'):
+                try:
+                    if edge._pulse_timer.isActive():
+                        edge._pulse_timer.stop()
+                except RuntimeError:
+                    pass
+            if hasattr(edge, '_spin_timer'):
+                try:
+                    if edge._spin_timer.isActive():
+                        edge._spin_timer.stop()
+                except RuntimeError:
+                    pass
             self._scene.removeItem(edge)
         self._edge_items.clear()
         self._edges_by_node.clear()
@@ -681,7 +759,15 @@ class UnifiedGraphView(QGraphicsView):
                 edge.target_id, "exists" if edge.target_id in self._node_items else "MISSING",
             )
             return
-        edge_item = UnifiedEdgeItem(edge, source, target, is_critical=is_crit)
+        # Use special edge items for breakthrough/skip/loop
+        if edge.kind == "breakthrough":
+            edge_item = BreakthroughEdge(edge, source, target)
+        elif edge.kind == "skip":
+            edge_item = SkipEdge(edge, source, target)
+        elif edge.kind == "loop":
+            edge_item = LoopEdge(edge, source, target)
+        else:
+            edge_item = UnifiedEdgeItem(edge, source, target, is_critical=is_crit)
         self._scene.addItem(edge_item)
         self._edge_items.append(edge_item)
         # Maintain edge lookup index for O(1) access during drag
@@ -957,6 +1043,9 @@ class UnifiedGraphView(QGraphicsView):
         # Update existing edges' critical path styling
         for edge_item in list(self._edge_items):
             try:
+                # Skip special edge types (Breakthrough/Skip/Loop) — they handle their own styling
+                if isinstance(edge_item, (BreakthroughEdge, SkipEdge, LoopEdge)):
+                    continue
                 src_id = edge_item.edge.source_id
                 tgt_id = edge_item.edge.target_id
                 is_crit = src_id in critical_set and tgt_id in critical_set
@@ -1811,6 +1900,123 @@ class UnifiedGraphView(QGraphicsView):
         return None, False
 
     # ---- Interaction ----
+    # ---- Manual node creation ----
+    def _on_add_node_clicked(self) -> None:
+        """Open the NewNodeDialog and create a manual node on the canvas."""
+        dialog = NewNodeDialog(self)
+        if dialog.exec():
+            step = dialog.get_step()
+            if step is None:
+                return
+            # Position the new node at the center of the current viewport
+            center = self.mapToScene(self.viewport().rect().center())
+            # Add to the route if one exists
+            if self._route is None:
+                self._route = Route(goal="", steps=[], edges=[])
+            self._route.steps.append(step)
+            self._add_node(step, x=center.x(), y=center.y(), animate=True)
+
+    # ---- Manual edge drawing ----
+    def _on_connect_mode_changed(self, index: int) -> None:
+        """User selected an edge type from the Connect dropdown."""
+        mode = self._connect_combo.currentData() or ""
+        if mode:
+            self._edge_drawing_mode = mode
+            self.setCursor(Qt.CrossCursor)
+            # Reset source if changing mode
+            self._edge_source_item = None
+            self._clear_edge_preview()
+            logger.info("Edge drawing mode: %s — click source node then target node", mode)
+        else:
+            self._edge_drawing_mode = ""
+            self._edge_source_item = None
+            self._clear_edge_preview()
+            self.setCursor(Qt.ArrowCursor)
+
+    def _clear_edge_preview(self) -> None:
+        """Remove the preview edge line from the scene."""
+        if self._edge_preview is not None:
+            self._scene.removeItem(self._edge_preview)
+            self._edge_preview = None
+
+    def _handle_edge_drawing_click(self, event: QMouseEvent) -> bool:
+        """Handle a click in edge-drawing mode. Returns True if consumed."""
+        if not self._edge_drawing_mode:
+            return False
+
+        item = self.itemAt(event.position().toPoint())
+        # Find the RouteNodeItem under cursor
+        node_item = None
+        while item is not None:
+            if isinstance(item, RouteNodeItem):
+                node_item = item
+                break
+            item = item.parentItem()
+
+        if node_item is None:
+            # Clicked empty space — cancel edge drawing
+            self._edge_source_item = None
+            self._clear_edge_preview()
+            return True
+
+        if self._edge_source_item is None:
+            # First click — select source node
+            self._edge_source_item = node_item
+            node_item.setSelected(True)
+            logger.info("Edge source: %s — now click target node", node_item.step.id)
+            return True
+        else:
+            # Second click — select target node and create edge
+            source = self._edge_source_item
+            target = node_item
+            if source is target:
+                # Can't connect to self
+                logger.debug("Cannot connect node to itself")
+                self._edge_source_item = None
+                self._clear_edge_preview()
+                return True
+
+            edge_kind = self._edge_drawing_mode
+            edge_label = ""
+            if edge_kind == "breakthrough":
+                edge_label = "Breakthrough"
+            elif edge_kind == "skip":
+                edge_label = "Skip"
+            elif edge_kind == "loop":
+                edge_label = "Loop"
+
+            # Check if edge already exists
+            for existing in self._edge_items:
+                if (existing.edge.source_id == source.step.id and
+                    existing.edge.target_id == target.step.id and
+                    existing.edge.kind == edge_kind):
+                    logger.debug("Edge already exists: %s -> %s (%s)",
+                                 source.step.id, target.step.id, edge_kind)
+                    self._edge_source_item = None
+                    self._clear_edge_preview()
+                    return True
+
+            edge = RouteEdge(
+                source_id=source.step.id,
+                target_id=target.step.id,
+                kind=edge_kind,
+                label=edge_label,
+            )
+            self._add_edge(edge)
+            # Also add to route data model
+            if self._route is not None:
+                self._route.edges.append(edge)
+            # Update depends_on
+            target.step.depends_on.append(source.step.id)
+
+            # Reset drawing state
+            self._edge_source_item = None
+            self._clear_edge_preview()
+            # Reset combo to first item
+            self._connect_combo.setCurrentIndex(0)
+            self.setCursor(Qt.ArrowCursor)
+            return True
+
     def _on_node_clicked(self, step_id: str) -> None:
         # Update selection UI whenever a node is clicked
         self._update_selection_ui()
@@ -2011,6 +2217,12 @@ class UnifiedGraphView(QGraphicsView):
         self.verticalScrollBar().setValue(self.verticalScrollBar().value() + delta.y())
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
+        # Edge drawing mode takes priority
+        if event.button() == Qt.LeftButton and self._edge_drawing_mode:
+            if self._handle_edge_drawing_click(event):
+                event.accept()
+                return
+
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and (event.modifiers() & Qt.KeyboardModifier.ShiftModifier)):
             self._panning = True
@@ -2187,14 +2399,37 @@ class UnifiedGraphView(QGraphicsView):
             }}
         """)
 
-        if step_id and self._route is not None:
-            step = next((s for s in self._route.steps if s.id == step_id), None)
-            if step:
-                breakdown_action = menu.addAction(f"✦ AI Break Down: {step.title}")
-                breakdown_action.triggered.connect(lambda: self.stepBreakdownRequested.emit(step_id))
+        if step_id and route_node_item:
+            step = None
+            if self._route is not None:
+                step = next((s for s in self._route.steps if s.id == step_id), None)
+            # Also check canvas-only nodes (manual nodes)
+            if step is None and step_id in self._node_items:
+                step = self._node_items[step_id].step
 
-                # Add separator
+            if step:
+                # ---- Connect From Here submenu ----
+                connect_menu = menu.addMenu("🔗 Connect From Here")
+                connect_menu.setStyleSheet(menu.styleSheet())
+                for edge_type, edge_label, edge_icon in [
+                    ("primary", "Primary", "→"),
+                    ("alternative", "Alternative", "⇢"),
+                    ("breakthrough", "Breakthrough", "⚡"),
+                    ("skip", "Skip", "↻"),
+                    ("loop", "Loop", "⟳"),
+                ]:
+                    act = connect_menu.addAction(f"{edge_icon} {edge_label}")
+                    act.triggered.connect(
+                        lambda checked, et=edge_type: self._start_connect_from(step_id, et)
+                    )
+
                 menu.addSeparator()
+
+                if self._route is not None:
+                    breakdown_action = menu.addAction(f"✦ AI Break Down: {step.title}")
+                    breakdown_action.triggered.connect(lambda: self.stepBreakdownRequested.emit(step_id))
+
+                    menu.addSeparator()
 
                 # Edit action — opens the modal dialog
                 edit_action = menu.addAction(f"✏️ Edit: {step.title}")
@@ -2212,11 +2447,18 @@ class UnifiedGraphView(QGraphicsView):
             else:
                 menu.addAction("No actions available")
         else:
-            add_task_action = menu.addAction("＋ Add Task Here")
+            # ---- Empty canvas right-click ----
+            add_node_action = menu.addAction("＋ Add Node Here")
             scene_pos = self.mapToScene(event.pos())
+            add_node_action.triggered.connect(
+                lambda: self._add_node_at_position(scene_pos.x(), scene_pos.y())
+            )
+
+            add_task_action = menu.addAction("📋 Add Task Here")
             add_task_action.triggered.connect(
                 lambda: self.taskCreated.emit("New Task", scene_pos.x(), scene_pos.y())
             )
+
             # If nodes are selected, offer bulk delete even on empty canvas
             if selected_count > 0:
                 menu.addSeparator()
@@ -2224,6 +2466,30 @@ class UnifiedGraphView(QGraphicsView):
                 bulk_delete_action.triggered.connect(self._delete_selected_nodes)
 
         menu.exec(event.globalPos())
+
+    def _start_connect_from(self, source_step_id: str, edge_kind: str) -> None:
+        """Start edge drawing mode from a specific node (via context menu)."""
+        self._edge_drawing_mode = edge_kind
+        self._edge_source_item = self._node_items.get(source_step_id)
+        self.setCursor(Qt.CrossCursor)
+        # Update the combo box to match
+        for i in range(self._connect_combo.count()):
+            if self._connect_combo.itemData(i) == edge_kind:
+                self._connect_combo.setCurrentIndex(i)
+                break
+        logger.info("Edge drawing mode: %s from %s — click target node", edge_kind, source_step_id)
+
+    def _add_node_at_position(self, x: float, y: float) -> None:
+        """Open the NewNodeDialog and create a node at the given position."""
+        dialog = NewNodeDialog(self)
+        if dialog.exec():
+            step = dialog.get_step()
+            if step is None:
+                return
+            if self._route is None:
+                self._route = Route(goal="", steps=[], edges=[])
+            self._route.steps.append(step)
+            self._add_node(step, x=x, y=y, animate=True)
 
     def _remove_step(self, step_id: str) -> None:
         """Remove a step from the route and the canvas, cleaning up ALL references.
@@ -2262,6 +2528,19 @@ class UnifiedGraphView(QGraphicsView):
         to_remove = [e for e in self._edge_items
                      if e.edge.source_id == step_id or e.edge.target_id == step_id]
         for edge in to_remove:
+            # Stop any running timers on special edge items (Breakthrough/Skip/Loop)
+            if hasattr(edge, '_pulse_timer'):
+                try:
+                    if edge._pulse_timer.isActive():
+                        edge._pulse_timer.stop()
+                except RuntimeError:
+                    pass
+            if hasattr(edge, '_spin_timer'):
+                try:
+                    if edge._spin_timer.isActive():
+                        edge._spin_timer.stop()
+                except RuntimeError:
+                    pass
             self._scene.removeItem(edge)
             if edge in self._edge_items:
                 self._edge_items.remove(edge)

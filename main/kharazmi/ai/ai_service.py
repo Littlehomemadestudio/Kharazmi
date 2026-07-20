@@ -522,11 +522,11 @@ class AIService:
             "Rules:\n"
             "- If the goal is clear (specific time, location, constraint), set "
             "is_clear=true and leave questions empty.\n"
-            "- Otherwise, generate 2-8 multiple-choice questions.\n"
+            "- Otherwise, generate 2-12 multiple-choice questions.\n"
             "- Each question MUST have EXACTLY 4 options.\n"
             "- Options should cover the most common cases.\n"
             "- The user will be able to type a custom answer if none of the 4 fit.\n"
-            "- Maximum 8 questions. Ask as many as needed to fully understand the goal.\n"
+            "- Maximum 12 questions. Ask as many as needed to fully understand the goal.\n"
         )
         messages = [
             {"role": "system", "content": system_prompt},
