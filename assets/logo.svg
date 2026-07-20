@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Gradient for gold elements -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5D76E"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#B8960C"/>
+    </linearGradient>
+    <linearGradient id="goldRadial" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F5D76E"/>
+      <stop offset="100%" stop-color="#B8960C"/>
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="512" height="512" fill="#0A0A0B" rx="64"/>
+
+  <!-- Subtle background pattern - concentric octagons -->
+  <g opacity="0.08" stroke="#D4AF37" fill="none" stroke-width="0.5">
+    <polygon points="256,60 390,120 450,256 390,390 256,450 120,390 60,256 120,120" />
+    <polygon points="256,80 375,135 430,256 375,375 256,430 135,375 80,256 135,135" />
+    <polygon points="256,100 360,150 410,256 360,360 256,410 150,360 100,256 150,150" />
+  </g>
+
+  <!-- Main geometric star pattern - 8-pointed star -->
+  <g transform="translate(256,256)" filter="url(#softGlow)">
+    <!-- Outer star -->
+    <polygon points="0,-180 45,-75 155,-65 70,10 90,120 0,65 -90,120 -70,10 -155,-65 -45,-75"
+             fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.4"/>
+    <!-- Inner rotated star -->
+    <polygon points="0,-180 45,-75 155,-65 70,10 90,120 0,65 -90,120 -70,10 -155,-65 -45,-75"
+             fill="none" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.3"
+             transform="rotate(22.5)"/>
+    <!-- Inner star -->
+    <polygon points="0,-120 30,-50 105,-43 47,7 60,80 0,43 -60,80 -47,7 -105,-43 -30,-50"
+             fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.5"/>
+    <!-- Smaller star -->
+    <polygon points="0,-80 20,-33 70,-29 31,5 40,53 0,29 -40,53 -31,5 -70,-29 -20,-33"
+             fill="none" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.35"
+             transform="rotate(22.5)"/>
+  </g>
+
+  <!-- Decorative corner arcs -->
+  <g stroke="#D4AF37" fill="none" stroke-width="1" opacity="0.15">
+    <!-- Top-left -->
+    <path d="M 60,60 Q 60,100 100,100"/>
+    <path d="M 50,50 Q 50,110 110,110"/>
+    <!-- Top-right -->
+    <path d="M 452,60 Q 452,100 412,100"/>
+    <path d="M 462,50 Q 462,110 402,110"/>
+    <!-- Bottom-left -->
+    <path d="M 60,452 Q 60,412 100,412"/>
+    <path d="M 50,462 Q 50,402 110,402"/>
+    <!-- Bottom-right -->
+    <path d="M 452,452 Q 452,412 412,412"/>
+    <path d="M 462,462 Q 462,402 402,402"/>
+  </g>
+
+  <!-- Circular frame -->
+  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.5"/>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#D4AF37" stroke-width="0.5" opacity="0.25"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#D4AF37" stroke-width="0.5" opacity="0.25"/>
+
+  <!-- Small decorative dots on circle -->
+  <g fill="#D4AF37" opacity="0.5">
+    <circle cx="256" cy="61" r="3"/>
+    <circle cx="256" cy="451" r="3"/>
+    <circle cx="61" cy="256" r="3"/>
+    <circle cx="451" cy="256" r="3"/>
+    <circle cx="118" cy="118" r="2.5"/>
+    <circle cx="394" cy="118" r="2.5"/>
+    <circle cx="118" cy="394" r="2.5"/>
+    <circle cx="394" cy="394" r="2.5"/>
+  </g>
+
+  <!-- Central stylized خ (Khe) letter -->
+  <g transform="translate(256,240)" filter="url(#glow)">
+    <!-- Main body of خ -->
+    <path d="M -50,40 L -50,-50 Q -50,-70 -30,-70 L 30,-70 Q 50,-70 50,-50 L 50,10 Q 50,25 38,30 L 20,38
+             M -50,40 L -10,40 Q 0,40 0,50 L 0,70 Q 0,85 -15,90 L -35,98
+             M 50,10 L 65,25 Q 80,40 65,55 L 45,70"
+          fill="none" stroke="url(#goldGrad)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Decorative dot above خ -->
+    <circle cx="30" cy="-85" r="7" fill="url(#goldGrad)"/>
+  </g>
+
+  <!-- Bottom text: خوارزمی -->
+  <text x="256" y="380" text-anchor="middle" font-family="Arial, sans-serif" font-size="42"
+        fill="url(#goldGrad)" font-weight="bold" filter="url(#glow)" direction="rtl" xml:lang="fa">
+    خوارزمی
+  </text>
+
+  <!-- Subtle tagline -->
+  <text x="256" y="415" text-anchor="middle" font-family="Arial, sans-serif" font-size="13"
+        fill="#D4AF37" opacity="0.5" letter-spacing="4">
+    PLANNER · CALENDAR · AI
+  </text>
+
+  <!-- Border frame -->
+  <rect x="8" y="8" width="496" height="496" rx="58" fill="none" stroke="#D4AF37" stroke-width="0.5" opacity="0.15"/>
+</svg>

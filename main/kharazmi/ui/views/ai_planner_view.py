@@ -37,8 +37,8 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QFont, QColor, QGraphicsOpacityEffect
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
@@ -62,6 +62,8 @@ from ..views.unified_graph_view import UnifiedGraphView
 from ..widgets.ai_chat_panel import AIChatPanel
 from ..widgets.multiple_choice_question import MultipleChoiceQuestionWidget
 from ..widgets.route_health_dashboard import RouteHealthDashboard
+from ..widgets.credits_panel import CreditsPanel
+from ..widgets.feedback_dialog import FeedbackDialog
 
 
 class AIPlannerView(QWidget):
@@ -245,9 +247,14 @@ class AIPlannerView(QWidget):
         self._health_dashboard.replanRequested.connect(self._on_replan_clicked)
 
         # Tab widget
-        right_tabs = QTabWidget()
-        right_tabs.setTabPosition(QTabWidget.TabPosition.North)
-        right_tabs.setStyleSheet(f"""
+        self._right_tabs = QTabWidget()
+        self._right_tabs.setTabPosition(QTabWidget.TabPosition.North)
+        # Opacity effect for tab-switch animation
+        self._tab_opacity = QGraphicsOpacityEffect(self._right_tabs)
+        self._tab_opacity.setOpacity(1.0)
+        self._right_tabs.setGraphicsEffect(self._tab_opacity)
+        self._right_tabs.currentChanged.connect(self._on_tab_changed)
+        self._right_tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: none;
                 background-color: {Palette.BG_PRIMARY};
@@ -272,11 +279,11 @@ class AIPlannerView(QWidget):
                 color: {Palette.GOLD_PRIMARY};
             }}
         """)
-        right_tabs.addTab(self.chat_panel, "Chat")
-        right_tabs.addTab(self._health_dashboard, "Health")
-        right_tabs.setMinimumWidth(280)
+        self._right_tabs.addTab(self.chat_panel, "Chat")
+        self._right_tabs.addTab(self._health_dashboard, "Health")
+        self._right_tabs.setMinimumWidth(280)
 
-        splitter.addWidget(right_tabs)
+        splitter.addWidget(self._right_tabs)
 
         splitter.setStretchFactor(0, 7)
         splitter.setStretchFactor(1, 3)
@@ -328,6 +335,33 @@ class AIPlannerView(QWidget):
             f"font-family: 'JetBrains Mono', monospace; padding-left: 12px;"
         )
         header_row.addWidget(self._stat_status)
+
+        # Feedback button
+        self._feedback_btn = QPushButton("💡 Feedback")
+        self._feedback_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {Palette.TEXT_TERTIARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 3px;
+                padding: 2px 10px;
+                font-size: 10px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                color: {Palette.GOLD_BRIGHT};
+                border: 1px solid {Palette.BORDER_GOLD};
+                background-color: {Palette.BG_TERTIARY};
+            }}
+        """)
+        self._feedback_btn.setFixedHeight(22)
+        self._feedback_btn.clicked.connect(self._on_feedback_clicked)
+        header_row.addWidget(self._feedback_btn)
+
+        # Credits panel
+        self._credits_panel = CreditsPanel()
+        header_row.addWidget(self._credits_panel)
+
         layout.addLayout(header_row)
 
         row = QHBoxLayout()
@@ -382,6 +416,23 @@ class AIPlannerView(QWidget):
             f"font-family: 'JetBrains Mono', monospace; padding-left: 12px;"
         )
 
+    # ---- Tab switch animation ----
+    def _on_tab_changed(self, index: int) -> None:
+        """Fade animation when switching between Chat and Health tabs."""
+        anim = QPropertyAnimation(self._tab_opacity, b"opacity")
+        anim.setDuration(200)
+        anim.setStartValue(0.15)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.start(self)
+        # Keep a reference so it doesn't get GC'd mid-animation
+        self._tab_anim = anim
+
+    # ---- Feedback button ----
+    def _on_feedback_clicked(self) -> None:
+        dlg = FeedbackDialog(self)
+        dlg.exec()
+
     def _build_existing_context(self) -> str:
         """Build a context string describing the user's existing Tasks."""
         if self.project is None:
@@ -424,6 +475,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"clar-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.generate_clarifying_questions_streaming(
             goal,
             on_status=lambda s: self._statusUpdate.emit(s),
@@ -506,6 +558,7 @@ class AIPlannerView(QWidget):
 
         # TRUE STREAMING: pass on_step, on_edge, on_insight callbacks
         # so nodes appear one-by-one as the AI generates them
+        self._credits_panel.increment()
         self.ai.generate_route_streaming(
             self._pending_goal, self._clarifying_qa,
             on_status=lambda s: self._statusUpdate.emit(s),
@@ -607,6 +660,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"cont-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.continue_working_streaming(
             self._current_route,
             on_status=lambda s: self._statusUpdate.emit(s),
@@ -684,6 +738,7 @@ class AIPlannerView(QWidget):
         self.chat_panel.set_request_id(self._current_request_id)
         self._set_status("⏳ AI is responding…")
 
+        self._credits_panel.increment()
         self.ai.chat_streaming(
             messages,
             on_status=lambda chunk: self._chatChunk.emit(chunk),
@@ -723,6 +778,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"sched-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.schedule_in_calendar_streaming(
             self._current_route,
             now.isoformat(),
@@ -957,6 +1013,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"opt-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.optimize_route_streaming(
             self._current_route,
             on_status=lambda s: self._statusUpdate.emit(s),
@@ -1012,6 +1069,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"risk-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.analyze_risks_streaming(
             self._current_route,
             on_status=lambda s: self._statusUpdate.emit(s),
@@ -1065,6 +1123,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"replan-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        self._credits_panel.increment()
         self.ai.smart_replan_streaming(
             self._current_route, "", change_desc.strip(),
             on_status=lambda s: self._statusUpdate.emit(s),

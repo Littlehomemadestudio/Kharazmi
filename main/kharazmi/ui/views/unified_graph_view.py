@@ -350,6 +350,7 @@ class UnifiedGraphView(QGraphicsView):
         toolbar_layout.addWidget(layout_label)
 
         self._layout_combo = QComboBox()
+        self._layout_combo.addItem("🤖 AI Creative", "ai_creative")
         self._layout_combo.addItem("🌊 Organic Flow", "organic")
         self._layout_combo.addItem("🌀 Radial Burst", "radial")
         self._layout_combo.addItem("🔀 Mind Map", "mindmap")
@@ -906,9 +907,17 @@ class UnifiedGraphView(QGraphicsView):
         return "organic"
 
     def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
-        """Dispatch to the selected layout algorithm."""
+        """Dispatch to the selected layout algorithm.
+        
+        If 'ai_creative' is selected, checks if the route has AI-provided
+        x_hint/y_hint positions. If most steps have non-zero hints, uses
+        them directly via _layout_ai_creative(). Otherwise falls back to
+        the organic layout.
+        """
         style = self._get_layout_style()
-        if style == "radial":
+        if style == "ai_creative":
+            return self._layout_ai_creative(route)
+        elif style == "radial":
             return self._layout_radial(route)
         elif style == "mindmap":
             return self._layout_mindmap(route)
@@ -919,7 +928,74 @@ class UnifiedGraphView(QGraphicsView):
         else:
             return self._layout_organic(route)
 
-    # ---- Shared helpers for layouts ----
+    # ---- 0. AI Creative (uses AI-provided x_hint / y_hint) ----
+    def _layout_ai_creative(self, route: Route) -> dict[str, tuple[float, float]]:
+        """Use AI-provided x_hint/y_hint positions directly, with collision resolution.
+        
+        If most steps have non-zero x_hint/y_hint values, those are used as-is
+        and then run through _eliminate_overlaps() to ensure no collisions.
+        If insufficient AI positions are available, falls back to organic layout.
+        """
+        if not route.steps:
+            return {}
+
+        # Count how many steps have meaningful (non-zero) AI position hints
+        steps_with_hints = sum(
+            1 for s in route.steps
+            if abs(s.x_hint) > 1.0 or abs(s.y_hint) > 1.0
+        )
+        threshold = max(1, len(route.steps) // 2)  # at least half the steps need hints
+
+        if steps_with_hints < threshold:
+            logger.info(
+                "AI Creative: only %d/%d steps have position hints — falling back to organic",
+                steps_with_hints, len(route.steps),
+            )
+            return self._layout_organic(route)
+
+        logger.info(
+            "AI Creative: using AI-provided positions for %d/%d steps (layout_style=%s)",
+            steps_with_hints, len(route.steps), route.layout_style,
+        )
+
+        # Use AI positions directly
+        positions: dict[str, tuple[float, float]] = {}
+        node_sizes: dict[str, tuple[float, float]] = {}
+        for step in route.steps:
+            positions[step.id] = (step.x_hint, step.y_hint)
+            item = self._node_items.get(step.id)
+            if item is not None:
+                node_sizes[step.id] = (item._width, item._height)
+            else:
+                node_sizes[step.id] = (280, 160)
+
+        # Run overlap elimination with collision resolution
+        positions = self._eliminate_overlaps(positions, node_sizes)
+
+        # Pull connected nodes slightly closer for visual cohesion
+        edge_pairs: set[tuple[str, str]] = set()
+        for s in route.steps:
+            for dep_id in s.depends_on:
+                edge_pairs.add((dep_id, s.id))
+        for e in route.edges:
+            edge_pairs.add((e.source_id, e.target_id))
+
+        for _ in range(3):
+            for src, tgt in edge_pairs:
+                if src in positions and tgt in positions:
+                    sx, sy = positions[src]
+                    tx, ty = positions[tgt]
+                    nudge_x = (sx - tx) * 0.05
+                    nudge_y = (sy - ty) * 0.05
+                    positions[tgt] = (positions[tgt][0] + nudge_x,
+                                      positions[tgt][1] + nudge_y)
+
+        # Final overlap elimination pass
+        positions = self._eliminate_overlaps(positions, node_sizes)
+
+        return positions
+
+
     def _build_topology(self, route: Route):
         """Build topological data structures shared by all layouts.
         Returns (steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes).

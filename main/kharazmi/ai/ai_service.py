@@ -82,6 +82,10 @@ class RouteStep:
     branch: str = "main"
     # Step kind: "action" | "decision" | "milestone" | "wait" | "checkpoint"
     kind: str = "action"
+    # AI-suggested x position for creative layout
+    x_hint: float = 0.0
+    # AI-suggested y position for creative layout
+    y_hint: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -93,24 +97,32 @@ class RouteStep:
             "sub_goals": list(self.sub_goals),
             "cost_estimate": self.cost_estimate, "risk_level": self.risk_level,
             "branch": self.branch, "kind": self.kind,
+            "x_hint": self.x_hint, "y_hint": self.y_hint,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "RouteStep":
+        # Strip stray RTL/LTR control characters but preserve Persian text
+        import re as _re
+        _ctrl_pat = _re.compile(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069]')
+        def _clean(val: str) -> str:
+            return _ctrl_pat.sub('', val)
         return cls(
-            id=str(data.get("id", "")),
-            title=str(data.get("title", "Untitled step")),
+            id=_clean(str(data.get("id", ""))),
+            title=_clean(str(data.get("title", "Untitled step"))),
             duration_minutes=int(data.get("duration_minutes", 0)),
             success_probability=float(data.get("success_probability", 0.5)),
-            location=str(data.get("location", "")),
-            description=str(data.get("description", "")),
-            fallback=str(data.get("fallback", "")),
-            depends_on=[str(x) for x in data.get("depends_on", [])],
-            sub_goals=[str(x) for x in data.get("sub_goals", [])],
-            cost_estimate=str(data.get("cost_estimate", "")),
-            risk_level=str(data.get("risk_level", "low")),
-            branch=str(data.get("branch", "main")),
-            kind=str(data.get("kind", "action")),
+            location=_clean(str(data.get("location", ""))),
+            description=_clean(str(data.get("description", ""))),
+            fallback=_clean(str(data.get("fallback", ""))),
+            depends_on=[_clean(str(x)) for x in data.get("depends_on", [])],
+            sub_goals=[_clean(str(x)) for x in data.get("sub_goals", [])],
+            cost_estimate=_clean(str(data.get("cost_estimate", ""))),
+            risk_level=_clean(str(data.get("risk_level", "low"))),
+            branch=_clean(str(data.get("branch", "main"))),
+            kind=_clean(str(data.get("kind", "action"))),
+            x_hint=float(data.get("x_hint", data.get("x", 0.0))),
+            y_hint=float(data.get("y_hint", data.get("y", 0.0))),
         )
 
 
@@ -215,6 +227,8 @@ class Route:
     clarifying_questions: list[str] = field(default_factory=list)
     raw_response: str = ""
     insights: list[Insight] = field(default_factory=list)
+    # AI-chosen creative layout style: "organic", "spiral", "tree", "constellation", etc.
+    layout_style: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -229,6 +243,7 @@ class Route:
             "clarifying_questions": list(self.clarifying_questions),
             "raw_response": self.raw_response,
             "insights": [i.to_dict() for i in self.insights],
+            "layout_style": self.layout_style,
         }
 
     @classmethod
@@ -245,6 +260,7 @@ class Route:
             clarifying_questions=[str(x) for x in data.get("clarifying_questions", [])],
             raw_response=str(data.get("raw_response", "")),
             insights=[Insight.from_dict(i) for i in data.get("insights", [])],
+            layout_style=str(data.get("layout_style", "")),
         )
 
 
@@ -557,6 +573,13 @@ class AIService:
             "You are Rask, an AI route-planning assistant. Given the user's "
             "goal and the answers to clarifying questions, you must produce "
             "a COMPLEX, INTERCONNECTED route graph — NOT a straight line.\n\n"
+            "PERSIAN / FARSI LANGUAGE RULES:\n"
+            "If the user's goal is in Persian (Farsi), respond ENTIRELY in Persian. "
+            "All titles, descriptions, labels, and insights should be in Persian. "
+            "Use Persian digits (۰-۹) in text where appropriate. "
+            "Persian text in 'title' and 'description' fields should be naturally "
+            "flowing — written as a native Persian speaker would express it, "
+            "NOT translated word-by-word from English.\n\n"
             "The route MUST have:\n"
             "  - At least 2 branches (places where the path splits into parallel options)\n"
             "  - At least one 'alternative' edge (a different way to achieve a sub-goal)\n"
@@ -568,6 +591,7 @@ class AIService:
             "{\n"
             "  \"goal\": string,\n"
             "  \"summary\": string,\n"
+            "  \"layout_style\": string,  // your creative layout name: \"organic\", \"spiral\", \"tree\", \"constellation\", \"wave\", \"river\", \"galaxy\"\n"
             "  \"steps\": [\n"
             "    {\n"
             "      \"id\": string,\n"
@@ -582,7 +606,9 @@ class AIService:
             "      \"cost_estimate\": string,\n"
             "      \"risk_level\": string,\n"
             "      \"branch\": string,\n"
-            "      \"kind\": string\n"
+            "      \"kind\": string,\n"
+            "      \"x\": float,  // your suggested x pixel position for this node\n"
+            "      \"y\": float   // your suggested y pixel position for this node\n"
             "    }\n"
             "  ],\n"
             "  \"edges\": [\n"
@@ -623,7 +649,26 @@ class AIService:
             "6. Generate 2-4 floating insights.\n"
             "7. Be efficient with tokens — keep descriptions concise but complete.\n"
             "8. Each step's 'depends_on' array MUST list the IDs of steps it depends on. "
-            "These MUST match the step IDs exactly.\n"
+            "These MUST match the step IDs exactly.\n\n"
+            "CREATIVE LAYOUT RULES — you decide how the nodes are positioned:\n"
+            "- Every step MUST have 'x' and 'y' fields with pixel positions.\n"
+            "- The coordinate system: (0,0) is center. Positive x goes RIGHT, positive y goes DOWN.\n"
+            "- STARTING steps (no dependencies) should be placed on the RIGHT side (high x values like 800-1200).\n"
+            "- ENDING steps (no dependents) should be placed on the LEFT side (negative x values like -800 to -1200).\n"
+            "- This creates a RIGHT-TO-LEFT flow direction, matching RTL reading.\n"
+            "- Different branches should spread out VERTICALLY — main branch near y=0, "
+            "alternatives above (negative y), fallbacks below (positive y).\n"
+            "- Nodes should be at LEAST 300 pixels apart from each other.\n"
+            "- Be CREATIVE with layout! Try layouts like:\n"
+            "  * 'spiral' — nodes spiral outward from the start\n"
+            "  * 'constellation' — nodes form a star pattern with the goal at center\n"
+            "  * 'tree' — classic tree with root on the right\n"
+            "  * 'wave' — nodes follow a sine-wave pattern\n"
+            "  * 'river' — main path flows like a river with tributaries\n"
+            "  * 'galaxy' — clusters of nodes around key decision points\n"
+            "- The 'layout_style' field should name your chosen layout style.\n"
+            "- Connected nodes should be closer together than unconnected ones.\n"
+            "- Make the layout visually beautiful and easy to follow.\n"
         )
 
         user_content = f"User goal: {user_goal}\n\n"
@@ -710,6 +755,10 @@ class AIService:
             "  - Suggest breakthrough ideas\n"
             "  - Ask follow-up questions\n"
             "  - Flag warnings\n\n"
+            "PERSIAN / FARSI LANGUAGE RULES:\n"
+            "If the user's goal is in Persian (Farsi), respond ENTIRELY in Persian. "
+            "All titles, descriptions, labels, and insights should be in Persian. "
+            "Use Persian digits (۰-۹) in text where appropriate.\n\n"
             "Output STRICT JSON only with this schema:\n"
             "{\n"
             "  \"reflection\": string,  // 1-2 sentence reflection\n"
@@ -839,7 +888,10 @@ class AIService:
         """Streaming chat — calls on_status with text deltas (REAL text, not JSON)."""
         system = {"role": "system", "content":
             "You are Rask, an AI route-planning assistant. Be concise and helpful. "
-            "Respond in plain text (not JSON) unless asked for structured output."}
+            "Respond in plain text (not JSON) unless asked for structured output. "
+            "If the user's goal is in Persian (Farsi), respond ENTIRELY in Persian. "
+            "All titles, descriptions, labels, and insights should be in Persian. "
+            "Use Persian digits (۰-۹) in text where appropriate."}
         all_messages = [system] + messages
 
         def _do():
