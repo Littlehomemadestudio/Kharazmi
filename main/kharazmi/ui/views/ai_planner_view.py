@@ -89,6 +89,7 @@ class AIPlannerView(QWidget):
     _riskAnalysisReady = Signal(bool, object)
     _replanReady = Signal(bool, object)
     _simulationComplete = Signal(object)
+    _critiqueReady = Signal(bool, object)
 
     def __init__(self, ai_service: Optional[AIService] = None,
                  journal: Optional[JournalStore] = None,
@@ -124,6 +125,7 @@ class AIPlannerView(QWidget):
         self._riskAnalysisReady.connect(self._on_risk_analysis_received)
         self._replanReady.connect(self._on_replan_received)
         self._simulationComplete.connect(self._on_simulation_complete)
+        self._critiqueReady.connect(self._on_critique_received)
 
         self._build_ui()
 
@@ -212,6 +214,30 @@ class AIPlannerView(QWidget):
         self._schedule_btn.setEnabled(False)
         self._schedule_btn.clicked.connect(self._on_schedule_in_calendar)
         gh_layout.addWidget(self._schedule_btn)
+
+        self._critique_btn = QToolButton()
+        self._critique_btn.setText("🔍  Critique & Improve")
+        self._critique_btn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: #5A4A8A;
+                color: #E0D8FF;
+                border: none;
+                border-radius: 3px;
+                padding: 4px 12px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QToolButton:hover {{
+                background-color: #7A6AAA;
+            }}
+            QToolButton:disabled {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_TERTIARY};
+            }}
+        """)
+        self._critique_btn.setEnabled(False)
+        self._critique_btn.clicked.connect(self._on_critique_clicked)
+        gh_layout.addWidget(self._critique_btn)
 
         left_layout.addWidget(graph_header)
 
@@ -685,6 +711,7 @@ class AIPlannerView(QWidget):
         self.graph_view.finalize_route(result)
         self._update_stats(result)
         self._schedule_btn.setEnabled(True)
+        self._critique_btn.setEnabled(True)
 
         msg = (
             f"<b>Route generated!</b><br><br>"
@@ -1013,6 +1040,7 @@ class AIPlannerView(QWidget):
         self.graph_view.set_route(route)
         self._update_stats(route)
         self._schedule_btn.setEnabled(True)
+        self._critique_btn.setEnabled(True)
         self._health_dashboard.set_route(route)
         if route and route.steps:
             health = RouteHealthEngine.compute(route)
@@ -1170,6 +1198,86 @@ class AIPlannerView(QWidget):
 
         self.chat_panel.add_message(msg, role="assistant", as_html=True)
         self._set_status(f"✓ Risk analysis · {overall}")
+
+    # ---- AI Self-Critique & Improve ----
+    def _on_critique_clicked(self) -> None:
+        if self._current_route is None:
+            return
+        self.chat_panel.start_status_box("AI is critically reviewing its own plan…")
+        self._set_status("⏳ AI critiquing route…")
+
+        self._current_request_id = f"crit-{uuid.uuid4().hex[:8]}"
+        self.chat_panel.set_request_id(self._current_request_id)
+
+        self._credits_panel.increment()
+        self.ai.critique_and_improve_streaming(
+            self._current_route,
+            on_status=lambda s: self._statusUpdate.emit(s),
+            callback=lambda success, result: self._critiqueReady.emit(success, result),
+            request_id=self._current_request_id,
+        )
+
+    def _on_critique_received(self, success, result) -> None:
+        self.chat_panel.finish_status_box("Critique complete")
+        if not success:
+            self._set_status("✗ Critique failed")
+            self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            return
+
+        quality = result.get("quality_score", 0)
+        critique = result.get("critique", "")
+        weaknesses = result.get("weaknesses", [])
+        new_steps = result.get("new_steps", [])
+        new_edges = result.get("new_edges", [])
+        new_insights = result.get("new_insights", [])
+
+        # Quality score color
+        if quality >= 0.8:
+            q_icon, q_color = "🟢", "#5A8A5A"
+        elif quality >= 0.6:
+            q_icon, q_color = "🟡", "#D4AF37"
+        elif quality >= 0.4:
+            q_icon, q_color = "🟠", "#A87A4A"
+        else:
+            q_icon, q_color = "🔴", "#A85A5A"
+
+        msg = f"<b>{q_icon} Plan Quality Score: {quality:.0%}</b><br>{critique}<br><br>"
+
+        if weaknesses:
+            msg += "<b>Identified Weaknesses:</b><br>"
+            for w in weaknesses:
+                sev = w.get("severity", "medium")
+                sev_icon = "🔴" if sev in ("critical", "high") else ("🟡" if sev == "medium" else "🟢")
+                msg += f"{sev_icon} <b>{w.get('kind', '').replace('_', ' ').title()}</b> ({sev})<br>"
+                msg += f"{w.get('description', '')}<br>"
+                msg += f"<i>💡 {w.get('suggestion', '')}</i><br><br>"
+
+        self.chat_panel.add_message(msg, role="assistant", as_html=True)
+
+        if new_steps or new_edges or new_insights:
+            self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
+            if self._current_route is not None:
+                self._current_route.steps.extend(new_steps)
+                self._current_route.edges.extend(new_edges)
+                self._current_route.insights.extend(new_insights)
+                self._update_stats(self._current_route)
+            parts = []
+            if new_steps:
+                parts.append(f"<b>{len(new_steps)} improvement steps</b>")
+            if new_edges:
+                parts.append(f"<b>{len(new_edges)} new edges</b>")
+            if new_insights:
+                parts.append(f"<b>{len(new_insights)} new insights</b>")
+            self.chat_panel.add_message(
+                f"Applied improvements: {' , '.join(parts)} to address the weaknesses.",
+                role="assistant", as_html=True,
+            )
+
+        self._set_status(f"✓ Critique done · Quality {quality:.0%}")
+        # Update health
+        if self._current_route:
+            health = RouteHealthEngine.compute(self._current_route)
+            self._health_dashboard.update_health(health)
 
     # ---- Smart Re-plan ----
     def _on_replan_clicked(self) -> None:

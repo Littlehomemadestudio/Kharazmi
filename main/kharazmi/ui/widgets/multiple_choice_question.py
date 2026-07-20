@@ -61,30 +61,81 @@ class MultipleChoiceQuestionWidget(QFrame):
             hint_label.setWordWrap(True)
             layout.addWidget(hint_label)
 
-        # Options row
-        options_row = QHBoxLayout()
-        options_row.setSpacing(4)
-        for i, opt in enumerate(question.options[:4]):
-            btn = QPushButton(f"{i + 1}.  {opt}")
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {Palette.BG_ELEVATED};
-                    color: {Palette.TEXT_PRIMARY};
-                    border: 1px solid {Palette.BORDER_NORMAL};
-                    border-radius: 4px;
-                    padding: 8px 12px;
-                    font-size: 11px;
-                    text-align: left;
-                }}
-                QPushButton:hover {{
-                    background-color: {Palette.BG_SELECTED};
-                    border: 1px solid {Palette.GOLD_PRIMARY};
-                    color: {Palette.GOLD_BRIGHT};
-                }}
-            """)
-            btn.clicked.connect(lambda _=False, o=opt: self.answered.emit(o))
-            options_row.addWidget(btn, stretch=1)
-        layout.addLayout(options_row)
+        # Options rows (support 4-6 options, wrapping to 2 rows of 3 if needed)
+        opts = question.options[:6]  # Allow up to 6 options
+        if len(opts) <= 4:
+            # Single row for 4 or fewer options
+            options_row = QHBoxLayout()
+            options_row.setSpacing(4)
+            for i, opt in enumerate(opts):
+                btn = QPushButton(f"{i + 1}.  {opt}")
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Palette.BG_ELEVATED};
+                        color: {Palette.TEXT_PRIMARY};
+                        border: 1px solid {Palette.BORDER_NORMAL};
+                        border-radius: 4px;
+                        padding: 8px 12px;
+                        font-size: 11px;
+                        text-align: left;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {Palette.BG_SELECTED};
+                        border: 1px solid {Palette.GOLD_PRIMARY};
+                        color: {Palette.GOLD_BRIGHT};
+                    }}
+                """)
+                btn.clicked.connect(lambda _=False, o=opt: self.answered.emit(o))
+                options_row.addWidget(btn, stretch=1)
+            layout.addLayout(options_row)
+        else:
+            # Two rows for 5-6 options
+            row1 = QHBoxLayout()
+            row1.setSpacing(4)
+            for i, opt in enumerate(opts[:3]):
+                btn = QPushButton(f"{i + 1}.  {opt}")
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Palette.BG_ELEVATED};
+                        color: {Palette.TEXT_PRIMARY};
+                        border: 1px solid {Palette.BORDER_NORMAL};
+                        border-radius: 4px;
+                        padding: 8px 12px;
+                        font-size: 11px;
+                        text-align: left;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {Palette.BG_SELECTED};
+                        border: 1px solid {Palette.GOLD_PRIMARY};
+                        color: {Palette.GOLD_BRIGHT};
+                    }}
+                """)
+                btn.clicked.connect(lambda _=False, o=opt: self.answered.emit(o))
+                row1.addWidget(btn, stretch=1)
+            layout.addLayout(row1)
+            row2 = QHBoxLayout()
+            row2.setSpacing(4)
+            for i, opt in enumerate(opts[3:]):
+                btn = QPushButton(f"{i + 4}.  {opt}")
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Palette.BG_ELEVATED};
+                        color: {Palette.TEXT_PRIMARY};
+                        border: 1px solid {Palette.BORDER_NORMAL};
+                        border-radius: 4px;
+                        padding: 8px 12px;
+                        font-size: 11px;
+                        text-align: left;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {Palette.BG_SELECTED};
+                        border: 1px solid {Palette.GOLD_PRIMARY};
+                        color: {Palette.GOLD_BRIGHT};
+                    }}
+                """)
+                btn.clicked.connect(lambda _=False, o=opt: self.answered.emit(o))
+                row2.addWidget(btn, stretch=1)
+            layout.addLayout(row2)
 
         # Custom input row
         custom_row = QHBoxLayout()

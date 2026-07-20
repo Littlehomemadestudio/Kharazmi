@@ -29,6 +29,7 @@ from typing import Callable, Optional, Any, Iterator
 
 API_URL = "https://api.z.ai/api/paas/v4/chat/completions"
 DEFAULT_MODEL = "glm-4.5-flash"
+POWER_MODEL = "glm-4.5"  # More capable model for complex planning tasks
 DEFAULT_API_KEY = "b795a49bd12348c8b9cc4a081c73374b.fmbP9oDfIWJ8zWiy"
 
 SETTINGS_PATH = Path.home() / ".rask" / "ai_settings.json"
@@ -40,7 +41,7 @@ def load_ai_settings() -> dict:
         "model": DEFAULT_MODEL,
         "base_url": API_URL,
         "temperature": 0.7,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
     }
     try:
         if SETTINGS_PATH.exists():
@@ -80,7 +81,7 @@ class RouteStep:
     risk_level: str = "low"
     # Which branch this step belongs to (e.g. "main", "alt-1", "fallback-1")
     branch: str = "main"
-    # Step kind: "action" | "decision" | "milestone" | "wait" | "checkpoint"
+    # Step kind: "action" | "decision" | "milestone" | "wait" | "checkpoint" | "research" | "review" | "deliver" | "collaborate"
     kind: str = "action"
     # AI-suggested x position for creative layout
     x_hint: float = 0.0
@@ -521,6 +522,10 @@ class AIService:
             "help the user achieve a goal by breaking it down into a "
             "COMPLEX, INTERCONNECTED route graph with multiple branches, "
             "alternatives, and fallbacks.\n\n"
+            "PERSIAN / FARSI LANGUAGE RULES:\n"
+            "If the user's goal is in Persian (Farsi), ask ALL clarifying questions "
+            "in Persian. Use natural, idiomatic Persian — not translated English. "
+            "Options should be in Persian too.\n\n"
             "Given the user's goal, decide whether it is clear enough to plan "
             "a route, or whether you need to ask clarifying questions first.\n\n"
             "Output STRICT JSON only (no markdown, no commentary) with this schema:\n"
@@ -530,7 +535,7 @@ class AIService:
             "  \"questions\": [\n"
             "    {\n"
             "      \"question\": string,\n"
-            "      \"options\": [string, string, string, string],  // EXACTLY 4 options\n"
+            "      \"options\": [string, string, string, string, string, string],  // 4-6 options\n"
             "      \"allow_custom\": true,\n"
             "      \"hint\": string\n"
             "    }\n"
@@ -539,11 +544,15 @@ class AIService:
             "Rules:\n"
             "- If the goal is clear (specific time, location, constraint), set "
             "is_clear=true and leave questions empty.\n"
-            "- Otherwise, generate 2-12 multiple-choice questions.\n"
-            "- Each question MUST have EXACTLY 4 options.\n"
-            "- Options should cover the most common cases.\n"
-            "- The user will be able to type a custom answer if none of the 4 fit.\n"
-            "- Maximum 12 questions. Ask as many as needed to fully understand the goal.\n"
+            "- Otherwise, generate 2-8 multiple-choice questions.\n"
+            "- Each question MUST have 4-6 options (more options = more precision).\n"
+            "- Options should cover the most common cases AND edge cases.\n"
+            "- The user will be able to type a custom answer if none of the options fit.\n"
+            "- Ask DEEP questions: not just 'when?' but also 'what's the biggest risk?', "
+            "'what resources are available?', 'who else is involved?', 'what happens if it fails?'.\n"
+            "- Think about: constraints, resources, timeline, risks, dependencies, "
+            "stakeholders, budget, quality requirements, and success criteria.\n"
+            "- Maximum 8 questions but make each one count.\n"
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -553,7 +562,8 @@ class AIService:
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
-                temperature=0.3, response_format_json=True,
+                temperature=0.4, response_format_json=True,
+                max_tokens=8192,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
@@ -608,12 +618,13 @@ class AIService:
             "flowing — written as a native Persian speaker would express it, "
             "NOT translated word-by-word from English.\n\n"
             "The route MUST have:\n"
-            "  - At least 2 branches (places where the path splits into parallel options)\n"
+            "  - At least 3 branches (places where the path splits into parallel options)\n"
             "  - At least one 'alternative' edge (a different way to achieve a sub-goal)\n"
             "  - At least one 'fallback' edge (what to do if a step fails)\n"
             "  - A merge point where branches rejoin\n"
-            "  - At least one 'decision' node and one 'checkpoint' node\n"
-            "  - Between 8 and 12 steps total\n\n"
+            "  - At least one 'decision' node, one 'checkpoint' node, and one 'review' node\n"
+            "  - Between 10 and 20 steps total (more steps = more granular and actionable plan)\n"
+            "  - Each step should have 1-3 sub_goals when appropriate\n\n"
             "Output STRICT JSON only (no markdown, no commentary) with this schema:\n"
             "{\n"
             "  \"goal\": string,\n"
@@ -629,11 +640,11 @@ class AIService:
             "      \"location\": string,\n"
             "      \"fallback\": string,\n"
             "      \"depends_on\": [string],\n"
-            "      \"sub_goals\": [string],\n"
+            "      \"sub_goals\": [string],  // IMPORTANT: MUST be a JSON array of strings, e.g. [\"sub-goal 1\", \"sub-goal 2\"]. NEVER a single string!\n"
             "      \"cost_estimate\": string,\n"
             "      \"risk_level\": string,\n"
             "      \"branch\": string,\n"
-            "      \"kind\": string,\n"
+            "      \"kind\": string,  // \"action\" | \"decision\" | \"milestone\" | \"wait\" | \"checkpoint\" | \"research\" | \"review\" | \"deliver\" | \"collaborate\"\n"
             "      \"x\": float,  // your suggested x pixel position for this node\n"
             "      \"y\": float   // your suggested y pixel position for this node\n"
             "    }\n"
@@ -662,7 +673,7 @@ class AIService:
             "  ]\n"
             "}\n\n"
             "CRITICAL RULES:\n"
-            "1. Generate 8-12 steps. NOT a single linear chain — at least 2 branches.\n"
+            "1. Generate 10-20 steps. NOT a single linear chain — at least 3 branches.\n"
             "2. List ALL edges explicitly in the 'edges' array. EVERY connection between "
             "steps MUST appear in 'edges'. The number of edges should be AT LEAST "
             "steps.length - 1, typically more because of branches and alternatives.\n"
@@ -673,7 +684,7 @@ class AIService:
             "4. Use edge kinds: 'primary' (normal), 'alternative' (different option), "
             "'fallback' (if step fails), 'merge' (branches rejoin).\n"
             "5. Titles and descriptions should be COMPLETE — never truncate.\n"
-            "6. Generate 3-6 floating insights. Include these special annotation types:\n"
+            "6. Generate 5-10 floating insights. Include these special annotation types:\n"
             "   - 'breakthrough': A radical alternative way — a completely different approach that could "
             "shortcut the entire plan. Use when there's a creative or unexpected path.\n"
             "   - 'skip': A step or section that can be entirely skipped with an explanation of why. "
@@ -682,8 +693,14 @@ class AIService:
             "Use when repetition helps achieve the goal faster.\n"
             "   Also include regular insights: 'improvement', 'alternative', 'warning', 'question'.\n"
             "   Each insight MUST have an 'anchor_step_id' pointing to the relevant step.\n"
-            "7. Be efficient with tokens — keep descriptions concise but complete.\n"
-            "8. Each step's 'depends_on' array MUST list the IDs of steps it depends on. "
+            "7. Be THOROUGH — provide detailed descriptions that explain WHY each step matters, "
+            "not just WHAT to do. Include tips, gotchas, and pro-tips in descriptions.\n"
+            "8. CRITICAL: sub_goals MUST be a JSON ARRAY of strings, never a plain string.\n"
+            "   Correct: \"sub_goals\": [\"research competitors\", \"define target audience\"]\n"
+            "   WRONG: \"sub_goals\": \"research competitors, define target audience\"\n"
+            "   WRONG: \"sub_goals\": \"بررسی رقبا\" (this breaks the UI!)\n"
+            "9. depends_on MUST also be a JSON ARRAY of step IDs.\n"
+            "10. Each step's 'depends_on' array MUST list the IDs of steps it depends on. "
             "These MUST match the step IDs exactly.\n\n"
             "CREATIVE LAYOUT RULES — you decide how the nodes are positioned:\n"
             "- Every step MUST have 'x' and 'y' fields with pixel positions.\n"
@@ -727,8 +744,8 @@ class AIService:
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
-                temperature=0.8, response_format_json=True,
-                max_tokens=6144,
+                temperature=0.85, response_format_json=True,
+                max_tokens=16384,
             )
             full = _strip_markdown_fences(full)
             # Parse with fallback for partial/malformed JSON
@@ -802,10 +819,11 @@ class AIService:
             "  \"new_insights\": [Insight]  // floating insights\n"
             "}\n\n"
             "Rules:\n"
-            "- Generate 2-5 new steps that branch off the existing route.\n"
+            "- Generate 3-8 new steps that branch off the existing route.\n"
             "- Connect them via 'alternative' or 'fallback' edges to existing steps.\n"
-            "- Generate 2-4 new insights.\n"
+            "- Generate 3-6 new insights including breakthrough/skip/loop types.\n"
             "- Make alternatives genuinely different (not minor variations).\n"
+            "- IMPORTANT: sub_goals and depends_on MUST be JSON ARRAYS, never plain strings.\n"
         )
         route_summary = (
             f"Goal: {route.goal}\n"
@@ -828,7 +846,7 @@ class AIService:
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
                 temperature=0.9, response_format_json=True,
-                max_tokens=8192,
+                max_tokens=16384,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
@@ -1032,7 +1050,7 @@ class AIService:
             "  \"new_insights\": [Insight]  // optional new insights\n"
             "}\n\n"
             "Rules:\n"
-            "- Generate 3-7 specific, actionable optimizations.\n"
+            "- Generate 5-10 specific, actionable optimizations.\n"
             "- Focus on HIGH-IMPACT changes first.\n"
             "- Each optimization must reference specific step IDs.\n"
             "- Provide realistic time savings and probability boosts.\n"
@@ -1211,7 +1229,7 @@ class AIService:
             "  \"recommended_actions\": [string]  // top 3-5 prioritized actions\n"
             "}\n\n"
             "Rules:\n"
-            "- Identify 4-8 specific risks.\n"
+            "- Identify 5-12 specific risks.\n"
             "- Every risk must have a concrete, actionable mitigation.\n"
             "- Prioritize risks on the critical path.\n"
             "- Consider cascade effects (if step X fails, what else fails?).\n"
@@ -1322,7 +1340,7 @@ class AIService:
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
                 temperature=0.6, response_format_json=True,
-                max_tokens=6144,
+                max_tokens=16384,
             )
             full = _strip_markdown_fences(full)
             try:
@@ -1330,6 +1348,120 @@ class AIService:
             except json.JSONDecodeError:
                 repaired = _repair_json(full)
                 parsed = json.loads(repaired)
+            if "new_steps" in parsed:
+                parsed["new_steps"] = [RouteStep.from_dict(s) for s in parsed.get("new_steps", [])]
+            else:
+                parsed["new_steps"] = []
+            if "new_edges" in parsed:
+                parsed["new_edges"] = [RouteEdge.from_dict(e) for e in parsed.get("new_edges", [])]
+            else:
+                parsed["new_edges"] = []
+            if "new_insights" in parsed:
+                parsed["new_insights"] = [Insight.from_dict(i) for i in parsed.get("new_insights", [])]
+            else:
+                parsed["new_insights"] = []
+            return parsed
+
+        self._run_async(_do, callback)
+
+    # ---- AI Self-Critique and Improve ----
+    def critique_and_improve_streaming(
+        self, route: Route,
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Ask the AI to critically review its OWN route plan and suggest
+        concrete improvements. This is a 'second pass' that catches
+        issues the first generation missed.
+
+        Generates:
+          - Identified weaknesses and blind spots
+          - New steps that fill gaps
+          - New edges for missing connections
+          - New insights about improvements
+          - A quality score
+        """
+        try:
+            on_status("Critically reviewing the route plan…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask, acting as a CRITICAL REVIEWER of a route plan. "
+            "You previously generated this route, but now you must find its "
+            "weaknesses, blind spots, and missing elements.\n\n"
+            "PERSIAN / FARSI LANGUAGE RULES:\n"
+            "If the original goal was in Persian (Farsi), all output text "
+            "(titles, descriptions, critiques) should be in Persian.\n\n"
+            "Output STRICT JSON only:\n"
+            "{\n"
+            "  \"quality_score\": float,  // 0.0-1.0 overall plan quality\n"
+            "  \"critique\": string,  // 3-5 sentence honest assessment\n"
+            "  \"weaknesses\": [\n"
+            "    {\n"
+            "      \"kind\": string,  // \"missing_step\" | \"weak_fallback\" | \"unrealistic_time\" | \"missing_dependency\" | \"poor_branching\" | \"vague_description\" | \"no_review_checkpoint\"\n"
+            "      \"severity\": string,  // \"critical\" | \"high\" | \"medium\" | \"low\"\n"
+            "      \"description\": string,\n"
+            "      \"suggestion\": string  // how to fix it\n"
+            "    }\n"
+            "  ],\n"
+            "  \"new_steps\": [RouteStep],  // steps to fill identified gaps\n"
+            "  \"new_edges\": [RouteEdge],  // edges for new connections\n"
+            "  \"new_insights\": [Insight]  // insights about improvements\n"
+            "}\n\n"
+            "Rules:\n"
+            "- Be HONEST — don't say the plan is perfect. Every plan has weaknesses.\n"
+            "- Identify 4-8 specific weaknesses.\n"
+            "- Generate 2-6 new steps that address the biggest gaps.\n"
+            "- Common issues: missing review/checkpoint steps, no fallbacks for risky steps, "
+            "unrealistic time estimates, missing dependencies between steps, vague descriptions.\n"
+            "- IMPORTANT: sub_goals and depends_on MUST be JSON ARRAYS, never plain strings.\n"
+            "- Think about: What would a skeptical project manager say about this plan?\n"
+        )
+        route_summary = (
+            f"Goal: {route.goal}\n"
+            f"Summary: {route.summary}\n"
+            f"Overall success: {route.overall_success_probability:.0%}\n"
+            f"Total duration: {route.total_duration_minutes} min\n\n"
+            f"Steps ({len(route.steps)}):\n"
+        )
+        for s in route.steps:
+            route_summary += (
+                f"  [{s.id}] {s.title} — {s.duration_minutes}m, "
+                f"success={s.success_probability:.0%}, risk={s.risk_level}, "
+                f"kind={s.kind}, branch={s.branch}\n"
+                f"    fallback={'yes' if s.fallback else 'NONE'}, "
+                f"sub_goals={s.sub_goals}, deps={s.depends_on}\n"
+            )
+        route_summary += f"\nEdges ({len(route.edges)}):\n"
+        for e in route.edges:
+            route_summary += f"  {e.source_id} --{e.kind}--> {e.target_id}\n"
+        route_summary += f"\nInsights ({len(route.insights)}):\n"
+        for i in route.insights:
+            route_summary += f"  [{i.kind}] {i.title}\n"
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": route_summary},
+        ]
+
+        def _do():
+            full = self._call_api_streaming(
+                messages, on_status, request_id=request_id,
+                temperature=0.7, response_format_json=True,
+                max_tokens=16384,
+            )
+            full = _strip_markdown_fences(full)
+            try:
+                parsed = json.loads(full)
+            except json.JSONDecodeError:
+                repaired = _repair_json(full)
+                try:
+                    parsed = json.loads(repaired)
+                except json.JSONDecodeError:
+                    parsed = _extract_partial(full)
             if "new_steps" in parsed:
                 parsed["new_steps"] = [RouteStep.from_dict(s) for s in parsed.get("new_steps", [])]
             else:

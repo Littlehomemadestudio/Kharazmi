@@ -45,12 +45,28 @@ _RISK_COLORS = {
     "severe":   "#A85A5A",
 }
 
+_KIND_ACCENT_COLORS = {
+    "action":       None,       # Uses risk color
+    "decision":     "#8B6FC0",  # Purple — decisions are important
+    "milestone":    "#C9A84C",  # Gold — milestones are achievements
+    "wait":         "#6B8FA3",  # Steel blue — waiting/cooldown
+    "checkpoint":   "#4A9A5A",  # Green — checkpoints are positive
+    "research":     "#4A8AB0",  # Blue — research is discovery
+    "review":       "#A06040",  # Burnt orange — review needs attention
+    "deliver":      "#5A8A5A",  # Green — delivery is completion
+    "collaborate":  "#8A6A9A",  # Lavender — collaboration is social
+}
+
 _KIND_ICONS = {
-    "action":     "▶",
-    "decision":   "◇",
-    "milestone":  "★",
-    "wait":       "⏸",
-    "checkpoint": "✓",
+    "action":       "▶",
+    "decision":     "◇",
+    "milestone":    "★",
+    "wait":         "⏸",
+    "checkpoint":   "✓",
+    "research":     "⌕",
+    "review":       "◉",
+    "deliver":      "⬆",
+    "collaborate":  "⬌",
 }
 
 
@@ -217,6 +233,9 @@ class RouteNodeItem(QGraphicsObject):
         risk_color_str = _RISK_COLORS.get(self.step.risk_level, _RISK_COLORS["medium"])
         risk_color = QColor(risk_color_str)
         kind_icon = _KIND_ICONS.get(self.step.kind, "▶")
+        # Kind-specific accent color overrides risk color for left bar
+        kind_accent_str = _KIND_ACCENT_COLORS.get(self.step.kind)
+        accent_color = QColor(kind_accent_str) if kind_accent_str else risk_color
 
         # Hover lift offset
         lift = -4.0 if self._hovered else 0.0
@@ -250,17 +269,17 @@ class RouteNodeItem(QGraphicsObject):
         painter.setPen(QPen(risk_color, border_width))
         painter.drawRoundedRect(0, 0, self._width, self._height, 12, 12)
 
-        # 4. Left status accent bar (Tasks-like)
-        painter.setBrush(QBrush(risk_color))
+        # 4. Left status accent bar (kind-colored for visual distinction)
+        painter.setBrush(QBrush(accent_color))
         painter.setPen(Qt.NoPen)
         path = QPainterPath()
         path.addRoundedRect(QRectF(0, 0, 4, self._height), 2, 2)
-        painter.fillPath(path, QBrush(risk_color))
+        painter.fillPath(path, QBrush(accent_color))
 
         # 5. Step ID badge + kind icon (top-left)
         id_font = QFont("JetBrains Mono", 8, QFont.Bold)
         painter.setFont(id_font)
-        painter.setBrush(QBrush(risk_color))
+        painter.setBrush(QBrush(accent_color))
         painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(QRectF(10, 10, 54, 18), 4, 4)
         painter.setPen(QPen(QColor(Palette.TEXT_ON_GOLD)))
