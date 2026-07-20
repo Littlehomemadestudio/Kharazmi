@@ -714,18 +714,27 @@ class UnifiedGraphView(QGraphicsView):
 
     # ---- Layout & analysis ----
     def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
-        """Compute generous layout positions for all steps in a route.
+        """Compute an organic, spread-out layout that shows graph complexity.
 
-        Uses a topological ranking with generous X/Y spacing to prevent
-        any overlap, even for routes with many parallel branches.
-        Accounts for actual node sizes and adds overlap elimination.
+        Key design goals:
+          - RIGHT-TO-LEFT flow: start nodes on the right, end on the left
+          - Branches spread vertically across the canvas, not crammed in columns
+          - Organic feel: slight jitter prevents a rigid grid look
+          - Main path stays centered, alternative/fallback branches fan out
+          - No overlaps
         """
+        import random
+        rng = random.Random(42)  # deterministic seed for consistency
+
         if not route.steps:
             return {}
         steps_by_id = {s.id: s for s in route.steps}
+
+        # --- 1. Build topological ranks (0 = start, higher = deeper) ---
         ranks: dict[str, int] = {}
         in_degree: dict[str, int] = {s.id: 0 for s in route.steps}
         succ: dict[str, list[str]] = {s.id: [] for s in route.steps}
+        pred: dict[str, list[str]] = {s.id: [] for s in route.steps}
 
         edge_pairs: set[tuple[str, str]] = set()
         for s in route.steps:
@@ -740,6 +749,8 @@ class UnifiedGraphView(QGraphicsView):
             in_degree[tgt] += 1
             if tgt not in succ[src]:
                 succ[src].append(tgt)
+            if src not in pred[tgt]:
+                pred[tgt].append(src)
 
         queue = deque([sid for sid, d in in_degree.items() if d == 0])
         for sid in queue:
@@ -755,53 +766,118 @@ class UnifiedGraphView(QGraphicsView):
             if s.id not in ranks:
                 ranks[s.id] = 0
 
-        by_rank: dict[int, list[str]] = defaultdict(list)
-        for sid, r in ranks.items():
-            by_rank[r].append(sid)
+        max_rank = max(ranks.values()) if ranks else 0
 
-        def branch_sort_key(sid: str) -> tuple:
-            step = steps_by_id.get(sid)
-            if step is None:
-                return (99, "")
-            b = step.branch
+        # --- 2. Assign each branch a vertical "lane" ---
+        # Collect unique branches and sort them: main in center, others fanning out
+        branches_seen: list[str] = []
+        for s in route.steps:
+            b = s.branch or "main"
+            if b not in branches_seen:
+                branches_seen.append(b)
+
+        def branch_lane_priority(b: str) -> int:
             if b == "main":
-                return (0, "")
+                return 0
             elif b.startswith("alt"):
-                return (1, b)
+                return 1
             elif b.startswith("fallback"):
-                return (2, b)
+                return 2
             elif b == "tasks":
-                return (3, "")
-            return (4, b)
+                return 3
+            return 4
 
-        # Get actual node sizes for overlap-aware spacing
+        branches_seen.sort(key=branch_lane_priority)
+
+        # Assign lanes: main=0, then alternate up/down for visual spread
+        branch_lanes: dict[str, float] = {}
+        lane = 0
+        for i, b in enumerate(branches_seen):
+            if i == 0:
+                branch_lanes[b] = 0.0  # main in center
+            else:
+                # Alternate: 1, -1, 2, -2, 3, -3 ...
+                if i % 2 == 1:
+                    lane += 1
+                    branch_lanes[b] = float(lane)
+                else:
+                    branch_lanes[b] = float(-lane)
+
+        # --- 3. Compute node sizes ---
         node_sizes: dict[str, tuple[float, float]] = {}
         for sid in steps_by_id:
             item = self._node_items.get(sid)
             if item is not None:
                 node_sizes[sid] = (item._width, item._height)
             else:
-                node_sizes[sid] = (280, 160)  # default min size
+                node_sizes[sid] = (280, 160)
 
+        # --- 4. Place nodes ---
+        LANE_SPACING = 380  # vertical distance between branch lanes
+        RANK_SPACING = 580  # horizontal distance between topological levels
         positions: dict[str, tuple[float, float]] = {}
-        max_rank = max(by_rank.keys()) if by_rank else 0
-        for rank in sorted(by_rank.keys()):
-            sids = by_rank[rank]
-            sids.sort(key=branch_sort_key)
-            n = len(sids)
-            # Use dynamic Y spacing based on the tallest node in this column
-            max_h_in_col = max(node_sizes.get(sid, (280, 160))[1] for sid in sids)
-            col_y_spacing = max(Y_SPACING, max_h_in_col + 60)
-            # Center vertically with generous Y spacing
-            total_h = (n - 1) * col_y_spacing
-            start_y = -total_h / 2
-            # X position based on rank, with dynamic spacing
-            max_w_in_col = max(node_sizes.get(sid, (280, 160))[0] for sid in sids)
-            x = rank * max(X_SPACING, max_w_in_col + 100) - (max_rank * X_SPACING) / 2
-            for i, sid in enumerate(sids):
-                positions[sid] = (x, start_y + i * col_y_spacing)
 
-        # Overlap elimination: check all pairs and push overlapping nodes apart
+        by_rank: dict[int, list[str]] = defaultdict(list)
+        for sid, r in ranks.items():
+            by_rank[r].append(sid)
+
+        # Within each rank, sort by branch lane for consistent ordering
+        for rank in by_rank:
+            by_rank[rank].sort(key=lambda sid: branch_lanes.get(steps_by_id[sid].branch or "main", 0))
+
+        # Compute how many nodes share each lane+rank (for sub-offsetting)
+        lane_rank_count: dict[tuple[float, int], int] = defaultdict(int)
+        lane_rank_index: dict[tuple[float, int, str], int] = {}
+        for rank in by_rank:
+            for sid in by_rank[rank]:
+                b = steps_by_id[sid].branch or "main"
+                lane = branch_lanes.get(b, 0)
+                key = (lane, rank)
+                lane_rank_index[(lane, rank, sid)] = lane_rank_count[key]
+                lane_rank_count[key] += 1
+
+        for rank in sorted(by_rank.keys()):
+            for sid in by_rank[rank]:
+                step = steps_by_id[sid]
+                b = step.branch or "main"
+                lane = branch_lanes.get(b, 0)
+
+                # RIGHT-TO-LEFT: rank 0 (start) goes on the right
+                x = (max_rank - rank) * RANK_SPACING - (max_rank * RANK_SPACING) / 2
+
+                # Vertical position based on lane
+                y = lane * LANE_SPACING
+
+                # If multiple nodes share same lane+rank, sub-offset them
+                key = (lane, rank)
+                count = lane_rank_count[key]
+                idx = lane_rank_index.get((lane, rank, sid), 0)
+                if count > 1:
+                    sub_offset = (idx - (count - 1) / 2) * 200
+                    y += sub_offset
+
+                # Add organic jitter — small random offsets to avoid rigid grid
+                jitter_x = rng.uniform(-30, 30)
+                jitter_y = rng.uniform(-25, 25)
+                x += jitter_x
+                y += jitter_y
+
+                positions[sid] = (x, y)
+
+        # --- 5. Pull connected nodes closer vertically ---
+        # For each edge, nudge the target slightly toward the source's Y
+        for _ in range(3):
+            for src, tgt in edge_pairs:
+                if src in positions and tgt in positions:
+                    sx, sy = positions[src]
+                    tx, ty = positions[tgt]
+                    # Only nudge Y, not X (X is determined by rank)
+                    dy = sy - ty
+                    nudge = dy * 0.08  # gentle pull
+                    tx_new, ty_new = positions[tgt]
+                    positions[tgt] = (tx_new, ty_new + nudge)
+
+        # --- 6. Eliminate overlaps ---
         positions = self._eliminate_overlaps(positions, node_sizes)
 
         return positions
