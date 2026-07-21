@@ -225,8 +225,12 @@ class PageTransition:
         direction: str = "left",
     ) -> None:
         """Animate from old_widget to new_widget."""
-        if self._anim and self._anim.state() == QAbstractAnimation.Running:
-            self._anim.stop()
+        if self._anim is not None:
+            try:
+                if self._anim.state() == QAbstractAnimation.Running:
+                    self._anim.stop()
+            except RuntimeError:
+                pass  # C++ object already deleted
 
         if old_widget is None:
             new_widget.show()
@@ -278,8 +282,16 @@ class HoverGlow:
         self._animate_to(0.0)
 
     def _animate_to(self, target: float) -> None:
-        if self._anim and self._anim.state() == QAbstractAnimation.Running:
-            self._anim.stop()
+        # Safely check if a previous animation is still running.
+        # The C++ object may have been deleted (DeleteWhenStopped),
+        # so we must wrap the .state() call in a try/except.
+        if self._anim is not None:
+            try:
+                if self._anim.state() == QAbstractAnimation.Running:
+                    self._anim.stop()
+            except RuntimeError:
+                pass  # C++ object already deleted
+            self._anim = None
         self._anim = QVariantAnimation(self._widget)
         self._anim.setStartValue(self._value)
         self._anim.setEndValue(target)

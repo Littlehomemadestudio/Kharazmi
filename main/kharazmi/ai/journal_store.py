@@ -48,12 +48,16 @@ class JournalStore:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             data = {"entries": [e.to_dict() for e in self._entries]}
-            self.path.write_text(
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-        except Exception:
-            pass
+            # Atomic replace — prevents corruption if app crashes mid-write
+            tmp.replace(self.path)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("JournalStore save failed: %s", exc)
 
     def add(self, goal: str, clarifying_qa: list[tuple[str, str]],
             route: Optional[Route], notes: str = "") -> JournalEntry:

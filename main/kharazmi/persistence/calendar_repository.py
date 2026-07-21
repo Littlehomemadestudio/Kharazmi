@@ -60,6 +60,15 @@ class CalendarRepository:
                 "INSERT INTO calendar_snapshots(saved_at, payload_json, kind) VALUES(?,?,?)",
                 (datetime.utcnow().isoformat(), payload, kind),
             )
+            # Prune old autosave snapshots to keep the DB from growing unbounded.
+            # Keep the latest 5 autosaves and ALL manual saves.
+            self._conn.execute(
+                "DELETE FROM calendar_snapshots WHERE kind='autosave' "
+                "AND id NOT IN ("
+                "  SELECT id FROM calendar_snapshots WHERE kind='autosave' "
+                "  ORDER BY saved_at DESC LIMIT 5"
+                ")"
+            )
             return cur.lastrowid
 
     def load_latest(self) -> Optional[CalendarStore]:

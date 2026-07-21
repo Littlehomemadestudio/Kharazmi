@@ -37,6 +37,7 @@ from ..core import (
     DependencyAdded, DependencyRemoved, ScheduleRecalculated,
 )
 from ..calendar import CalendarStore
+from ..calendar.store import EventRemoved, CalendarRemoved
 from ..ai import AIService, JournalStore, Route
 from ..commands import UndoStack
 from ..services import TaskService, SchedulingService, ExportService
@@ -436,7 +437,12 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
 
     def _on_calendar_store_event(self, event) -> None:
         QTimer.singleShot(0, self._refresh_statusbar)
-        QTimer.singleShot(1000, self._autosave)
+        # Persist deletions immediately so they don't "come back" on restart
+        if isinstance(event, (EventRemoved, CalendarRemoved)):
+            self._persist_calendar()
+        else:
+            # For additions/updates, use a delayed save to batch rapid changes
+            QTimer.singleShot(1000, self._autosave)
 
     def _on_undo_stack_changed(self) -> None:
         self._action_undo.setEnabled(self.undo_stack.can_undo())
@@ -604,6 +610,13 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     def _autosave(self) -> None:
         try:
             self.calendar_repository.save(self.calendar_store, kind="autosave")
+        except Exception:
+            pass
+
+    def _persist_calendar(self) -> None:
+        """Immediately persist the calendar store (used after deletions)."""
+        try:
+            self.calendar_repository.save(self.calendar_store, kind="manual")
         except Exception:
             pass
 
