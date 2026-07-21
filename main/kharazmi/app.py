@@ -273,7 +273,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     remaining_ms = max(0, int((_SPLASH_MIN_SECS - elapsed) * 1000))
     QTimer.singleShot(remaining_ms, splash.finish)
 
-    window.show()
+    window.showMaximized()
     QTimer.singleShot(100, window._recalculate)
 
     return app.exec()

@@ -133,7 +133,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         QTimer.singleShot(100, self._recalculate)
 
         # ---- Show tour on first run ----
-        QTimer.singleShot(600, self._maybe_show_tour)
+        QTimer.singleShot(1500, self._maybe_show_tour)
 
         # ---- Calendar autosave ----
         self._autosave_timer = QTimer(self)

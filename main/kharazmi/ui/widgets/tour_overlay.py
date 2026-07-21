@@ -15,7 +15,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Any
 
-from PySide6.QtCore import Qt, QRectF, QPointF, QSize, QTimer, QPropertyAnimation, Property, QEasingCurve
+from PySide6.QtCore import Qt, QRectF, QPointF, QSize, QTimer, QPropertyAnimation, Property, QEasingCurve, QEvent
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath, QRadialGradient,
     QPolygonF, QRegion,
@@ -356,6 +356,7 @@ RASK_TOUR = Tour(
             title="Keyboard Shortcuts",
             body=(
                 "Useful shortcuts:\n\n"
+                "  Ctrl+0  — Home tab\n"
                 "  Ctrl+1  — Calendar tab\n"
                 "  Ctrl+2  — AI Planner tab\n"
                 "  Ctrl+3  — Graphs tab\n"
@@ -405,7 +406,9 @@ class TourOverlay(QWidget):
         self._step_index = 0
         self._target_rect: Optional[QRectF] = None
 
-        # Make this widget cover the parent
+        # ── Critical: enable true translucency so the dark overlay is
+        #    semi-transparent and the spotlight hole shows the parent window ──
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.setAttribute(Qt.WA_StyledBackground, False)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -416,17 +419,13 @@ class TourOverlay(QWidget):
         self._popup.setStyleSheet(f"""
             QFrame#tourPopup {{
                 background-color: {Palette.BG_TERTIARY};
-                border: 1px solid {Palette.GOLD_PRIMARY};
-                border-radius: 8px;
+                border: 2px solid {Palette.GOLD_PRIMARY};
+                border-radius: 10px;
             }}
         """)
-        # Drop shadow
-        effect = QGraphicsOpacityEffect(self._popup)
-        effect.setOpacity(1.0)
-        self._popup.setGraphicsEffect(effect)
 
         popup_layout = QVBoxLayout(self._popup)
-        popup_layout.setContentsMargins(20, 18, 20, 18)
+        popup_layout.setContentsMargins(24, 20, 24, 20)
         popup_layout.setSpacing(10)
 
         # Step counter
@@ -454,7 +453,7 @@ class TourOverlay(QWidget):
         )
         self._body_label.setWordWrap(True)
         self._body_label.setMinimumWidth(320)
-        self._body_label.setMaximumWidth(380)
+        self._body_label.setMaximumWidth(400)
         popup_layout.addWidget(self._body_label)
 
         # Buttons
@@ -478,11 +477,17 @@ class TourOverlay(QWidget):
             f"border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 4px; "
             f"padding: 6px 14px; font-size: 12px;"
         )
+        self._prev_btn.setCursor(Qt.PointingHandCursor)
         self._prev_btn.clicked.connect(self._prev)
         btn_row.addWidget(self._prev_btn)
 
         self._next_btn = QPushButton("Next ›")
-        self._next_btn.setProperty("variant", "primary")
+        self._next_btn.setStyleSheet(
+            f"background-color: {Palette.GOLD_PRIMARY}; color: #000000; "
+            f"border: none; border-radius: 4px; "
+            f"padding: 8px 18px; font-size: 13px; font-weight: bold;"
+        )
+        self._next_btn.setCursor(Qt.PointingHandCursor)
         self._next_btn.clicked.connect(self._next)
         btn_row.addWidget(self._next_btn)
 
@@ -491,18 +496,54 @@ class TourOverlay(QWidget):
         self._popup.adjustSize()
         self._popup.hide()
 
+        # Install event filter on parent to track resizes
+        parent.installEventFilter(self)
+
+    # ---- Event filter for parent resize ----
+    def eventFilter(self, obj, event):
+        """Track parent resize events to keep the overlay covering the window."""
+        if obj is self.parent() and event.type() == QEvent.Type.Resize:
+            self.setGeometry(0, 0, obj.width(), obj.height())
+            if self.isVisible():
+                self._reposition_for_current_step()
+        return super().eventFilter(obj, event)
+
+    def _reposition_for_current_step(self) -> None:
+        """Recompute spotlight rect and popup position after a resize."""
+        if 0 <= self._step_index < len(self.tour.steps):
+            step = self.tour.steps[self._step_index]
+            target = self._find_target(step)
+            if target is not None and target.isVisible():
+                try:
+                    top_left = target.mapTo(self.parent(), target.rect().topLeft())
+                    self._target_rect = QRectF(
+                        top_left.x(), top_left.y(),
+                        target.width(), target.height()
+                    )
+                except RuntimeError:
+                    self._target_rect = None
+            else:
+                self._target_rect = None
+            self._popup.adjustSize()
+            self._position_popup(step.placement)
+            self.update()
+
     # ---- Show / hide ----
     def start(self) -> None:
         parent = self.parent()
         if parent is None:
             return
-        self.setGeometry(parent.rect())
+        self.setGeometry(0, 0, parent.width(), parent.height())
         self.raise_()
         self.show()
         self.setFocus()
         self._show_step()
 
     def _skip(self) -> None:
+        # Remove event filter before closing
+        parent = self.parent()
+        if parent is not None:
+            parent.removeEventFilter(self)
         self.close()
         self.deleteLater()
 
@@ -546,14 +587,17 @@ class TourOverlay(QWidget):
 
         if target is not None and target.isVisible():
             # Map target's rect to our coordinate system
-            top_left = target.mapTo(self.parent(), target.rect().topLeft()) \
-                if hasattr(target, "mapTo") else None
-            if top_left is not None:
-                self._target_rect = QRectF(
-                    top_left.x(), top_left.y(),
-                    target.width(), target.height()
-                )
-            else:
+            try:
+                top_left = target.mapTo(self.parent(), target.rect().topLeft())
+                if top_left is not None:
+                    self._target_rect = QRectF(
+                        top_left.x(), top_left.y(),
+                        target.width(), target.height()
+                    )
+                else:
+                    self._target_rect = None
+            except RuntimeError:
+                # Widget may have been deleted
                 self._target_rect = None
         else:
             # Target not found or not visible — fallback to no spotlight
@@ -585,12 +629,12 @@ class TourOverlay(QWidget):
         popup_size = self._popup.size()
         target = self._target_rect
 
-        # Default position: bottom-right
-        x = parent_rect.width() - popup_size.width() - 30
-        y = parent_rect.height() - popup_size.height() - 30
+        # Default position: center of screen
+        x = (parent_rect.width() - popup_size.width()) // 2
+        y = (parent_rect.height() - popup_size.height()) // 2
 
         if target is not None:
-            margin = 16
+            margin = 20
             if placement == "auto":
                 # Pick the side with the most space
                 space_right = parent_rect.width() - target.right()
@@ -629,6 +673,10 @@ class TourOverlay(QWidget):
                 x = parent_rect.width() - popup_size.width() - 30
                 y = parent_rect.height() - popup_size.height() - 30
 
+        # Clamp to be within parent bounds
+        x = max(10, min(x, parent_rect.width() - popup_size.width() - 10))
+        y = max(10, min(y, parent_rect.height() - popup_size.height() - 10))
+
         self._popup.move(int(x), int(y))
 
     # ---- Painting the overlay ----
@@ -636,21 +684,23 @@ class TourOverlay(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         try:
-            # Fill with semi-transparent dark
-            p.fillRect(self.rect(), QColor(0, 0, 0, 180))
-
-            # Cut out a spotlight around the target
             if self._target_rect is not None:
-                # Soft glow around the target
+                # Create a path with the dark overlay and a hole for the spotlight
+                # using OddEvenFill rule: overlapping areas are NOT filled
                 margin = 8
                 glow_rect = self._target_rect.adjusted(-margin, -margin, margin, margin)
 
-                # Clear a hole (use CompositionMode_Clear)
-                p.setCompositionMode(QPainter.CompositionMode_Clear)
-                p.setBrush(QBrush(QColor(0, 0, 0, 0)))
-                p.setPen(Qt.NoPen)
-                p.drawRoundedRect(glow_rect, 6, 6)
-                p.setCompositionMode(QPainter.CompositionMode_SourceOver)
+                path = QPainterPath()
+                # Outer rectangle (full widget area)
+                path.addRect(QRectF(self.rect()))
+                # Inner rectangle (spotlight hole) — overlaps with outer
+                path.addRoundedRect(glow_rect, 6, 6)
+                # OddEvenFill: areas covered by an odd number of subpaths are filled
+                # The overlap (spotlight) is covered by 2 subpaths → not filled (hole!)
+                # The dark area is covered by 1 subpath → filled
+                path.setFillRule(Qt.OddEvenFill)
+
+                p.fillPath(path, QColor(0, 0, 0, 190))
 
                 # Draw a gold border around the spotlight
                 pen = QPen(QColor(Palette.GOLD_BRIGHT), 2)
@@ -658,15 +708,29 @@ class TourOverlay(QWidget):
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(glow_rect, 6, 6)
 
+                # Soft glow inside the spotlight
+                gradient = QRadialGradient(glow_rect.center(), max(glow_rect.width(), glow_rect.height()) / 2)
+                gradient.setColorAt(0.0, QColor(Palette.GOLD_BRIGHT, 20))
+                gradient.setColorAt(1.0, QColor(Palette.GOLD_BRIGHT, 0))
+                p.setPen(Qt.NoPen)
+                p.setBrush(QBrush(gradient))
+                p.drawRoundedRect(glow_rect, 6, 6)
+
                 # Arrow from spotlight to popup
-                popup_pos = self._popup.pos()
-                popup_rect = QRectF(popup_pos.x(), popup_pos.y(),
-                                    self._popup.width(), self._popup.height())
-                arrow = self._compute_arrow(glow_rect, popup_rect)
-                if arrow is not None:
-                    p.setBrush(QBrush(QColor(Palette.GOLD_BRIGHT)))
-                    p.setPen(Qt.NoPen)
-                    p.drawPolygon(arrow)
+                try:
+                    popup_pos = self._popup.pos()
+                    popup_rect = QRectF(popup_pos.x(), popup_pos.y(),
+                                        self._popup.width(), self._popup.height())
+                    arrow = self._compute_arrow(glow_rect, popup_rect)
+                    if arrow is not None:
+                        p.setBrush(QBrush(QColor(Palette.GOLD_BRIGHT)))
+                        p.setPen(Qt.NoPen)
+                        p.drawPolygon(arrow)
+                except RuntimeError:
+                    pass
+            else:
+                # No target — fill entire overlay with semi-transparent dark
+                p.fillRect(self.rect(), QColor(0, 0, 0, 190))
         finally:
             p.end()
 
