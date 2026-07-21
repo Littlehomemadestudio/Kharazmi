@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QFrame, QSplitter, QScrollArea, QPlainTextEdit, QTextEdit,
     QSizePolicy, QMessageBox, QApplication, QToolButton, QInputDialog,
     QTabWidget, QGraphicsOpacityEffect, QStackedWidget,
+    QMenu, QFileDialog,
 )
 
 from ...ai import (
@@ -56,6 +57,7 @@ from ...calendar import CalendarStore, Event as CalendarEvent, EventType, Availa
 from ...core import Project, Task, TaskId, Duration, DurationUnit, Priority, TaskStatus
 from ...core.shamsi import ShamsiDate
 from ..theme import Palette
+from ...services.route_export import export_route_csv, export_route_xlsx, export_route_html
 
 logger = logging.getLogger(__name__)
 from ..views.unified_graph_view import UnifiedGraphView
@@ -253,6 +255,58 @@ class AIPlannerView(QWidget):
         self._critique_btn.setEnabled(False)
         self._critique_btn.clicked.connect(self._on_critique_clicked)
         gh_layout.addWidget(self._critique_btn)
+
+        # Small export button in graph header
+        self._gh_export_btn = QToolButton()
+        self._gh_export_btn.setText("📤")
+        self._gh_export_btn.setPopupMode(QToolButton.InstantPopup)
+        self._gh_export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self._gh_export_btn.setFixedHeight(28)
+        self._gh_export_btn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: #2A4A3A;
+                color: #A0E0C0;
+                border: none;
+                border-radius: 3px;
+                padding: 4px 8px;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QToolButton:hover {{
+                background-color: #3A6A5A;
+            }}
+            QToolButton::menu-indicator {{
+                image: none;
+            }}
+            QToolButton:disabled {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_TERTIARY};
+            }}
+        """)
+        gh_export_menu = QMenu(self._gh_export_btn)
+        gh_export_menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 8px 24px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Palette.BG_SELECTED};
+                color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+        gh_export_menu.addAction("📊  CSV", self._on_export_csv)
+        gh_export_menu.addAction("📗  Excel", self._on_export_xlsx)
+        gh_export_menu.addAction("🌐  HTML", self._on_export_html)
+        self._gh_export_btn.setMenu(gh_export_menu)
+        self._gh_export_btn.setEnabled(False)
+        gh_layout.addWidget(self._gh_export_btn)
 
         left_layout.addWidget(graph_header)
 
@@ -456,6 +510,59 @@ class AIPlannerView(QWidget):
         new_plan_btn.setFixedHeight(22)
         new_plan_btn.clicked.connect(self.show_landing)
         header_row.addWidget(new_plan_btn)
+
+        # Export button — dropdown with CSV / Excel / HTML
+        self._export_btn = QToolButton()
+        self._export_btn.setText("📤  Export")
+        self._export_btn.setPopupMode(QToolButton.InstantPopup)
+        self._export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self._export_btn.setFixedHeight(22)
+        self._export_btn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: #2A4A3A;
+                color: #A0E0C0;
+                border: none;
+                border-radius: 3px;
+                padding: 4px 12px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QToolButton:hover {{
+                background-color: #3A6A5A;
+            }}
+            QToolButton::menu-indicator {{
+                image: none;
+            }}
+            QToolButton:disabled {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_TERTIARY};
+            }}
+        """)
+
+        export_menu = QMenu(self._export_btn)
+        export_menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+                border: 1px solid {Palette.BORDER_NORMAL};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 8px 24px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {Palette.BG_SELECTED};
+                color: {Palette.GOLD_BRIGHT};
+            }}
+        """)
+        export_menu.addAction("📊  Export as CSV", self._on_export_csv)
+        export_menu.addAction("📗  Export as Excel", self._on_export_xlsx)
+        export_menu.addAction("🌐  Export as HTML", self._on_export_html)
+        self._export_btn.setMenu(export_menu)
+        self._export_btn.setEnabled(False)
+        header_row.addWidget(self._export_btn)
 
         self._stat_steps = QLabel("○ steps: 0")
         self._stat_steps.setStyleSheet(
@@ -784,6 +891,8 @@ class AIPlannerView(QWidget):
         self._schedule_btn.setEnabled(True)
         self._schedule_pulse_timer.start()  # Start glowing pulse
         self._critique_btn.setEnabled(True)
+        self._export_btn.setEnabled(True)
+        self._gh_export_btn.setEnabled(True)
 
         msg = (
             f"<b>Route generated!</b><br><br>"
@@ -1255,6 +1364,8 @@ class AIPlannerView(QWidget):
         self._schedule_btn.setEnabled(True)
         self._schedule_pulse_timer.start()  # Start glowing pulse
         self._critique_btn.setEnabled(True)
+        self._export_btn.setEnabled(True)
+        self._gh_export_btn.setEnabled(True)
         self._health_dashboard.set_route(route)
         if route and route.steps:
             health = RouteHealthEngine.compute(route)
@@ -1547,3 +1658,49 @@ class AIPlannerView(QWidget):
             self.chat_panel.add_message(f"Added {len(new_steps)} new steps and {len(new_edges)} new edges.", role="assistant", as_html=True)
 
         self._set_status("✓ Re-plan applied")
+
+    # ---- Export methods ----
+    def _on_export_csv(self) -> None:
+        if not self._current_route or not self._current_route.steps:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Route as CSV",
+            f"{self._current_route.goal[:40]}.csv",
+            "CSV files (*.csv);;All files (*)"
+        )
+        if path:
+            try:
+                export_route_csv(self._current_route, path)
+                self._set_status(f"✓ Exported CSV → {path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Export Failed", str(e))
+
+    def _on_export_xlsx(self) -> None:
+        if not self._current_route or not self._current_route.steps:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Route as Excel",
+            f"{self._current_route.goal[:40]}.xlsx",
+            "Excel files (*.xlsx);;All files (*)"
+        )
+        if path:
+            try:
+                export_route_xlsx(self._current_route, path)
+                self._set_status(f"✓ Exported Excel → {path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Export Failed", str(e))
+
+    def _on_export_html(self) -> None:
+        if not self._current_route or not self._current_route.steps:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Route as HTML",
+            f"{self._current_route.goal[:40]}.html",
+            "HTML files (*.html);;All files (*)"
+        )
+        if path:
+            try:
+                export_route_html(self._current_route, path)
+                self._set_status(f"✓ Exported HTML → {path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Export Failed", str(e))
