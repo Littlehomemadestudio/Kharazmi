@@ -259,6 +259,13 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_tasks)
 
+        view_menu.addSeparator()
+
+        self._action_fullscreen = QAction("Toggle &Fullscreen", self)
+        self._action_fullscreen.setShortcut(QKeySequence("F11"))
+        self._action_fullscreen.triggered.connect(self.toggle_fullscreen)
+        view_menu.addAction(self._action_fullscreen)
+
         # Schedule menu (for Enterprise features)
         sched_menu = menubar.addMenu("&Schedule")
         self._action_recalc = QAction(get_icon("play"), "&Recalculate CPM", self)

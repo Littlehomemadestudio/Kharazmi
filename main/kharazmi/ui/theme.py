@@ -540,6 +540,13 @@ def build_qpalette() -> QPalette:
 
 
 # ---- Fonts ----
+def with_alpha(hex_str: str, alpha: int) -> QColor:
+    """Create a QColor from a hex string with the given alpha (0-255)."""
+    c = QColor(hex_str)
+    c.setAlpha(alpha)
+    return c
+
+
 def default_font() -> QFont:
     f = QFont("Inter", 10)
     f.setStyleStrategy(QFont.PreferAntialias)

@@ -31,7 +31,7 @@ from ...core.shamsi import ShamsiDate, format_shamsi, to_persian_digits, SHAMSI_
 from ...calendar import CalendarStore
 from ...ai import JournalStore
 from ...core import Project
-from ..theme import Palette
+from ..theme import Palette, with_alpha
 from ..widgets.particle_background import GoldParticleBackground
 
 
@@ -72,98 +72,98 @@ class _HeroWidget(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            w, h = self.width(), self.height()
 
-        w, h = self.width(), self.height()
+            # ── Animated glow behind the date ──
+            pulse = 0.5 + 0.5 * math.sin(self._tick * 0.04)
+            glow_alpha = int(18 + 12 * pulse)
+            glow_r = 140 + 20 * pulse
+            glow_grad = QRadialGradient(QPointF(w / 2, h / 2 - 10), glow_r)
+            glow_grad.setColorAt(0, QColor(212, 175, 55, glow_alpha))
+            glow_grad.setColorAt(0.6, QColor(212, 175, 55, glow_alpha // 3))
+            glow_grad.setColorAt(1, QColor(212, 175, 55, 0))
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(glow_grad))
+            p.drawEllipse(QPointF(w / 2, h / 2 - 10), glow_r, glow_r)
 
-        # ── Animated glow behind the date ──
-        pulse = 0.5 + 0.5 * math.sin(self._tick * 0.04)
-        glow_alpha = int(18 + 12 * pulse)
-        glow_r = 140 + 20 * pulse
-        glow_grad = QRadialGradient(QPointF(w / 2, h / 2 - 10), glow_r)
-        glow_grad.setColorAt(0, QColor(212, 175, 55, glow_alpha))
-        glow_grad.setColorAt(0.6, QColor(212, 175, 55, glow_alpha // 3))
-        glow_grad.setColorAt(1, QColor(212, 175, 55, 0))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(glow_grad))
-        p.drawEllipse(QPointF(w / 2, h / 2 - 10), glow_r, glow_r)
+            # ── "امروز" badge ──
+            badge_text = "امروز"
+            badge_font = QFont("Segoe UI", 10)
+            p.setFont(badge_font)
+            fm = QFontMetrics(badge_font)
+            badge_w = fm.horizontalAdvance(badge_text) + 20
+            badge_h = 24
+            badge_x = (w - badge_w) / 2
+            badge_y = 14
 
-        # ── "امروز" badge ──
-        badge_text = "امروز"
-        badge_font = QFont("Segoe UI", 10)
-        p.setFont(badge_font)
-        fm = QFontMetrics(badge_font)
-        badge_w = fm.horizontalAdvance(badge_text) + 20
-        badge_h = 24
-        badge_x = (w - badge_w) / 2
-        badge_y = 14
+            badge_path = QPainterPath()
+            badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 12, 12)
+            p.setPen(Qt.NoPen)
+            badge_fill = QColor(Palette.GOLD_PRIMARY)
+            badge_fill.setAlpha(35)
+            p.setBrush(QBrush(badge_fill))
+            p.drawPath(badge_path)
 
-        badge_path = QPainterPath()
-        badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 12, 12)
-        p.setPen(Qt.NoPen)
-        badge_fill = QColor(Palette.GOLD_PRIMARY)
-        badge_fill.setAlpha(35)
-        p.setBrush(QBrush(badge_fill))
-        p.drawPath(badge_path)
+            badge_border = QColor(Palette.GOLD_PRIMARY)
+            badge_border.setAlpha(80)
+            p.setPen(QPen(badge_border, 1))
+            p.setBrush(Qt.NoBrush)
+            p.drawPath(badge_path)
 
-        badge_border = QColor(Palette.GOLD_PRIMARY)
-        badge_border.setAlpha(80)
-        p.setPen(QPen(badge_border, 1))
-        p.setBrush(Qt.NoBrush)
-        p.drawPath(badge_path)
+            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+            p.drawText(QRectF(badge_x, badge_y, badge_w, badge_h),
+                       Qt.AlignCenter, badge_text)
 
-        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-        p.drawText(QRectF(badge_x, badge_y, badge_w, badge_h),
-                   Qt.AlignCenter, badge_text)
+            # ── Date display ──
+            day_text = to_persian_digits(str(self._today.day))
+            month_text = SHAMSI_MONTHS_FA[self._today.month - 1]
+            year_text = to_persian_digits(str(self._today.year))
+            weekday_text = self._today.weekday_fa
 
-        # ── Date display ──
-        day_text = to_persian_digits(str(self._today.day))
-        month_text = SHAMSI_MONTHS_FA[self._today.month - 1]
-        year_text = to_persian_digits(str(self._today.year))
-        weekday_text = self._today.weekday_fa
+            # Big centered day number with gold gradient
+            day_font = QFont("Segoe UI", 80, QFont.Bold)
+            p.setFont(day_font)
 
-        # Big centered day number with gold gradient
-        day_font = QFont("Segoe UI", 80, QFont.Bold)
-        p.setFont(day_font)
+            day_grad = QLinearGradient(0, 40, 0, 140)
+            day_grad.setColorAt(0, QColor(245, 200, 66))
+            day_grad.setColorAt(0.5, QColor(212, 175, 55))
+            day_grad.setColorAt(1, QColor(140, 112, 18))
+            p.setPen(QPen(QBrush(day_grad), 1))
+            p.drawText(QRectF(0, 38, w, 100), Qt.AlignHCenter | Qt.AlignTop, day_text)
 
-        day_grad = QLinearGradient(0, 40, 0, 140)
-        day_grad.setColorAt(0, QColor(245, 200, 66))
-        day_grad.setColorAt(0.5, QColor(212, 175, 55))
-        day_grad.setColorAt(1, QColor(140, 112, 18))
-        p.setPen(QPen(QBrush(day_grad), 1))
-        p.drawText(QRectF(0, 38, w, 100), Qt.AlignHCenter | Qt.AlignTop, day_text)
+            # Month name centered below day
+            month_font = QFont("Segoe UI", 28, QFont.Bold)
+            p.setFont(month_font)
+            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+            p.drawText(QRectF(0, 130, w, 40), Qt.AlignHCenter, month_text)
 
-        # Month name centered below day
-        month_font = QFont("Segoe UI", 28, QFont.Bold)
-        p.setFont(month_font)
-        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-        p.drawText(QRectF(0, 130, w, 40), Qt.AlignHCenter, month_text)
+            # Year + Weekday on one line
+            year_week_font = QFont("Segoe UI", 13)
+            p.setFont(year_week_font)
+            year_weekday = f"{year_text}  ·  {weekday_text}"
+            p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+            p.drawText(QRectF(0, 170, w, 24), Qt.AlignHCenter, year_weekday)
 
-        # Year + Weekday on one line
-        year_week_font = QFont("Segoe UI", 13)
-        p.setFont(year_week_font)
-        year_weekday = f"{year_text}  ·  {weekday_text}"
-        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(0, 170, w, 24), Qt.AlignHCenter, year_weekday)
+            # ── Greeting ──
+            greeting = _greeting_fa()
+            greet_font = QFont("Segoe UI", 12)
+            p.setFont(greet_font)
+            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+            p.drawText(QRectF(0, 194, w, 20), Qt.AlignHCenter, greeting)
 
-        # ── Greeting ──
-        greeting = _greeting_fa()
-        greet_font = QFont("Segoe UI", 12)
-        p.setFont(greet_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.drawText(QRectF(0, 194, w, 20), Qt.AlignHCenter, greeting)
-
-        # ── Subtle divider ──
-        div_grad = QLinearGradient(0, 0, w, 0)
-        div_grad.setColorAt(0, QColor(212, 175, 55, 0))
-        div_grad.setColorAt(0.2, QColor(212, 175, 55, 50))
-        div_grad.setColorAt(0.5, QColor(212, 175, 55, 70))
-        div_grad.setColorAt(0.8, QColor(212, 175, 55, 50))
-        div_grad.setColorAt(1, QColor(212, 175, 55, 0))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(div_grad))
-        p.drawRect(QRectF(0, h - 1, w, 1))
-
-        p.end()
+            # ── Subtle divider ──
+            div_grad = QLinearGradient(0, 0, w, 0)
+            div_grad.setColorAt(0, QColor(212, 175, 55, 0))
+            div_grad.setColorAt(0.2, QColor(212, 175, 55, 50))
+            div_grad.setColorAt(0.5, QColor(212, 175, 55, 70))
+            div_grad.setColorAt(0.8, QColor(212, 175, 55, 50))
+            div_grad.setColorAt(1, QColor(212, 175, 55, 0))
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(div_grad))
+            p.drawRect(QRectF(0, h - 1, w, 1))
+        finally:
+            p.end()
 
 
 # ──────────────────────────── Stat Card ────────────────────────────
@@ -196,103 +196,103 @@ class _StatCard(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            r = 12
+            # Card background
+            card_path = QPainterPath()
+            card_path.addRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), r, r)
+            p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
+            p.setBrush(QBrush(QColor(Palette.BG_TERTIARY)))
+            p.drawPath(card_path)
 
-        r = 12
-        # Card background
-        card_path = QPainterPath()
-        card_path.addRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), r, r)
-        p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
-        p.setBrush(QBrush(QColor(Palette.BG_TERTIARY)))
-        p.drawPath(card_path)
-
-        # Left color accent border
-        accent_path = QPainterPath()
-        accent_path.addRoundedRect(QRectF(0, 0, 4, self.height()), r, r)
-        accent_fill = QColor(self._color)
-        accent_fill.setAlpha(220)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(accent_fill))
-        p.drawPath(accent_path)
-
-        # ── Draw icon ──
-        icon_x, icon_y = 170, 18
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(QColor(self._color).lighter(130)))
-
-        if self._icon_type == "calendar":
-            # Calendar: rectangle with small squares
-            cal_x, cal_y = icon_x - 10, icon_y - 4
-            p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 18), 3, 3)
-            # Top bar
-            p.setBrush(QBrush(QColor(self._color)))
-            p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 6), 3, 3)
-            # Grid dots
-            p.setBrush(QBrush(QColor(Palette.TEXT_TERTIARY)))
-            for row in range(2):
-                for col in range(3):
-                    p.drawEllipse(QPointF(cal_x + 4 + col * 6, cal_y + 10 + row * 5), 1.2, 1.2)
-
-        elif self._icon_type == "checkmark":
-            # Checkmark in circle
-            p.drawEllipse(QPointF(icon_x, icon_y + 5), 12, 12)
-            p.setPen(QPen(QColor("#FFFFFF"), 2.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            p.setBrush(Qt.NoBrush)
-            check_path = QPainterPath()
-            check_path.moveTo(icon_x - 5, icon_y + 5)
-            check_path.lineTo(icon_x - 1, icon_y + 9)
-            check_path.lineTo(icon_x + 6, icon_y + 1)
-            p.drawPath(check_path)
-
-        elif self._icon_type == "star":
-            # 5-point star
-            p.setBrush(QBrush(QColor(self._color).lighter(120)))
+            # Left color accent border
+            accent_path = QPainterPath()
+            accent_path.addRoundedRect(QRectF(0, 0, 4, self.height()), r, r)
+            accent_fill = QColor(self._color)
+            accent_fill.setAlpha(220)
             p.setPen(Qt.NoPen)
-            star_path = QPainterPath()
-            cx_s, cy_s, outer_r, inner_r = icon_x, icon_y + 5, 12, 5
-            for i in range(5):
-                angle_outer = math.radians(-90 + i * 72)
-                angle_inner = math.radians(-90 + i * 72 + 36)
-                ox = cx_s + outer_r * math.cos(angle_outer)
-                oy = cy_s + outer_r * math.sin(angle_outer)
-                ix = cx_s + inner_r * math.cos(angle_inner)
-                iy = cy_s + inner_r * math.sin(angle_inner)
-                if i == 0:
-                    star_path.moveTo(ox, oy)
-                else:
-                    star_path.lineTo(ox, oy)
-                star_path.lineTo(ix, iy)
-            star_path.closeSubpath()
-            p.drawPath(star_path)
+            p.setBrush(QBrush(accent_fill))
+            p.drawPath(accent_path)
 
-        elif self._icon_type == "book":
-            # Open book shape
-            p.setPen(QPen(QColor(self._color).lighter(130), 2))
-            p.setBrush(Qt.NoBrush)
-            # Left page
-            p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
-            p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x - 10, icon_y + 18))
-            p.drawLine(QPointF(icon_x - 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
-            # Right page
-            p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
-            p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x + 10, icon_y + 18))
-            p.drawLine(QPointF(icon_x + 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
-            # Spine
-            p.drawLine(QPointF(icon_x, icon_y), QPointF(icon_x, icon_y + 10))
+            # ── Draw icon ──
+            icon_x, icon_y = 170, 18
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(self._color).lighter(130)))
 
-        # ── Number (Persian digits) ──
-        num_text = to_persian_digits(str(self._current))
-        num_font = QFont("Segoe UI", 28, QFont.Bold)
-        p.setFont(num_font)
-        p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(20, 20, 140, 50), Qt.AlignLeft | Qt.AlignVCenter, num_text)
+            if self._icon_type == "calendar":
+                # Calendar: rectangle with small squares
+                cal_x, cal_y = icon_x - 10, icon_y - 4
+                p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 18), 3, 3)
+                # Top bar
+                p.setBrush(QBrush(QColor(self._color)))
+                p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 6), 3, 3)
+                # Grid dots
+                p.setBrush(QBrush(QColor(Palette.TEXT_TERTIARY)))
+                for row in range(2):
+                    for col in range(3):
+                        p.drawEllipse(QPointF(cal_x + 4 + col * 6, cal_y + 10 + row * 5), 1.2, 1.2)
 
-        # ── Label ──
-        label_font = QFont("Segoe UI", 10)
-        p.setFont(label_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.drawText(QRectF(20, 75, 160, 24), Qt.AlignLeft | Qt.AlignVCenter, self._label)
+            elif self._icon_type == "checkmark":
+                # Checkmark in circle
+                p.drawEllipse(QPointF(icon_x, icon_y + 5), 12, 12)
+                p.setPen(QPen(QColor("#FFFFFF"), 2.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                p.setBrush(Qt.NoBrush)
+                check_path = QPainterPath()
+                check_path.moveTo(icon_x - 5, icon_y + 5)
+                check_path.lineTo(icon_x - 1, icon_y + 9)
+                check_path.lineTo(icon_x + 6, icon_y + 1)
+                p.drawPath(check_path)
 
-        p.end()
+            elif self._icon_type == "star":
+                # 5-point star
+                p.setBrush(QBrush(QColor(self._color).lighter(120)))
+                p.setPen(Qt.NoPen)
+                star_path = QPainterPath()
+                cx_s, cy_s, outer_r, inner_r = icon_x, icon_y + 5, 12, 5
+                for i in range(5):
+                    angle_outer = math.radians(-90 + i * 72)
+                    angle_inner = math.radians(-90 + i * 72 + 36)
+                    ox = cx_s + outer_r * math.cos(angle_outer)
+                    oy = cy_s + outer_r * math.sin(angle_outer)
+                    ix = cx_s + inner_r * math.cos(angle_inner)
+                    iy = cy_s + inner_r * math.sin(angle_inner)
+                    if i == 0:
+                        star_path.moveTo(ox, oy)
+                    else:
+                        star_path.lineTo(ox, oy)
+                    star_path.lineTo(ix, iy)
+                star_path.closeSubpath()
+                p.drawPath(star_path)
+
+            elif self._icon_type == "book":
+                # Open book shape
+                p.setPen(QPen(QColor(self._color).lighter(130), 2))
+                p.setBrush(Qt.NoBrush)
+                # Left page
+                p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
+                p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x - 10, icon_y + 18))
+                p.drawLine(QPointF(icon_x - 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
+                # Right page
+                p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
+                p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x + 10, icon_y + 18))
+                p.drawLine(QPointF(icon_x + 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
+                # Spine
+                p.drawLine(QPointF(icon_x, icon_y), QPointF(icon_x, icon_y + 10))
+
+            # ── Number (Persian digits) ──
+            num_text = to_persian_digits(str(self._current))
+            num_font = QFont("Segoe UI", 28, QFont.Bold)
+            p.setFont(num_font)
+            p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+            p.drawText(QRectF(20, 20, 140, 50), Qt.AlignLeft | Qt.AlignVCenter, num_text)
+
+            # ── Label ──
+            label_font = QFont("Segoe UI", 10)
+            p.setFont(label_font)
+            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+            p.drawText(QRectF(20, 75, 160, 24), Qt.AlignLeft | Qt.AlignVCenter, self._label)
+        finally:
+            p.end()
 
 
 # ──────────────────────────── Event Row ──────────────────────────────────
@@ -310,33 +310,33 @@ class _EventRow(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            w, h = self.width(), self.height()
 
-        w, h = self.width(), self.height()
+            # Color dot
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(self._color)))
+            p.drawEllipse(QPointF(w - 14, h / 2), 5, 5)
 
-        # Color dot
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(QColor(self._color)))
-        p.drawEllipse(QPointF(w - 14, h / 2), 5, 5)
+            # Title (right-aligned for RTL)
+            title_font = QFont("Segoe UI", 12)
+            p.setFont(title_font)
+            p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+            p.drawText(QRectF(0, 0, w - 30, h),
+                        Qt.AlignRight | Qt.AlignVCenter, self._title)
 
-        # Title (right-aligned for RTL)
-        title_font = QFont("Segoe UI", 12)
-        p.setFont(title_font)
-        p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(0, 0, w - 30, h),
-                    Qt.AlignRight | Qt.AlignVCenter, self._title)
+            # Time (left side)
+            time_font = QFont("Segoe UI", 11)
+            p.setFont(time_font)
+            p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+            p.drawText(QRectF(10, 0, 120, h),
+                        Qt.AlignLeft | Qt.AlignVCenter, self._time)
 
-        # Time (left side)
-        time_font = QFont("Segoe UI", 11)
-        p.setFont(time_font)
-        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(10, 0, 120, h),
-                    Qt.AlignLeft | Qt.AlignVCenter, self._time)
-
-        # Subtle bottom line
-        p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1))
-        p.drawLine(QPointF(10, h - 0.5), QPointF(w - 10, h - 0.5))
-
-        p.end()
+            # Subtle bottom line
+            p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1))
+            p.drawLine(QPointF(10, h - 0.5), QPointF(w - 10, h - 0.5))
+        finally:
+            p.end()
 
 
 # ──────────────────────────── Progress Ring ──────────────────────────────
@@ -356,37 +356,37 @@ class _ProgressRing(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            cx, cy = 45, 42
+            radius = 32
+            pen_w = 8
 
-        cx, cy = 45, 42
-        radius = 32
-        pen_w = 8
+            # Background ring
+            p.setPen(QPen(QColor(Palette.BORDER_NORMAL), pen_w, Qt.SolidLine, Qt.RoundCap))
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(QPointF(cx, cy), radius, radius)
 
-        # Background ring
-        p.setPen(QPen(QColor(Palette.BORDER_NORMAL), pen_w, Qt.SolidLine, Qt.RoundCap))
-        p.setBrush(Qt.NoBrush)
-        p.drawEllipse(QPointF(cx, cy), radius, radius)
+            # Progress arc
+            frac = self._value / self._max if self._max > 0 else 0
+            pct_val = int(frac * 100)
+            span = int(frac * 360 * 16)
+            p.setPen(QPen(QColor(self._color), pen_w, Qt.SolidLine, Qt.RoundCap))
+            arc_rect = QRect(int(cx - radius), int(cy - radius),
+                             int(radius * 2), int(radius * 2))
+            p.drawArc(arc_rect, 90 * 16, -span)
 
-        # Progress arc
-        frac = self._value / self._max if self._max > 0 else 0
-        pct_val = int(frac * 100)
-        span = int(frac * 360 * 16)
-        p.setPen(QPen(QColor(self._color), pen_w, Qt.SolidLine, Qt.RoundCap))
-        arc_rect = QRect(int(cx - radius), int(cy - radius),
-                         int(radius * 2), int(radius * 2))
-        p.drawArc(arc_rect, 90 * 16, -span)
+            # Percentage text — Persian digits
+            pct = to_persian_digits(str(pct_val)) + "٪"
+            p.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+            p.drawText(QRectF(0, 18, 90, 44), Qt.AlignCenter, pct)
 
-        # Percentage text — Persian digits
-        pct = to_persian_digits(str(pct_val)) + "٪"
-        p.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(0, 18, 90, 44), Qt.AlignCenter, pct)
-
-        # Label below
-        p.setFont(QFont("Segoe UI", 9))
-        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(0, 78, 90, 20), Qt.AlignCenter, self._label)
-
-        p.end()
+            # Label below
+            p.setFont(QFont("Segoe UI", 9))
+            p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+            p.drawText(QRectF(0, 78, 90, 20), Qt.AlignCenter, self._label)
+        finally:
+            p.end()
 
 
 # ──────────────────────────── Section Header ────────────────────────────
@@ -403,48 +403,48 @@ class _SectionHeader(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            w = self.width()
 
-        w = self.width()
+            # Title
+            title_font = QFont("Segoe UI", 12, QFont.Bold)
+            p.setFont(title_font)
+            p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
+            title_rect = QRectF(0, 4, w - 60, 28)
+            p.drawText(title_rect, Qt.AlignRight | Qt.AlignVCenter, self._title)
 
-        # Title
-        title_font = QFont("Segoe UI", 12, QFont.Bold)
-        p.setFont(title_font)
-        p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
-        title_rect = QRectF(0, 4, w - 60, 28)
-        p.drawText(title_rect, Qt.AlignRight | Qt.AlignVCenter, self._title)
+            # Badge
+            if self._badge:
+                badge_font = QFont("Segoe UI", 9, QFont.Bold)
+                p.setFont(badge_font)
+                fm = QFontMetrics(badge_font)
+                bw = max(fm.horizontalAdvance(self._badge) + 14, 24)
+                bh = 20
+                bx = 0
+                by = 8
 
-        # Badge
-        if self._badge:
-            badge_font = QFont("Segoe UI", 9, QFont.Bold)
-            p.setFont(badge_font)
-            fm = QFontMetrics(badge_font)
-            bw = max(fm.horizontalAdvance(self._badge) + 14, 24)
-            bh = 20
-            bx = 0
-            by = 8
+                badge_path = QPainterPath()
+                badge_path.addRoundedRect(QRectF(bx, by, bw, bh), 10, 10)
+                p.setPen(Qt.NoPen)
+                badge_fill = QColor(Palette.GOLD_PRIMARY)
+                badge_fill.setAlpha(30)
+                p.setBrush(QBrush(badge_fill))
+                p.drawPath(badge_path)
 
-            badge_path = QPainterPath()
-            badge_path.addRoundedRect(QRectF(bx, by, bw, bh), 10, 10)
+                p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+                p.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, self._badge)
+
+            # Subtle underline
+            line_grad = QLinearGradient(0, 0, w, 0)
+            line_grad.setColorAt(0, with_alpha(Palette.GOLD_PRIMARY, 0))
+            line_grad.setColorAt(0.3, with_alpha(Palette.GOLD_PRIMARY, 40))
+            line_grad.setColorAt(0.7, with_alpha(Palette.GOLD_PRIMARY, 40))
+            line_grad.setColorAt(1, with_alpha(Palette.GOLD_PRIMARY, 0))
             p.setPen(Qt.NoPen)
-            badge_fill = QColor(Palette.GOLD_PRIMARY)
-            badge_fill.setAlpha(30)
-            p.setBrush(QBrush(badge_fill))
-            p.drawPath(badge_path)
-
-            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-            p.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, self._badge)
-
-        # Subtle underline
-        line_grad = QLinearGradient(0, 0, w, 0)
-        line_grad.setColorAt(0, QColor(Palette.GOLD_PRIMARY, 0))
-        line_grad.setColorAt(0.3, QColor(Palette.GOLD_PRIMARY, 40))
-        line_grad.setColorAt(0.7, QColor(Palette.GOLD_PRIMARY, 40))
-        line_grad.setColorAt(1, QColor(Palette.GOLD_PRIMARY, 0))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(line_grad))
-        p.drawRect(QRectF(0, 34, w, 1))
-
-        p.end()
+            p.setBrush(QBrush(line_grad))
+            p.drawRect(QRectF(0, 34, w, 1))
+        finally:
+            p.end()
 
 
 # ──────────────────────────── Dashboard View ──────────────────────────────

@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QFrame, QSizePolicy, QGraphicsOpacityEffect,
 )
 
-from ..theme import Palette
+from ..theme import Palette, with_alpha
 
 
 # ---- Category tab button ----
@@ -166,40 +166,41 @@ class PlannerLanding(QWidget):
         """Draw floating gold particles + animated gold underline behind all content."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
-        w, h = self.width(), self.height()
-        gold = QColor(Palette.GOLD_PRIMARY)
-        for p in self._particles:
-            gold.setAlpha(int(p["alpha"]))
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(gold)
-            painter.drawEllipse(
-                int(p["x"] * w), int(p["y"] * h),
-                int(p["size"] * 2), int(p["size"] * 2),
-            )
+        try:
+            w, h = self.width(), self.height()
+            gold = QColor(Palette.GOLD_PRIMARY)
+            for p in self._particles:
+                gold.setAlpha(int(p["alpha"]))
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(gold)
+                painter.drawEllipse(
+                    int(p["x"] * w), int(p["y"] * h),
+                    int(p["size"] * 2), int(p["size"] * 2),
+                )
 
-        # ── Animated gold underline below headline ──
-        if self._underline_width > 0 and hasattr(self, '_headline_geom'):
-            hx, hy, hw = self._headline_geom
-            line_w = hw * self._underline_width
-            line_x = hx + (hw - line_w) / 2
-            line_y = hy + 4  # just below headline bottom
-            grad = QLinearGradient(line_x, line_y, line_x + line_w, line_y)
-            grad.setColorAt(0.0, QColor(Palette.GOLD_PRIMARY, 0))
-            grad.setColorAt(0.15, QColor(Palette.GOLD_BRIGHT, 200))
-            grad.setColorAt(0.5, QColor(Palette.GOLD_BRIGHT, 255))
-            grad.setColorAt(0.85, QColor(Palette.GOLD_BRIGHT, 200))
-            grad.setColorAt(1.0, QColor(Palette.GOLD_PRIMARY, 0))
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(grad))
-            painter.drawRoundedRect(QRectF(line_x, line_y, line_w, 2), 1, 1)
+            # ── Animated gold underline below headline ──
+            if self._underline_width > 0 and hasattr(self, '_headline_geom'):
+                hx, hy, hw = self._headline_geom
+                line_w = hw * self._underline_width
+                line_x = hx + (hw - line_w) / 2
+                line_y = hy + 4  # just below headline bottom
+                grad = QLinearGradient(line_x, line_y, line_x + line_w, line_y)
+                grad.setColorAt(0.0, with_alpha(Palette.GOLD_PRIMARY, 0))
+                grad.setColorAt(0.15, with_alpha(Palette.GOLD_BRIGHT, 200))
+                grad.setColorAt(0.5, with_alpha(Palette.GOLD_BRIGHT, 255))
+                grad.setColorAt(0.85, with_alpha(Palette.GOLD_BRIGHT, 200))
+                grad.setColorAt(1.0, with_alpha(Palette.GOLD_PRIMARY, 0))
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(grad))
+                painter.drawRoundedRect(QRectF(line_x, line_y, line_w, 2), 1, 1)
 
-        # ── Brand label pulse opacity ──
-        if hasattr(self, '_brand_label'):
-            op = QGraphicsOpacityEffect(self._brand_label)
-            op.setOpacity(self._brand_opacity)
-            self._brand_label.setGraphicsEffect(op)
-
-        painter.end()
+            # ── Brand label pulse opacity ──
+            if hasattr(self, '_brand_label'):
+                op = QGraphicsOpacityEffect(self._brand_label)
+                op.setOpacity(self._brand_opacity)
+                self._brand_label.setGraphicsEffect(op)
+        finally:
+            painter.end()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)

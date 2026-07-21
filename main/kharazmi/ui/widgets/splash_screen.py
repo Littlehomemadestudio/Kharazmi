@@ -159,186 +159,186 @@ class RaskSplashScreen(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            w, h = self.width(), self.height()
 
-        w, h = self.width(), self.height()
+            # ── Background ──
+            bg_grad = QLinearGradient(0, 0, 0, h)
+            bg_grad.setColorAt(0, QColor(10, 10, 12))
+            bg_grad.setColorAt(0.5, QColor(14, 14, 18))
+            bg_grad.setColorAt(1, QColor(8, 8, 10))
+            p.fillRect(self.rect(), QBrush(bg_grad))
 
-        # ── Background ──
-        bg_grad = QLinearGradient(0, 0, 0, h)
-        bg_grad.setColorAt(0, QColor(10, 10, 12))
-        bg_grad.setColorAt(0.5, QColor(14, 14, 18))
-        bg_grad.setColorAt(1, QColor(8, 8, 10))
-        p.fillRect(self.rect(), QBrush(bg_grad))
-
-        # ── Subtle radial glow behind logo ──
-        center_glow = QRadialGradient(QPointF(w / 2, h / 2 - 60), 200)
-        center_glow.setColorAt(0, QColor(212, 175, 55, 25))
-        center_glow.setColorAt(1, QColor(212, 175, 55, 0))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(center_glow))
-        p.drawRect(self.rect())
-
-        # ── Particles ──
-        for pt in self._particles:
-            alpha = int(pt.opacity * 255)
-            gold = QColor(245, 200, 66, alpha)
+            # ── Subtle radial glow behind logo ──
+            center_glow = QRadialGradient(QPointF(w / 2, h / 2 - 60), 200)
+            center_glow.setColorAt(0, QColor(212, 175, 55, 25))
+            center_glow.setColorAt(1, QColor(212, 175, 55, 0))
             p.setPen(Qt.NoPen)
-            p.setBrush(QBrush(gold))
-            p.drawEllipse(QPointF(pt.x, pt.y), pt.size, pt.size)
+            p.setBrush(QBrush(center_glow))
+            p.drawRect(self.rect())
 
-            # Glow for larger particles
-            if pt.size > 2.5:
-                glow = QRadialGradient(QPointF(pt.x, pt.y), pt.size * 4)
-                glow.setColorAt(0, QColor(212, 175, 55, int(alpha * 0.2)))
-                glow.setColorAt(1, QColor(212, 175, 55, 0))
-                p.setBrush(QBrush(glow))
-                p.drawEllipse(QPointF(pt.x, pt.y), pt.size * 4, pt.size * 4)
+            # ── Particles ──
+            for pt in self._particles:
+                alpha = int(pt.opacity * 255)
+                gold = QColor(245, 200, 66, alpha)
+                p.setPen(Qt.NoPen)
+                p.setBrush(QBrush(gold))
+                p.drawEllipse(QPointF(pt.x, pt.y), pt.size, pt.size)
 
-        # ── Top gold accent line ──
-        accent = QLinearGradient(0, 0, w, 0)
-        accent.setColorAt(0.0, QColor(212, 175, 55, 0))
-        accent.setColorAt(0.3, QColor(212, 175, 55, 200))
-        accent.setColorAt(0.5, QColor(245, 200, 66, 255))
-        accent.setColorAt(0.7, QColor(212, 175, 55, 200))
-        accent.setColorAt(1.0, QColor(212, 175, 55, 0))
-        p.fillRect(0, 0, w, 2, QBrush(accent))
+                # Glow for larger particles
+                if pt.size > 2.5:
+                    glow = QRadialGradient(QPointF(pt.x, pt.y), pt.size * 4)
+                    glow.setColorAt(0, QColor(212, 175, 55, int(alpha * 0.2)))
+                    glow.setColorAt(1, QColor(212, 175, 55, 0))
+                    p.setBrush(QBrush(glow))
+                    p.drawEllipse(QPointF(pt.x, pt.y), pt.size * 4, pt.size * 4)
 
-        # ── RASK! logo ──
-        logo_font = QFont("Segoe UI", 56, QFont.Bold)
-        p.setFont(logo_font)
+            # ── Top gold accent line ──
+            accent = QLinearGradient(0, 0, w, 0)
+            accent.setColorAt(0.0, QColor(212, 175, 55, 0))
+            accent.setColorAt(0.3, QColor(212, 175, 55, 200))
+            accent.setColorAt(0.5, QColor(245, 200, 66, 255))
+            accent.setColorAt(0.7, QColor(212, 175, 55, 200))
+            accent.setColorAt(1.0, QColor(212, 175, 55, 0))
+            p.fillRect(0, 0, w, 2, QBrush(accent))
 
-        # Gold gradient on text
-        text_grad = QLinearGradient(0, h / 2 - 100, 0, h / 2 - 30)
-        text_grad.setColorAt(0, QColor(245, 200, 66))
-        text_grad.setColorAt(0.5, QColor(212, 175, 55))
-        text_grad.setColorAt(1, QColor(140, 112, 18))
-        p.setPen(QPen(QBrush(text_grad), 1))
-        p.setBrush(Qt.NoBrush)
+            # ── RASK! logo ──
+            logo_font = QFont("Segoe UI", 56, QFont.Bold)
+            p.setFont(logo_font)
 
-        logo_rect = QRectF(0, h / 2 - 100, w, 80)
-        p.drawText(logo_rect, Qt.AlignCenter, "RASK!")
+            # Gold gradient on text
+            text_grad = QLinearGradient(0, h / 2 - 100, 0, h / 2 - 30)
+            text_grad.setColorAt(0, QColor(245, 200, 66))
+            text_grad.setColorAt(0.5, QColor(212, 175, 55))
+            text_grad.setColorAt(1, QColor(140, 112, 18))
+            p.setPen(QPen(QBrush(text_grad), 1))
+            p.setBrush(Qt.NoBrush)
 
-        # ── Subtitle: KHARAZMI ──
-        sub_font = QFont("Segoe UI", 14)
-        sub_font.setLetterSpacing(QFont.AbsoluteSpacing, 8)
-        p.setFont(sub_font)
-        # Fade-in based on tick
-        sub_alpha = min(255, int(self._tick * 3))
-        p.setPen(QPen(QColor(168, 162, 148, sub_alpha)))
-        sub_rect = QRectF(0, h / 2 - 15, w, 30)
-        p.drawText(sub_rect, Qt.AlignCenter, "K H A R A Z M I")
+            logo_rect = QRectF(0, h / 2 - 100, w, 80)
+            p.drawText(logo_rect, Qt.AlignCenter, "RASK!")
 
-        # ── Progress bar ──
-        bar_y = h - 130
-        bar_h = 6
-        bar_left = 80
-        bar_right = w - 80
-        bar_w = bar_right - bar_left
+            # ── Subtitle: KHARAZMI ──
+            sub_font = QFont("Segoe UI", 14)
+            sub_font.setLetterSpacing(QFont.AbsoluteSpacing, 8)
+            p.setFont(sub_font)
+            # Fade-in based on tick
+            sub_alpha = min(255, int(self._tick * 3))
+            p.setPen(QPen(QColor(168, 162, 148, sub_alpha)))
+            sub_rect = QRectF(0, h / 2 - 15, w, 30)
+            p.drawText(sub_rect, Qt.AlignCenter, "K H A R A Z M I")
 
-        # Track background
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(QColor(26, 26, 30)))
-        track_path = QPainterPath()
-        track_path.addRoundedRect(QRectF(bar_left, bar_y, bar_w, bar_h), 3, 3)
-        p.drawPath(track_path)
+            # ── Progress bar ──
+            bar_y = h - 130
+            bar_h = 6
+            bar_left = 80
+            bar_right = w - 80
+            bar_w = bar_right - bar_left
 
-        # Fill
-        if self._progress > 0:
-            fill_w = bar_w * (self._progress / 100.0)
-            fill_grad = QLinearGradient(bar_left, bar_y, bar_left + fill_w, bar_y)
-            fill_grad.setColorAt(0, QColor(140, 112, 18))
-            fill_grad.setColorAt(0.5, QColor(212, 175, 55))
-            fill_grad.setColorAt(1, QColor(245, 200, 66))
-            p.setBrush(QBrush(fill_grad))
-            fill_path = QPainterPath()
-            fill_path.addRoundedRect(QRectF(bar_left, bar_y, fill_w, bar_h), 3, 3)
-            p.drawPath(fill_path)
+            # Track background
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(26, 26, 30)))
+            track_path = QPainterPath()
+            track_path.addRoundedRect(QRectF(bar_left, bar_y, bar_w, bar_h), 3, 3)
+            p.drawPath(track_path)
 
-            # Shimmer effect — a bright line that moves across the fill
-            if self._progress < 100:
-                shimmer_x = bar_left + fill_w - 30 + 15 * math.sin(self._tick * 0.1)
-                shimmer_grad = QRadialGradient(QPointF(shimmer_x, bar_y + bar_h / 2), 25)
-                shimmer_grad.setColorAt(0, QColor(255, 255, 200, 100))
-                shimmer_grad.setColorAt(1, QColor(255, 255, 200, 0))
-                p.setBrush(QBrush(shimmer_grad))
-                p.setClipPath(fill_path)
-                p.drawRect(self.rect())
-                p.setClipping(False)
+            # Fill
+            if self._progress > 0:
+                fill_w = bar_w * (self._progress / 100.0)
+                fill_grad = QLinearGradient(bar_left, bar_y, bar_left + fill_w, bar_y)
+                fill_grad.setColorAt(0, QColor(140, 112, 18))
+                fill_grad.setColorAt(0.5, QColor(212, 175, 55))
+                fill_grad.setColorAt(1, QColor(245, 200, 66))
+                p.setBrush(QBrush(fill_grad))
+                fill_path = QPainterPath()
+                fill_path.addRoundedRect(QRectF(bar_left, bar_y, fill_w, bar_h), 3, 3)
+                p.drawPath(fill_path)
 
-        # ── Status text ──
-        status_font = QFont("Inter", 10)
-        p.setFont(status_font)
-        p.setPen(QPen(QColor(168, 162, 148, 180)))
-        p.drawText(QRectF(bar_left, bar_y + 16, bar_w, 20),
-                    Qt.AlignCenter, self._status_text)
+                # Shimmer effect — a bright line that moves across the fill
+                if self._progress < 100:
+                    shimmer_x = bar_left + fill_w - 30 + 15 * math.sin(self._tick * 0.1)
+                    shimmer_grad = QRadialGradient(QPointF(shimmer_x, bar_y + bar_h / 2), 25)
+                    shimmer_grad.setColorAt(0, QColor(255, 255, 200, 100))
+                    shimmer_grad.setColorAt(1, QColor(255, 255, 200, 0))
+                    p.setBrush(QBrush(shimmer_grad))
+                    p.setClipPath(fill_path)
+                    p.drawRect(self.rect())
+                    p.setClipping(False)
 
-        # ── Log console area ──
-        console_top = bar_y + 44
-        console_left = 80
-        console_right = w - 80
-        console_w = console_right - console_left
-        console_h = 72
+            # ── Status text ──
+            status_font = QFont("Inter", 10)
+            p.setFont(status_font)
+            p.setPen(QPen(QColor(168, 162, 148, 180)))
+            p.drawText(QRectF(bar_left, bar_y + 16, bar_w, 20),
+                        Qt.AlignCenter, self._status_text)
 
-        # Console background — subtle dark panel
-        console_bg = QColor(6, 6, 8, 200)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(console_bg))
-        console_rect = QRectF(console_left, console_top, console_w, console_h)
-        p.drawRoundedRect(console_rect, 6, 6)
+            # ── Log console area ──
+            console_top = bar_y + 44
+            console_left = 80
+            console_right = w - 80
+            console_w = console_right - console_left
+            console_h = 72
 
-        # Subtle border
-        p.setPen(QPen(QColor(40, 38, 28, 100), 1))
-        p.setBrush(Qt.NoBrush)
-        p.drawRoundedRect(console_rect, 6, 6)
+            # Console background — subtle dark panel
+            console_bg = QColor(6, 6, 8, 200)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(console_bg))
+            console_rect = QRectF(console_left, console_top, console_w, console_h)
+            p.drawRoundedRect(console_rect, 6, 6)
 
-        # Draw log lines
-        if self._log_lines:
-            log_font = QFont("JetBrains Mono", 9)
-            if not log_font.exactMatch():
-                log_font = QFont("Consolas", 9)
+            # Subtle border
+            p.setPen(QPen(QColor(40, 38, 28, 100), 1))
+            p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(console_rect, 6, 6)
+
+            # Draw log lines
+            if self._log_lines:
+                log_font = QFont("JetBrains Mono", 9)
                 if not log_font.exactMatch():
-                    log_font = QFont("DejaVu Sans Mono", 9)
-            p.setFont(log_font)
+                    log_font = QFont("Consolas", 9)
+                    if not log_font.exactMatch():
+                        log_font = QFont("DejaVu Sans Mono", 9)
+                p.setFont(log_font)
 
-            now = time.monotonic()
-            line_height = 16
-            y_start = console_top + 14
+                now = time.monotonic()
+                line_height = 16
+                y_start = console_top + 14
 
-            for i, (line, ts) in enumerate(zip(self._log_lines, self._log_timestamps)):
-                age = now - ts  # seconds since this line was added
-                # Fade: newest line = bright gold, older lines fade toward dim
-                # Brightness from 255 (newest) to 90 (oldest visible)
-                if len(self._log_lines) <= 1:
-                    brightness = 1.0
-                else:
-                    brightness = 0.35 + 0.65 * (i / (len(self._log_lines) - 1))
+                for i, (line, ts) in enumerate(zip(self._log_lines, self._log_timestamps)):
+                    age = now - ts  # seconds since this line was added
+                    # Fade: newest line = bright gold, older lines fade toward dim
+                    # Brightness from 255 (newest) to 90 (oldest visible)
+                    if len(self._log_lines) <= 1:
+                        brightness = 1.0
+                    else:
+                        brightness = 0.35 + 0.65 * (i / (len(self._log_lines) - 1))
 
-                # Also fade lines that are very old (>3s)
-                if age > 3.0:
-                    brightness *= max(0.3, 1.0 - (age - 3.0) * 0.1)
+                    # Also fade lines that are very old (>3s)
+                    if age > 3.0:
+                        brightness *= max(0.3, 1.0 - (age - 3.0) * 0.1)
 
-                # Gold color with brightness
-                alpha = int(255 * brightness)
-                line_color = QColor(212, 175, 55, alpha)
-                p.setPen(QPen(line_color))
+                    # Gold color with brightness
+                    line_alpha = int(255 * brightness)
+                    line_color = QColor(212, 175, 55, line_alpha)
+                    p.setPen(QPen(line_color))
 
-                # Prefix with animated checkmark
-                prefix = "✓ " if "[OK]" in line else "◉ "
+                    # Prefix with animated checkmark
+                    prefix = "✓ " if "[OK]" in line else "◉ "
 
-                # Compute ms timestamp
-                ms_offset = int((ts - self._log_start) * 1000)
-                timestamp_str = f"{ms_offset:>5d}ms "
+                    # Compute ms timestamp
+                    ms_offset = int((ts - self._log_start) * 1000)
+                    timestamp_str = f"{ms_offset:>5d}ms "
 
-                y_pos = y_start + i * line_height
-                if y_pos + line_height > console_top + console_h - 4:
-                    break  # Don't draw past console area
+                    y_pos = y_start + i * line_height
+                    if y_pos + line_height > console_top + console_h - 4:
+                        break  # Don't draw past console area
 
-                p.drawText(QPointF(console_left + 12, y_pos),
-                           timestamp_str + prefix + line)
+                    p.drawText(QPointF(console_left + 12, y_pos),
+                               timestamp_str + prefix + line)
 
-        # ── Version ──
-        ver_font = QFont("Inter", 9)
-        p.setFont(ver_font)
-        p.setPen(QPen(QColor(92, 87, 73, 120)))
-        p.drawText(QRectF(0, h - 28, w, 20), Qt.AlignCenter, "v3.0 — Persian Calendar + AI Planning")
-
-        p.end()
+            # ── Version ──
+            ver_font = QFont("Inter", 9)
+            p.setFont(ver_font)
+            p.setPen(QPen(QColor(92, 87, 73, 120)))
+            p.drawText(QRectF(0, h - 28, w, 20), Qt.AlignCenter, "v3.0 — Persian Calendar + AI Planning")
+        finally:
+            p.end()

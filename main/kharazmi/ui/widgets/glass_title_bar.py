@@ -160,27 +160,27 @@ class GlassTitleBar(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            # Glass background — semi-transparent dark with subtle gradient
+            grad = QLinearGradient(0, 0, 0, self.height())
+            grad.setColorAt(0, QColor(17, 17, 20, 230))  # slightly lighter at top
+            grad.setColorAt(1, QColor(10, 10, 11, 240))   # darker at bottom
+            p.fillRect(self.rect(), QBrush(grad))
 
-        # Glass background — semi-transparent dark with subtle gradient
-        grad = QLinearGradient(0, 0, 0, self.height())
-        grad.setColorAt(0, QColor(17, 17, 20, 230))  # slightly lighter at top
-        grad.setColorAt(1, QColor(10, 10, 11, 240))   # darker at bottom
-        p.fillRect(self.rect(), QBrush(grad))
+            # Gold accent line at the very top — 2px glowing
+            accent_grad = QLinearGradient(0, 0, self.width(), 0)
+            accent_grad.setColorAt(0.0, QColor(212, 175, 55, 0))
+            accent_grad.setColorAt(0.2, QColor(212, 175, 55, 180))
+            accent_grad.setColorAt(0.5, QColor(245, 200, 66, 220))
+            accent_grad.setColorAt(0.8, QColor(212, 175, 55, 180))
+            accent_grad.setColorAt(1.0, QColor(212, 175, 55, 0))
+            p.fillRect(0, 0, self.width(), 2, QBrush(accent_grad))
 
-        # Gold accent line at the very top — 2px glowing
-        accent_grad = QLinearGradient(0, 0, self.width(), 0)
-        accent_grad.setColorAt(0.0, QColor(212, 175, 55, 0))
-        accent_grad.setColorAt(0.2, QColor(212, 175, 55, 180))
-        accent_grad.setColorAt(0.5, QColor(245, 200, 66, 220))
-        accent_grad.setColorAt(0.8, QColor(212, 175, 55, 180))
-        accent_grad.setColorAt(1.0, QColor(212, 175, 55, 0))
-        p.fillRect(0, 0, self.width(), 2, QBrush(accent_grad))
-
-        # Subtle bottom border
-        p.setPen(QPen(QColor(42, 42, 51, 100), 1))
-        p.drawLine(0, self.height() - 1, self.width(), self.height() - 1)
-
-        p.end()
+            # Subtle bottom border
+            p.setPen(QPen(QColor(42, 42, 51, 100), 1))
+            p.drawLine(0, self.height() - 1, self.width(), self.height() - 1)
+        finally:
+            p.end()
 
 
 class FramelessWindowMixin:
@@ -230,6 +230,13 @@ class FramelessWindowMixin:
             self.showNormal()
         else:
             self.showMaximized()
+
+    def toggle_fullscreen(self) -> None:
+        """Toggle between fullscreen and normal mode."""
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def _add_titlebar_to_layout(self, layout: QVBoxLayout) -> None:
         """Insert the title bar at the top of a VBoxLayout."""
