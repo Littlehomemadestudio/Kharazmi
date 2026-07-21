@@ -250,14 +250,12 @@ class AIPlannerView(QWidget):
         self.graph_view.stepBreakdownRequested.connect(self._on_step_breakdown_requested)
         left_layout.addWidget(self.graph_view, stretch=1)
 
-        # Multiple-choice questions container (scrollable)
+        # Multiple-choice questions container (scrollable) — takes full left panel
         self._questions_outer = QFrame()
         self._questions_outer.setStyleSheet(f"""
             QFrame#questionsOuter {{
                 background-color: {Palette.BG_TERTIARY};
                 border-top: 2px solid {Palette.GOLD_PRIMARY};
-                min-height: 120px;
-                max-height: 500px;
             }}
         """)
         self._questions_outer.setObjectName("questionsOuter")
@@ -278,7 +276,6 @@ class AIPlannerView(QWidget):
         self._questions_scroll = QScrollArea()
         self._questions_scroll.setWidgetResizable(True)
         self._questions_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._questions_scroll.setMinimumHeight(100)
         self._questions_scroll.setStyleSheet(f"""
             QScrollArea {{
                 background: transparent;
@@ -309,7 +306,7 @@ class AIPlannerView(QWidget):
         q_outer_layout.addWidget(self._questions_scroll, 1)
 
         self._questions_outer.hide()
-        left_layout.addWidget(self._questions_outer)
+        left_layout.addWidget(self._questions_outer, stretch=1)  # full stretch when shown
 
         splitter.addWidget(left_container)
 
@@ -658,6 +655,9 @@ class AIPlannerView(QWidget):
             qw = MultipleChoiceQuestionWidget(q, i)
             qw.answered.connect(lambda answer, question=q: self._on_question_answered(question, answer))
             self._questions_layout.insertWidget(self._questions_layout.count() - 1, qw)
+
+        # Show questions panel — hide graph view so questions fill the entire left panel
+        self.graph_view.hide()
         self._questions_outer.show()
 
     def _on_question_answered(self, question: MultipleChoiceQuestion, answer: str) -> None:
@@ -679,6 +679,7 @@ class AIPlannerView(QWidget):
             self._awaiting_questions.remove(question)
         if not self._awaiting_questions:
             self._questions_outer.hide()
+            self.graph_view.show()  # restore graph view
             self._set_status("⏳ Generating route…")
             self._generate_route()
         else:
