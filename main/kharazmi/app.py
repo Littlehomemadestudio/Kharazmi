@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import signal
+import time
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer
@@ -136,6 +137,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     app.setFont(default_font())
 
     # ---- Show splash screen ----
+    _splash_start = time.monotonic()
+    _SPLASH_MIN_SECS = 5.0  # Splash stays at least this long
+
     splash = RaskSplashScreen()
     splash.show()
     app.processEvents()
@@ -179,8 +183,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     splash.set_progress(100, "Ready!")
     app.processEvents()
 
-    # Short delay to show "Ready!" then fade out (finish() handles close)
-    QTimer.singleShot(400, splash.finish)
+    # Ensure splash shows for at least _SPLASH_MIN_SECS seconds total
+    elapsed = time.monotonic() - _splash_start
+    remaining_ms = max(0, int((_SPLASH_MIN_SECS - elapsed) * 1000))
+    QTimer.singleShot(remaining_ms, splash.finish)
 
     window.show()
     QTimer.singleShot(100, window._recalculate)
