@@ -306,7 +306,8 @@ class AIPlannerView(QWidget):
         q_outer_layout.addWidget(self._questions_scroll, 1)
 
         self._questions_outer.hide()
-        left_layout.addWidget(self._questions_outer, stretch=1)  # full stretch when shown
+        # NOTE: _questions_outer will be added to ws_layout later (after splitter)
+        # so it can cover the FULL workspace, not just the left panel
 
         splitter.addWidget(left_container)
 
@@ -366,7 +367,13 @@ class AIPlannerView(QWidget):
         splitter.setStretchFactor(1, 3)
         splitter.setSizes([1100, 460])
 
+        self._splitter = splitter
         ws_layout.addWidget(splitter, stretch=1)
+
+        # Questions panel sits in ws_layout AFTER the splitter — when shown,
+        # we hide the splitter so questions fill the ENTIRE workspace below the goal bar
+        ws_layout.addWidget(self._questions_outer, stretch=1)
+        self._questions_outer.hide()
 
         self._stack.addWidget(workspace)
 
@@ -656,8 +663,8 @@ class AIPlannerView(QWidget):
             qw.answered.connect(lambda answer, question=q: self._on_question_answered(question, answer))
             self._questions_layout.insertWidget(self._questions_layout.count() - 1, qw)
 
-        # Show questions panel — hide graph view so questions fill the entire left panel
-        self.graph_view.hide()
+        # Show questions panel — hide splitter so questions fill the ENTIRE workspace
+        self._splitter.hide()
         self._questions_outer.show()
 
     def _on_question_answered(self, question: MultipleChoiceQuestion, answer: str) -> None:
@@ -679,7 +686,7 @@ class AIPlannerView(QWidget):
             self._awaiting_questions.remove(question)
         if not self._awaiting_questions:
             self._questions_outer.hide()
-            self.graph_view.show()  # restore graph view
+            self._splitter.show()  # restore workspace (graph + chat)
             self._set_status("⏳ Generating route…")
             self._generate_route()
         else:
