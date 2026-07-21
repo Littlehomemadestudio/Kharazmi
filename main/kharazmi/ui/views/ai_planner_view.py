@@ -256,7 +256,8 @@ class AIPlannerView(QWidget):
             QFrame#questionsOuter {{
                 background-color: {Palette.BG_TERTIARY};
                 border-top: 2px solid {Palette.GOLD_PRIMARY};
-                max-height: 400px;
+                min-height: 120px;
+                max-height: 500px;
             }}
         """)
         self._questions_outer.setObjectName("questionsOuter")
@@ -271,11 +272,13 @@ class AIPlannerView(QWidget):
             f"padding: 10px 14px 6px 14px; background: transparent;"
         )
         q_header.setWordWrap(True)
+        q_header.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         q_outer_layout.addWidget(q_header)
 
         self._questions_scroll = QScrollArea()
         self._questions_scroll.setWidgetResizable(True)
         self._questions_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._questions_scroll.setMinimumHeight(100)
         self._questions_scroll.setStyleSheet(f"""
             QScrollArea {{
                 background: transparent;
