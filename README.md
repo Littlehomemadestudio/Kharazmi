@@ -1,10 +1,5 @@
 <div align="center">
 
-<br/>
-
-![Banner](assets/banner.png)
-
-<br/>
 
 # RASK! راسک — AI-Powered Persian Project Planner
 
