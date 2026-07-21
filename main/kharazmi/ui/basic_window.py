@@ -44,7 +44,7 @@ from ..services import TaskService, SchedulingService, ExportService
 from ..persistence import SQLiteRepository, CalendarRepository
 from .theme import Palette, QSS, build_qpalette, default_font
 from .icons import get_icon
-from .views import GoogleCalendarView
+from .calendar import CalendarView
 from .widgets import StatusBar, start_tour, TourOverlay
 from .dialogs import (
     TaskEditorDialog, ProjectSettingsDialog, PlanSelectionDialog,
@@ -185,7 +185,7 @@ class BasicMainWindow(QMainWindow):
         help_menu.addAction(self._action_about)
 
     def _build_content(self) -> None:
-        self.calendar_view = GoogleCalendarView(self.calendar_store)
+        self.calendar_view = CalendarView(self.calendar_store)
         self.calendar_view.setObjectName("centralWidget")
         self.setCentralWidget(self.calendar_view)
 

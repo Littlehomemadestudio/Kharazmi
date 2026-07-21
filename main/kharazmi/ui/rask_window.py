@@ -44,7 +44,7 @@ from ..persistence import SQLiteRepository, CalendarRepository
 from .theme import Palette, QSS, build_qpalette, default_font
 from .icons import get_icon
 from .views import (
-    GoogleCalendarView, AIPlannerView, JournalView,
+    CalendarView, AIPlannerView, JournalView,
     GraphsView, SimulationView,
 )
 from .widgets import (
@@ -293,7 +293,7 @@ class RaskMainWindow(QMainWindow):
         """)
 
         # ---- Tab 1: Calendar ----
-        self.calendar_view = GoogleCalendarView(self.calendar_store)
+        self.calendar_view = CalendarView(self.calendar_store)
         cal_container = QWidget()
         cal_layout = QVBoxLayout(cal_container)
         cal_layout.setContentsMargins(0, 0, 0, 0)

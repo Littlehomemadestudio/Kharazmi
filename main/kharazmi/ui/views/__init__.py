@@ -4,13 +4,8 @@ from .gantt_view import GanttView
 from .kanban_view import KanbanView
 from .timeline_view import TimelineView
 from .statistics_view import StatisticsView
-from .basic_calendar_view import BasicCalendarView
-# Google-Calendar-style views
-from .time_grid_view import TimeGridView, DayView, WeekView, CustomView
-from .month_view import MonthView
-from .year_view import YearView
-from .schedule_view import ScheduleView
-from .google_calendar_view import GoogleCalendarView
+# New calendar module
+from ..calendar import CalendarView
 # AI views
 from .route_graph_view import RouteGraphView
 from .unified_graph_view import UnifiedGraphView
@@ -22,11 +17,9 @@ from .simulation_view import SimulationView
 
 __all__ = [
     "NodeGraphView", "GanttView", "KanbanView", "TimelineView",
-    "StatisticsView", "BasicCalendarView",
+    "StatisticsView",
     # Calendar
-    "TimeGridView", "DayView", "WeekView", "CustomView",
-    "MonthView", "YearView", "ScheduleView",
-    "GoogleCalendarView",
+    "CalendarView",
     # AI
     "RouteGraphView", "UnifiedGraphView", "AIPlannerView", "JournalView",
     # Analytics

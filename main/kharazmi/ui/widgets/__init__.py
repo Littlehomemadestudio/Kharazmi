@@ -10,11 +10,6 @@ from .tour_overlay import (
     TourOverlay, TourStep, Tour,
     ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
 )
-# Calendar widgets
-from .mini_month import MiniMonthWidget, MiniDayCell
-from .calendar_list import CalendarListWidget, CalendarRow
-from .event_block import EventBlock
-from .natural_language_input import NaturalLanguageInput
 # AI widgets
 from .route_node_item import RouteNodeItem
 from .insight_bubble import InsightBubble
@@ -32,11 +27,6 @@ __all__ = [
     "MainToolbar", "StatusBar", "MinimapOverlay",
     "TourOverlay", "TourStep", "Tour",
     "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
-    # Calendar
-    "MiniMonthWidget", "MiniDayCell",
-    "CalendarListWidget", "CalendarRow",
-    "EventBlock",
-    "NaturalLanguageInput",
     # AI
     "RouteNodeItem",
     "InsightBubble",
