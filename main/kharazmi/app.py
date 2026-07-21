@@ -16,8 +16,10 @@ The Calendar tab is shown first by default.
 """
 from __future__ import annotations
 
+import os
 import sys
 import signal
+import threading
 import time
 from typing import Optional
 
@@ -33,6 +35,31 @@ from .persistence import SQLiteRepository
 from .ui import RaskMainWindow
 from .ui.theme import QSS, build_qpalette, default_font
 from .ui.widgets import RaskSplashScreen
+
+
+def _silent_excepthook(exc_type, exc_value, exc_tb):
+    """Suppress RuntimeError from deleted PySide6 C++ objects."""
+    if exc_type is RuntimeError and "already deleted" in str(exc_value):
+        return  # Silently swallow deleted C++ object errors
+    # Also suppress QPainter not active errors
+    if exc_type is RuntimeError and "Painter not active" in str(exc_value):
+        return
+    # For everything else, show the error normally
+    sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+
+sys.excepthook = _silent_excepthook
+
+
+def _silent_threading_excepthook(args):
+    """Suppress RuntimeError from deleted PySide6 C++ objects in threads."""
+    if args.exc_type is RuntimeError and "already deleted" in str(args.exc_value):
+        return
+    # For other errors, use default behavior
+    sys.__excepthook__(args.exc_type, args.exc_value, args.exc_traceback)
+
+
+threading.excepthook = _silent_threading_excepthook
 
 
 def _seed_demo_project(project: Project) -> None:
@@ -116,6 +143,16 @@ def _seed_demo_project(project: Project) -> None:
 def main(argv: Optional[list[str]] = None) -> int:
     """Application entry point."""
     argv = argv if argv is not None else sys.argv
+
+    # Suppress Qt warning/debug messages in terminal
+    os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.qpa.*=false;qt.widgets.*=false"
+
+    # Redirect Qt messages to /dev/null
+    from PySide6.QtCore import qInstallMessageHandler, QtMsgType
+    def _suppress_qt_messages(msg_type, context, msg):
+        """Suppress all Qt messages to terminal."""
+        pass  # Do nothing — silence all Qt output
+    qInstallMessageHandler(_suppress_qt_messages)
 
     # Allow Ctrl+C to terminate
     signal.signal(signal.SIGINT, signal.SIG_DFL)
