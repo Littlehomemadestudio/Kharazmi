@@ -6,7 +6,7 @@ from .widgets import (
     TaskNodeItem, EdgeItem, InspectorPanel,
     CommandPaletteDialog, PaletteItem, MainToolbar, StatusBar, MinimapOverlay,
     TourOverlay, TourStep, Tour,
-    ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
+    RASK_TOUR, ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
     # AI widgets
     RouteNodeItem, InsightBubble,
     AIChatPanel, ChatMessage, ChatInput,
@@ -37,7 +37,7 @@ __all__ = [
     "TaskNodeItem", "EdgeItem", "InspectorPanel",
     "CommandPaletteDialog", "PaletteItem", "MainToolbar", "StatusBar", "MinimapOverlay",
     "TourOverlay", "TourStep", "Tour",
-    "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
+    "RASK_TOUR", "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
     "RouteNodeItem", "InsightBubble",
     "AIChatPanel", "ChatMessage", "ChatInput",
     "MultipleChoiceQuestionWidget", "StepDetailsPopup",

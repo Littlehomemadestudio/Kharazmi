@@ -8,7 +8,7 @@ from .status_bar import StatusBar
 from .minimap import MinimapOverlay
 from .tour_overlay import (
     TourOverlay, TourStep, Tour,
-    ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
+    RASK_TOUR, ENTERPRISE_TOUR, BASIC_TOUR, start_tour,
 )
 # AI widgets
 from .route_node_item import RouteNodeItem
@@ -31,7 +31,7 @@ __all__ = [
     "CommandPaletteDialog", "PaletteItem",
     "MainToolbar", "StatusBar", "MinimapOverlay",
     "TourOverlay", "TourStep", "Tour",
-    "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
+    "RASK_TOUR", "ENTERPRISE_TOUR", "BASIC_TOUR", "start_tour",
     # AI
     "RouteNodeItem",
     "InsightBubble",

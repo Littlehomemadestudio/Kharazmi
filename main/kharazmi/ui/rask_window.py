@@ -604,7 +604,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     def _maybe_show_tour(self) -> None:
         import json
         from pathlib import Path
-        seen_path = Path.home() / ".rask" / "tour_seen_rask.json"
+        seen_path = Path.home() / ".rask" / "tour_seen_rask_v2.json"
         if not seen_path.exists():
             self._on_show_tour()
             try:
@@ -614,8 +614,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
                 pass
 
     def _on_show_tour(self) -> None:
-        # Use the Enterprise tour as a base; the unified tour is similar
-        start_tour(self, plan="enterprise")
+        start_tour(self)
 
     # ---- Autosave ----
     def _autosave(self) -> None:

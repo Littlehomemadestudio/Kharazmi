@@ -297,7 +297,7 @@ class BasicMainWindow(QMainWindow):
                 pass
 
     def _on_show_tour(self) -> None:
-        start_tour(self, plan="basic")
+        start_tour(self)
 
     def _on_show_shortcuts(self) -> None:
         QMessageBox.information(

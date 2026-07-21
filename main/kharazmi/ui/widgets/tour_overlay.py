@@ -7,11 +7,11 @@ popup with the current step's description and Next/Prev/Skip buttons.
 
 Steps are defined as data — each step targets a widget by an
 object-name (or callable that returns a widget) and provides a title
-and body. Different tours can be defined for the Basic and Enterprise
-plans.
+and body.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Any
 
@@ -23,6 +23,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QHBoxLayout, QVBoxLayout, QDialog,
     QFrame, QGraphicsOpacityEffect, QApplication, QSizePolicy,
+    QTabWidget, QTabBar,
 )
 
 from ..theme import Palette
@@ -40,7 +41,8 @@ class TourStep:
     # Where to place the popup relative to the target
     # "auto" | "top" | "bottom" | "left" | "right"
     placement: str = "auto"
-    # Optional: action to perform on the target before showing (e.g. open a menu)
+    # Optional: action to perform on the target before showing (e.g. switch a tab)
+    # Called BEFORE the visibility check so it can make the target visible.
     pre_show: Optional[Callable[["TourOverlay", QWidget], None]] = None
 
 
@@ -52,263 +54,344 @@ class Tour:
     steps: list[TourStep] = field(default_factory=list)
 
 
+# ---- Helpers for building tour steps that switch tabs ----
+
+def _win(overlay: "TourOverlay"):
+    """Return the overlay's parent window."""
+    return overlay.parent()
+
+
+def _switch_tab(overlay: "TourOverlay", tab_index: int) -> None:
+    """Switch the main tab widget to the given index and process events."""
+    win = _win(overlay)
+    if win is not None and hasattr(win, "_tabs"):
+        win._tabs.setCurrentIndex(tab_index)
+        QApplication.processEvents()
+
+
+def _find_tab_bar(overlay: "TourOverlay") -> Optional[QWidget]:
+    """Find the tab bar of the main window."""
+    win = _win(overlay)
+    if win is not None and hasattr(win, "_tabs"):
+        return win._tabs.tabBar()
+    return None
+
+
+def _find_dashboard(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "dashboard_view"):
+        _switch_tab(overlay, 0)
+        return win.dashboard_view
+    return None
+
+
+def _find_calendar(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "calendar_view"):
+        _switch_tab(overlay, 1)
+        return win.calendar_view
+    return None
+
+
+def _find_calendar_toolbar(overlay: "TourOverlay") -> Optional[QWidget]:
+    """Find the calendar toolbar (which contains the AI Schedule button)."""
+    win = _win(overlay)
+    if win is not None and hasattr(win, "calendar_view"):
+        _switch_tab(overlay, 1)
+        cv = win.calendar_view
+        if hasattr(cv, "_toolbar"):
+            return cv._toolbar
+    return None
+
+
+def _find_ai_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
+    """Find the 'AI Schedule' button inside the calendar toolbar."""
+    win = _win(overlay)
+    if win is not None and hasattr(win, "calendar_view"):
+        _switch_tab(overlay, 1)
+        cv = win.calendar_view
+        if hasattr(cv, "_toolbar"):
+            # Find the AI Schedule button by searching QPushButton children
+            for btn in cv._toolbar.findChildren(QPushButton):
+                if "AI Schedule" in btn.text():
+                    return btn
+    return None
+
+
+def _find_planner(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "ai_planner_view"):
+        _switch_tab(overlay, 2)
+        return win.ai_planner_view
+    return None
+
+
+def _find_goal_input(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "ai_planner_view"):
+        _switch_tab(overlay, 2)
+        pv = win.ai_planner_view
+        if hasattr(pv, "_goal_input"):
+            return pv._goal_input
+    return None
+
+
+def _find_plan_btn(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "ai_planner_view"):
+        _switch_tab(overlay, 2)
+        pv = win.ai_planner_view
+        if hasattr(pv, "_plan_btn"):
+            return pv._plan_btn
+    return None
+
+
+def _find_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "ai_planner_view"):
+        _switch_tab(overlay, 2)
+        pv = win.ai_planner_view
+        if hasattr(pv, "_schedule_btn"):
+            return pv._schedule_btn
+    return None
+
+
+def _find_export_btn(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "ai_planner_view"):
+        _switch_tab(overlay, 2)
+        pv = win.ai_planner_view
+        # Try the header export button first, then the graph header one
+        if hasattr(pv, "_export_btn"):
+            return pv._export_btn
+        if hasattr(pv, "_gh_export_btn"):
+            return pv._gh_export_btn
+    return None
+
+
+def _find_graphs(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "graphs_view"):
+        _switch_tab(overlay, 3)
+        return win.graphs_view
+    return None
+
+
+def _find_simulation(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "simulation_view"):
+        _switch_tab(overlay, 4)
+        return win.simulation_view
+    return None
+
+
+def _find_journal(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "journal_view"):
+        _switch_tab(overlay, 5)
+        return win.journal_view
+    return None
+
+
+def _find_statusbar(overlay: "TourOverlay") -> Optional[QWidget]:
+    win = _win(overlay)
+    if win is not None and hasattr(win, "statusbar"):
+        return win.statusbar
+    return None
+
+
+def _find_central(overlay: "TourOverlay") -> Optional[QWidget]:
+    """Fallback: return the central widget of the window."""
+    win = _win(overlay)
+    if win is not None:
+        cw = win.centralWidget()
+        if cw is not None:
+            return cw
+    return None
+
+
 # ---- Predefined tours ----
 
-ENTERPRISE_TOUR = Tour(
-    name="enterprise",
-    title="Welcome to Rask Enterprise",
+RASK_TOUR = Tour(
+    name="rask",
+    title="Welcome to RASK",
     steps=[
         TourStep(
-            title="The Node Graph",
+            title="Welcome to RASK!",
             body=(
-                "This is the main screen of Rask — your project as a "
-                "neural network of tasks. Each box is a task; each arrow "
-                "is a dependency between them. Tasks on the critical path "
-                "glow in gold."
+                "RASK is your unified planning workspace — combining a Persian "
+                "calendar, an AI-powered route planner, a journal for saved "
+                "routes, and a full project management system.\n\n"
+                "This quick tour will walk you through each section. "
+                "Press Next to continue, or Skip to close."
             ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Toolbar",
-            body=(
-                "Use the toolbar to create new tasks, delete them, undo/redo "
-                "your last actions, recalculate the schedule, auto-layout "
-                "the graph, run a Monte Carlo risk simulation, or open the "
-                "advisor for recommendations."
-            ),
-            target_finder=lambda t: t.window().findChild(QWidget, "MainToolbar") or t.window().findChild(QWidget, None, Qt.FindDirectChildrenOnly) if hasattr(t.window(), "toolbar") else None,
+            target_finder=_find_tab_bar,
             placement="bottom",
         ),
         TourStep(
-            title="View Switcher",
+            title="🏠 Home Dashboard",
             body=(
-                "Click any of these buttons to switch between five views: "
-                "Graph (node diagram), Gantt (time-scaled bars), Kanban "
-                "(status board), Timeline (chronological list), and "
-                "Statistics (analytics dashboard)."
+                "The Home tab is your landing page. It shows today's Shamsi "
+                "date, a greeting in Persian, key stats at a glance, and quick "
+                "action buttons to jump into creating events or planning routes."
             ),
-            target_finder=lambda t: t.window().toolbar if hasattr(t.window(), "toolbar") else None,
-            placement="bottom",
-        ),
-        TourStep(
-            title="Outline Sidebar",
-            body=(
-                "The left sidebar lists every task grouped by status. "
-                "Double-click any task to jump to it in the graph view."
-            ),
-            target_finder=lambda t: t.window().sidebar if hasattr(t.window(), "sidebar") else None,
+            target_finder=_find_dashboard,
             placement="right",
         ),
         TourStep(
-            title="Inspector Panel",
+            title="📅 Calendar",
             body=(
-                "Select any task in the graph and the Inspector on the "
-                "right shows its properties: title, duration, priority, "
-                "risk, status, progress, PERT 3-point estimate, and the "
-                "schedule computed by CPM (early/late start, slack, "
-                "criticality)."
+                "The Calendar is a full Google-Calendar-style planner using the "
+                "Persian Shamsi calendar. The grid runs Saturday through Friday "
+                "(Iranian week), with month names like فروردین and تیر. "
+                "Today's date is highlighted in gold.\n\n"
+                "Switch between Day, Week, Month, and Year views. Drag events "
+                "to reschedule them. Double-click any day to create an event."
             ),
-            target_finder=lambda t: t.window().inspector if hasattr(t.window(), "inspector") else None,
-            placement="left",
+            target_finder=_find_calendar,
+            placement="right",
         ),
         TourStep(
-            title="Console",
+            title="✦ AI Schedule",
             body=(
-                "The bottom panel is a built-in command console. Type "
-                "'help' to see all commands. You can create tasks, link "
-                "dependencies, run schedules, run Monte Carlo, save and "
-                "load projects, all from the keyboard."
+                "The AI Schedule button opens an interactive dialog where you "
+                "describe what you need in natural language — and the AI builds "
+                "a schedule for you. It asks clarifying questions and creates "
+                "calendar events automatically.\n\n"
+                "Configure your AI key in File → AI Settings first."
             ),
-            target_finder=lambda t: t.window().console if hasattr(t.window(), "console") else None,
-            placement="top",
+            target_finder=_find_ai_schedule_btn,
+            placement="bottom",
+        ),
+        TourStep(
+            title="✦ Planner & Tasks",
+            body=(
+                "The Planner & Tasks tab is your AI-powered route workspace. "
+                "Type a goal in plain language — like 'I want to be home by "
+                "9 o'clock, my car is broken' — and the AI generates a "
+                "walkable route of interconnected steps with success "
+                "probabilities, fallbacks, and time estimates.\n\n"
+                "You can also create and manage Tasks directly on the same "
+                "canvas."
+            ),
+            target_finder=_find_planner,
+            placement="right",
+        ),
+        TourStep(
+            title="Goal Input",
+            body=(
+                "Type your goal here in plain language. The AI will ask "
+                "clarifying questions and then generate a step-by-step route "
+                "on the workspace canvas.\n\n"
+                "Press Enter or click 'Plan with AI' to start."
+            ),
+            target_finder=_find_goal_input,
+            placement="bottom",
+        ),
+        TourStep(
+            title="📅 Schedule in Calendar",
+            body=(
+                "Once the AI generates a route, this button becomes active. "
+                "Click it to schedule the route's steps as calendar events — "
+                "the AI will pick the best times based on your existing "
+                "calendar and preferences."
+            ),
+            target_finder=_find_schedule_btn,
+            placement="bottom",
+        ),
+        TourStep(
+            title="📤 Export",
+            body=(
+                "Export your route as CSV, Excel, or HTML for sharing or "
+                "further analysis. The export button becomes available once "
+                "a route has been generated."
+            ),
+            target_finder=_find_export_btn,
+            placement="bottom",
+        ),
+        TourStep(
+            title="📊 Graphs",
+            body=(
+                "The Graphs tab visualizes your AI-generated routes with "
+                "interactive charts. Select a route from the Journal to see "
+                "its analytics here — success probability over time, critical "
+                "path analysis, and more."
+            ),
+            target_finder=_find_graphs,
+            placement="right",
+        ),
+        TourStep(
+            title="🧪 Simulation",
+            body=(
+                "The Simulation tab lets you run Monte Carlo simulations on "
+                "your routes. See how likely different outcomes are, explore "
+                "risk factors, and make data-driven decisions about your plans."
+            ),
+            target_finder=_find_simulation,
+            placement="right",
+        ),
+        TourStep(
+            title="📖 Journal",
+            body=(
+                "Every AI-generated route is automatically saved to the "
+                "Journal. Browse your past routes, review their success "
+                "probabilities, add notes, and reload any route into the "
+                "Planner for further editing.\n\n"
+                "Click any entry to load it back into the AI Planner."
+            ),
+            target_finder=_find_journal,
+            placement="right",
         ),
         TourStep(
             title="Status Bar",
             body=(
-                "The bottom status bar shows your project name, task "
-                "counts, and the schedule summary (project span and "
-                "critical task count) computed by the Critical Path Method."
+                "The status bar at the bottom shows event and task counts, "
+                "the number of journal entries, and whether your AI service "
+                "is configured and ready."
             ),
-            target_finder=lambda t: t.window().statusbar if hasattr(t.window(), "statusbar") else None,
+            target_finder=_find_statusbar,
             placement="top",
         ),
         TourStep(
-            title="Command Palette",
+            title="Keyboard Shortcuts",
             body=(
-                "Press Ctrl+P (or click 'Commands' in the toolbar) to "
-                "open the command palette — a fuzzy-searchable launcher "
-                "for every action and every task in your project."
+                "Useful shortcuts:\n\n"
+                "  Ctrl+1  — Calendar tab\n"
+                "  Ctrl+2  — AI Planner tab\n"
+                "  Ctrl+3  — Graphs tab\n"
+                "  Ctrl+4  — Simulation tab\n"
+                "  Ctrl+5  — Journal tab\n"
+                "  Ctrl+E  — New event\n"
+                "  Ctrl+T  — New task\n"
+                "  Ctrl+S  — Save\n"
+                "  Ctrl+R  — Recalculate CPM\n"
+                "  F1      — Show this tour\n"
+                "  F11     — Fullscreen"
             ),
-            target_finder=lambda t: t.window().toolbar if hasattr(t.window(), "toolbar") else None,
+            target_finder=_find_tab_bar,
             placement="bottom",
         ),
         TourStep(
-            title="Keyboard Shortcuts",
+            title="You're Ready!",
             body=(
-                "Useful shortcuts:\n"
-                "  N         — new task\n"
-                "  Del       — delete selected\n"
-                "  Ctrl+Z    — undo\n"
-                "  Ctrl+Y    — redo\n"
-                "  Ctrl+R    — recalculate schedule\n"
-                "  Ctrl+L    — auto-layout graph\n"
-                "  Ctrl+P    — command palette\n"
-                "  `         — toggle console\n"
-                "  F         — fit graph to view\n"
-                "  Esc       — clear selection"
+                "That's the tour! RASK combines a Persian calendar, "
+                "AI route planning, Monte Carlo simulation, and project "
+                "management into one workspace. The more you use it, the "
+                "more powerful it becomes.\n\n"
+                "Press Finish to start exploring. You can restart this tour "
+                "anytime from Help → Take the Tour (or press F1)."
             ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="You're Ready",
-            body=(
-                "That's the tour. Rask treats your project as a "
-                "directed graph governed by real scheduling math — "
-                "Critical Path Method, PERT, Monte Carlo. The more you "
-                "use it, the more useful the analytics become. Good luck."
-            ),
-            target_name="centralWidget",
-            placement="right",
+            target_finder=_find_tab_bar,
+            placement="bottom",
         ),
     ],
 )
 
 
-BASIC_TOUR = Tour(
-    name="basic",
-    title="Welcome to Rask Basic",
-    steps=[
-        TourStep(
-            title="Your Calendar",
-            body=(
-                "This is your Google-Calendar-style planner using the "
-                "Persian Shamsi calendar. The grid runs Saturday through "
-                "Friday (Iranian week), with month names like فروردین "
-                "and تیر. Today's date is highlighted in gold."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Top Bar",
-            body=(
-                "Use 'Today' to jump back to today. Use ‹ and › to move "
-                "between periods (days, weeks, months, or years depending "
-                "on the view). The dropdown switches between Day, Week, "
-                "Month, Year, and Schedule views. The search box filters "
-                "events by title, location, or attendee."
-            ),
-            target_name="centralWidget",
-            placement="bottom",
-        ),
-        TourStep(
-            title="Natural-Language Input",
-            body=(
-                "The gold bar below the top bar accepts natural-language "
-                "event descriptions. Try:\n\n"
-                "  • 'Lunch with Sarah tomorrow at 1 PM'\n"
-                "  • 'Meeting every Monday at 10am'\n"
-                "  • 'Doctor appointment next Friday 3pm'\n"
-                "  • 'Standup daily at 9am'\n\n"
-                "Rask parses the text and creates the event "
-                "automatically — title, time, recurrence, and attendees."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Mini Month & Calendars",
-            body=(
-                "The left sidebar shows a mini month picker (click any "
-                "day to jump there) and a list of your calendars. Each "
-                "calendar has a color and a visibility checkbox — uncheck "
-                "to hide its events. Click '+' next to 'My Calendars' to "
-                "create a new one, or double-click an existing calendar "
-                "to rename or recolor it."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Persian Holidays",
-            body=(
-                "A read-only 'Persian Holidays' calendar is included by "
-                "default. It contains Nowruz, Sizdah Bedar, Islamic "
-                "Republic Day, and other official Iranian holidays, all "
-                "recurring yearly. Hide it from the sidebar if you prefer."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Create Events",
-            body=(
-                "Click '+ Event' in the top bar to open the full event "
-                "editor — title, location, description, time, calendar, "
-                "color, event type (Meeting, Focus Time, Out of Office, "
-                "Birthday, Task), availability, recurrence, attendees, "
-                "reminders, meeting link, and attachments.\n\n"
-                "Or just double-click any day cell in the month view for "
-                "a quick create."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Drag and Drop",
-            body=(
-                "Drag any event to reschedule it — between days in the "
-                "month view, or between time slots in the day/week views. "
-                "Drag the bottom edge of an event in the day/week view "
-                "to change its duration."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Recurring Events",
-            body=(
-                "In the event editor, set up recurrence with presets "
-                "(Every day, Every weekday, Every week, Every month, "
-                "Every year) or custom rules (every N days/weeks/months/"
-                "years, with optional count limit)."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Keyboard Shortcuts",
-            body=(
-                "Google-Calendar-style shortcuts:\n\n"
-                "  c or n  — create event\n"
-                "  t       — today\n"
-                "  d       — day view\n"
-                "  w       — week view\n"
-                "  m       — month view\n"
-                "  y       — year view\n"
-                "  a       — schedule (agenda) view\n"
-                "  + / -   — next / previous period\n"
-                "  /       — focus search\n"
-                "  F1      — show this tour"
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-        TourStep(
-            title="Ready to Go Deeper?",
-            body=(
-                "When you're ready for the node-graph view, Critical "
-                "Path Method, PERT estimates, Monte Carlo simulation, "
-                "and the rest — choose File → Switch to Enterprise Plan.\n\n"
-                "Your calendar events are preserved across the switch."
-            ),
-            target_name="centralWidget",
-            placement="right",
-        ),
-    ],
-)
+# Legacy aliases — kept so existing imports don't break, but they now
+# point to the unified RASK_TOUR.
+ENTERPRISE_TOUR = RASK_TOUR
+BASIC_TOUR = RASK_TOUR
 
 
 # ---- The overlay widget ----
@@ -449,13 +532,19 @@ class TourOverlay(QWidget):
 
         # Find the target widget
         target = self._find_target(step)
-        if target is not None and target.isVisible():
-            # Run pre-show action
+
+        if target is not None:
+            # Run pre-show action BEFORE the visibility check so it can
+            # e.g. switch tabs to make the target widget visible.
             if step.pre_show is not None:
                 try:
                     step.pre_show(self, target)
                 except Exception:
                     pass
+            # Process events so layout updates (from tab switches etc.) take effect
+            QApplication.processEvents()
+
+        if target is not None and target.isVisible():
             # Map target's rect to our coordinate system
             top_left = target.mapTo(self.parent(), target.rect().topLeft()) \
                 if hasattr(target, "mapTo") else None
@@ -467,6 +556,7 @@ class TourOverlay(QWidget):
             else:
                 self._target_rect = None
         else:
+            # Target not found or not visible — fallback to no spotlight
             self._target_rect = None
 
         self._popup.adjustSize()
@@ -599,7 +689,6 @@ class TourOverlay(QWidget):
         mid_y = (sy + dy) / 2
 
         # Direction
-        import math
         vx, vy = dx - sx, dy - sy
         mag = math.hypot(vx, vy)
         if mag < 30:
@@ -633,9 +722,12 @@ class TourOverlay(QWidget):
 
 # ---- Convenience entry points ----
 
-def start_tour(parent: QWidget, plan: str = "enterprise") -> TourOverlay:
-    """Start the appropriate tour for the given plan."""
-    tour = ENTERPRISE_TOUR if plan == "enterprise" else BASIC_TOUR
-    overlay = TourOverlay(tour, parent)
+def start_tour(parent: QWidget, plan: str = "rask") -> TourOverlay:
+    """Start the appropriate tour for the given plan.
+
+    The 'plan' parameter is accepted for backward compatibility but
+    all plans now use the unified RASK_TOUR.
+    """
+    overlay = TourOverlay(RASK_TOUR, parent)
     overlay.start()
     return overlay
