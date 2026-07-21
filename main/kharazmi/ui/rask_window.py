@@ -45,6 +45,7 @@ from .theme import Palette, QSS, build_qpalette, default_font
 from .icons import get_icon
 from .views import (
     GoogleCalendarView, AIPlannerView, JournalView,
+    GraphsView, SimulationView,
 )
 from .widgets import (
     MainToolbar, StatusBar,
@@ -119,6 +120,7 @@ class RaskMainWindow(QMainWindow):
 
         # ---- Wire cross-tab interactions ----
         self.journal_view.entrySelected.connect(self._on_journal_entry_selected)
+        self.ai_planner_view.routeUpdated.connect(self._on_planner_route_updated)
 
         # ---- Auto-recalc ----
         QTimer.singleShot(100, self._recalculate)
@@ -208,13 +210,23 @@ class RaskMainWindow(QMainWindow):
         self._action_tab_ai.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_ai)
 
+        self._action_tab_graphs = QAction("Go to &Graphs", self)
+        self._action_tab_graphs.setShortcut(QKeySequence("Ctrl+3"))
+        self._action_tab_graphs.triggered.connect(lambda: self._switch_tab(2))
+        view_menu.addAction(self._action_tab_graphs)
+
+        self._action_tab_simulation = QAction("Go to &Simulation", self)
+        self._action_tab_simulation.setShortcut(QKeySequence("Ctrl+4"))
+        self._action_tab_simulation.triggered.connect(lambda: self._switch_tab(3))
+        view_menu.addAction(self._action_tab_simulation)
+
         self._action_tab_journal = QAction("Go to &Journal", self)
-        self._action_tab_journal.setShortcut(QKeySequence("Ctrl+3"))
-        self._action_tab_journal.triggered.connect(lambda: self._switch_tab(2))
+        self._action_tab_journal.setShortcut(QKeySequence("Ctrl+5"))
+        self._action_tab_journal.triggered.connect(lambda: self._switch_tab(4))
         view_menu.addAction(self._action_tab_journal)
 
         self._action_tab_tasks = QAction("Go to &Tasks", self)
-        self._action_tab_tasks.setShortcut(QKeySequence("Ctrl+4"))
+        self._action_tab_tasks.setShortcut(QKeySequence("Ctrl+6"))
         self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_tasks)
 
@@ -295,7 +307,24 @@ class RaskMainWindow(QMainWindow):
         # using a toolbar at the top of the tab.
         self._build_planner_tasks_tab()
 
-        # ---- Tab 3: Journal ----
+        # ---- Tab 3: Graphs ----
+        self.graphs_view = GraphsView(self.journal_store)
+        self.graphs_view.routeSelected.connect(self._on_graphs_route_selected)
+        graphs_container = QWidget()
+        graphs_layout = QVBoxLayout(graphs_container)
+        graphs_layout.setContentsMargins(0, 0, 0, 0)
+        graphs_layout.addWidget(self.graphs_view)
+        self._tabs.addTab(graphs_container, "📊  Graphs")
+
+        # ---- Tab 4: Simulation ----
+        self.simulation_view = SimulationView()
+        sim_container = QWidget()
+        sim_layout = QVBoxLayout(sim_container)
+        sim_layout.setContentsMargins(0, 0, 0, 0)
+        sim_layout.addWidget(self.simulation_view)
+        self._tabs.addTab(sim_container, "🧪  Simulation")
+
+        # ---- Tab 5: Journal ----
         self.journal_view = JournalView(self.journal_store)
         journal_container = QWidget()
         journal_layout = QVBoxLayout(journal_container)
@@ -390,9 +419,21 @@ class RaskMainWindow(QMainWindow):
         if entry.route is not None:
             self._switch_tab(1)  # Planner & Tasks tab
             self.ai_planner_view.set_route(entry.route)
+            # Also update graphs and simulation views
+            self.graphs_view.set_route(entry.route)
+            self.simulation_view.set_route(entry.route)
             self.statusbar.show_message(
                 f"Loaded route from {entry.timestamp[:10]} into AI Planner", 3000
             )
+
+    def _on_graphs_route_selected(self, route: Route) -> None:
+        """When a route is selected in the Graphs view, also update Simulation."""
+        self.simulation_view.set_route(route)
+
+    def _on_planner_route_updated(self, route: Route) -> None:
+        """When AI Planner generates/updates a route, sync Graphs and Simulation views."""
+        self.graphs_view.set_route(route)
+        self.simulation_view.set_route(route)
 
     # ---- Actions ----
     def _on_new_event(self) -> None:

@@ -16,6 +16,9 @@ from .route_graph_view import RouteGraphView
 from .unified_graph_view import UnifiedGraphView
 from .ai_planner_view import AIPlannerView
 from .journal_view import JournalView
+# Analytics views
+from .graphs_view import GraphsView
+from .simulation_view import SimulationView
 
 __all__ = [
     "NodeGraphView", "GanttView", "KanbanView", "TimelineView",
@@ -26,4 +29,6 @@ __all__ = [
     "GoogleCalendarView",
     # AI
     "RouteGraphView", "UnifiedGraphView", "AIPlannerView", "JournalView",
+    # Analytics
+    "GraphsView", "SimulationView",
 ]

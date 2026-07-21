@@ -73,6 +73,7 @@ class AIPlannerView(QWidget):
     """
 
     viewActivated = Signal()
+    routeUpdated = Signal(object)  # Route — emitted when route changes (for other views to sync)
     # Internal signals for thread-safe UI updates
     _clarifyingReady = Signal(bool, object)
     _routeReady = Signal(bool, object)
@@ -730,6 +731,9 @@ class AIPlannerView(QWidget):
             route=result,
         )
         self._set_status("✓ Route saved — AI is continuing to work…")
+
+        # Emit route update for other views (Graphs, Simulation)
+        self.routeUpdated.emit(result)
 
         # Auto-compute health score
         if self._current_route:
