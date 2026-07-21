@@ -45,12 +45,14 @@ from .theme import Palette, QSS, build_qpalette, default_font
 from .icons import get_icon
 from .views import (
     CalendarView, AIPlannerView, JournalView,
-    GraphsView, SimulationView,
+    GraphsView, SimulationView, DashboardView,
 )
 from .widgets import (
     MainToolbar, StatusBar,
     CommandPaletteDialog, PaletteItem, MinimapOverlay,
     start_tour, TourOverlay,
+    GlassTitleBar, FramelessWindowMixin, RaskSplashScreen,
+    GoldParticleBackground,
 )
 from .dialogs import (
     TaskEditorDialog, ProjectSettingsDialog, AdvisorDialog,
@@ -58,7 +60,7 @@ from .dialogs import (
 )
 
 
-class RaskMainWindow(QMainWindow):
+class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     """
     The unified Rask window.
 
@@ -87,13 +89,9 @@ class RaskMainWindow(QMainWindow):
         self.journal_store = JournalStore()
 
         # ---- Window setup ----
-        self.setWindowTitle("Rask — Calendar · AI Planner · Tasks")
+        self.setWindowTitle("RASK — Calendar · AI Planner · Tasks")
         self.resize(1600, 1000)
         self.setMinimumSize(1100, 700)
-
-        self.setStyleSheet(QSS)
-        self.setPalette(build_qpalette())
-        self.setFont(default_font())
 
         # Window icon
         pm = QPixmap(32, 32)
@@ -108,9 +106,16 @@ class RaskMainWindow(QMainWindow):
         p.end()
         self.setWindowIcon(QIcon(pm))
 
+        # ---- Frameless window with glass title bar ----
+        self._init_frameless(title="RASK!", icon=pm)
+
+        self.setStyleSheet(QSS)
+        self.setPalette(build_qpalette())
+        self.setFont(default_font())
+
         # ---- Build UI ----
+        self._build_ui_with_titlebar()
         self._build_menu()
-        self._build_content()
         self._build_statusbar()
 
         # ---- Subscribe to events ----
@@ -135,6 +140,23 @@ class RaskMainWindow(QMainWindow):
         self._autosave_timer.start()
 
     # ---- UI building ----
+    def _build_ui_with_titlebar(self) -> None:
+        """Build the main layout with the glass title bar on top."""
+        central = QWidget()
+        central.setStyleSheet(f"background: {Palette.BG_DEEPEST};")
+        main_layout = QVBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Add glass title bar at the top
+        self._add_titlebar_to_layout(main_layout)
+
+        # Build content below title bar
+        self._build_content()
+        main_layout.addWidget(self._tabs)
+
+        self.setCentralWidget(central)
+
     def _build_menu(self) -> None:
         menubar = self.menuBar()
 
@@ -200,34 +222,39 @@ class RaskMainWindow(QMainWindow):
 
         # View menu
         view_menu = menubar.addMenu("&View")
+        self._action_tab_home = QAction("Go to &Home", self)
+        self._action_tab_home.setShortcut(QKeySequence("Ctrl+0"))
+        self._action_tab_home.triggered.connect(lambda: self._switch_tab(0))
+        view_menu.addAction(self._action_tab_home)
+
         self._action_tab_calendar = QAction("Go to &Calendar", self)
         self._action_tab_calendar.setShortcut(QKeySequence("Ctrl+1"))
-        self._action_tab_calendar.triggered.connect(lambda: self._switch_tab(0))
+        self._action_tab_calendar.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_calendar)
 
         self._action_tab_ai = QAction("Go to &AI Planner", self)
         self._action_tab_ai.setShortcut(QKeySequence("Ctrl+2"))
-        self._action_tab_ai.triggered.connect(lambda: self._switch_tab(1))
+        self._action_tab_ai.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_ai)
 
         self._action_tab_graphs = QAction("Go to &Graphs", self)
         self._action_tab_graphs.setShortcut(QKeySequence("Ctrl+3"))
-        self._action_tab_graphs.triggered.connect(lambda: self._switch_tab(2))
+        self._action_tab_graphs.triggered.connect(lambda: self._switch_tab(3))
         view_menu.addAction(self._action_tab_graphs)
 
         self._action_tab_simulation = QAction("Go to &Simulation", self)
         self._action_tab_simulation.setShortcut(QKeySequence("Ctrl+4"))
-        self._action_tab_simulation.triggered.connect(lambda: self._switch_tab(3))
+        self._action_tab_simulation.triggered.connect(lambda: self._switch_tab(4))
         view_menu.addAction(self._action_tab_simulation)
 
         self._action_tab_journal = QAction("Go to &Journal", self)
         self._action_tab_journal.setShortcut(QKeySequence("Ctrl+5"))
-        self._action_tab_journal.triggered.connect(lambda: self._switch_tab(4))
+        self._action_tab_journal.triggered.connect(lambda: self._switch_tab(5))
         view_menu.addAction(self._action_tab_journal)
 
         self._action_tab_tasks = QAction("Go to &Tasks", self)
         self._action_tab_tasks.setShortcut(QKeySequence("Ctrl+6"))
-        self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(1))
+        self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_tasks)
 
         # Schedule menu (for Enterprise features)
@@ -292,6 +319,19 @@ class RaskMainWindow(QMainWindow):
             }}
         """)
 
+        # ---- Tab 0: Dashboard ----
+        self.dashboard_view = DashboardView(
+            self.calendar_store, self.journal_store, self.project
+        )
+        self.dashboard_view.calendarTabRequested.connect(lambda: self._switch_tab(1))
+        self.dashboard_view.plannerTabRequested.connect(lambda: self._switch_tab(2))
+        self.dashboard_view.newEventRequested.connect(self._on_new_event)
+        dash_container = QWidget()
+        dash_layout = QVBoxLayout(dash_container)
+        dash_layout.setContentsMargins(0, 0, 0, 0)
+        dash_layout.addWidget(self.dashboard_view)
+        self._tabs.addTab(dash_container, "🏠  Home")
+
         # ---- Tab 1: Calendar ----
         self.calendar_view = CalendarView(self.calendar_store)
         cal_container = QWidget()
@@ -300,7 +340,7 @@ class RaskMainWindow(QMainWindow):
         cal_layout.addWidget(self.calendar_view)
         self._tabs.addTab(cal_container, "📅  Calendar")
 
-        # ---- Tab 2: AI Planner + Tasks (MERGED into one workspace) ----
+        # ---- Tab 2: AI Planner + Tasks
         # The AI Planner view holds the route workspace + chat. The Tasks
         # graph view is embedded as a mode-switchable workspace within the
         # same tab — the user can switch between "AI Planner" and "Tasks"
@@ -331,8 +371,6 @@ class RaskMainWindow(QMainWindow):
         journal_layout.setContentsMargins(0, 0, 0, 0)
         journal_layout.addWidget(self.journal_view)
         self._tabs.addTab(journal_container, "📖  Journal")
-
-        self.setCentralWidget(self._tabs)
 
     def _build_planner_tasks_tab(self) -> None:
         """Build the UNIFIED AI Planner + Tasks tab.
@@ -417,7 +455,7 @@ class RaskMainWindow(QMainWindow):
     def _on_journal_entry_selected(self, entry) -> None:
         """Load a journal entry's route into the AI planner view."""
         if entry.route is not None:
-            self._switch_tab(1)  # Planner & Tasks tab
+            self._switch_tab(2)  # Planner & Tasks tab
             self.ai_planner_view.set_route(entry.route)
             # Also update graphs and simulation views
             self.graphs_view.set_route(entry.route)
@@ -437,14 +475,13 @@ class RaskMainWindow(QMainWindow):
 
     # ---- Actions ----
     def _on_new_event(self) -> None:
-        self._switch_tab(0)
+        self._switch_tab(1)  # Calendar tab
         dlg = EventEditorDialog(None, self.calendar_store, self)
         if dlg.exec():
             pass
 
     def _on_new_task(self) -> None:
-        self._switch_tab(1)
-        # Trigger the "add task" action in the unified graph view
+        self._switch_tab(2)  # Planner & Tasks tab
         if hasattr(self, "ai_planner_view") and hasattr(self.ai_planner_view, "graph_view"):
             self.ai_planner_view.graph_view._on_add_task()
 

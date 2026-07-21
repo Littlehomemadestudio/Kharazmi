@@ -31,6 +31,7 @@ from .core import (
 from .persistence import SQLiteRepository
 from .ui import RaskMainWindow
 from .ui.theme import QSS, build_qpalette, default_font
+from .ui.widgets import RaskSplashScreen
 
 
 def _seed_demo_project(project: Project) -> None:
@@ -134,6 +135,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     app.setPalette(build_qpalette())
     app.setFont(default_font())
 
+    # ---- Show splash screen ----
+    splash = RaskSplashScreen()
+    splash.show()
+    app.processEvents()
+
+    splash.set_progress(20, "Loading project data...")
+    app.processEvents()
+
     # ---- Load or seed the project ----
     repo = SQLiteRepository()
     project: Optional[Project] = None
@@ -149,14 +158,31 @@ def main(argv: Optional[list[str]] = None) -> int:
         except Exception:
             pass
 
+    splash.set_progress(40, "Preparing workspace...")
+    app.processEvents()
+
     if project is None:
         project = Project(name="Untitled Project",
                           description="A new Rask project.")
         if "--empty" not in argv:
             _seed_demo_project(project)
 
+    splash.set_progress(60, "Initializing calendar...")
+    app.processEvents()
+
     # ---- Show the unified Rask window ----
     window = RaskMainWindow(project)
+
+    splash.set_progress(80, "Starting AI services...")
+    app.processEvents()
+
+    splash.set_progress(100, "Ready!")
+    app.processEvents()
+
+    # Short delay to show "Ready!" then fade out
+    QTimer.singleShot(400, splash.finish)
+    QTimer.singleShot(1000, splash.close)
+
     window.show()
     QTimer.singleShot(100, window._recalculate)
 

@@ -14,6 +14,8 @@ from .journal_view import JournalView
 # Analytics views
 from .graphs_view import GraphsView
 from .simulation_view import SimulationView
+# Dashboard
+from .dashboard_view import DashboardView
 
 __all__ = [
     "NodeGraphView", "GanttView", "KanbanView", "TimelineView",
@@ -24,4 +26,6 @@ __all__ = [
     "RouteGraphView", "UnifiedGraphView", "AIPlannerView", "JournalView",
     # Analytics
     "GraphsView", "SimulationView",
+    # Dashboard
+    "DashboardView",
 ]

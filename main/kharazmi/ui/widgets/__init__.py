@@ -19,6 +19,9 @@ from .step_details_popup import StepDetailsPopup
 from .route_health_dashboard import RouteHealthDashboard
 from .planner_landing import PlannerLanding
 from .route_annotation import BreakthroughFlash, SkipWhirl, LoopCurl
+from .particle_background import GoldParticleBackground
+from .glass_title_bar import GlassTitleBar, FramelessWindowMixin
+from .splash_screen import RaskSplashScreen
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -36,4 +39,8 @@ __all__ = [
     "RouteHealthDashboard",
     "PlannerLanding",
     "BreakthroughFlash", "SkipWhirl", "LoopCurl",
+    # Premium UI
+    "GoldParticleBackground",
+    "GlassTitleBar", "FramelessWindowMixin",
+    "RaskSplashScreen",
 ]
