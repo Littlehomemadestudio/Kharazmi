@@ -179,9 +179,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     splash.set_progress(100, "Ready!")
     app.processEvents()
 
-    # Short delay to show "Ready!" then fade out
+    # Short delay to show "Ready!" then fade out (finish() handles close)
     QTimer.singleShot(400, splash.finish)
-    QTimer.singleShot(1000, splash.close)
 
     window.show()
     QTimer.singleShot(100, window._recalculate)

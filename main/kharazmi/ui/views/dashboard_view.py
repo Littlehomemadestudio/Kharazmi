@@ -395,7 +395,7 @@ class DashboardView(QWidget):
 
         if events:
             for evt in events[:5]:
-                time_str = format_shamsi(evt.start, 'HH:mm') if hasattr(evt, 'start') and evt.start else ""
+                time_str = format_shamsi(evt.start, include_time=True) if hasattr(evt, 'start') and evt.start else ""
                 color = evt.color if hasattr(evt, 'color') and evt.color else Palette.GOLD_PRIMARY
                 row = _EventRow(evt.title, time_str, color)
                 self._content_layout.addWidget(row)

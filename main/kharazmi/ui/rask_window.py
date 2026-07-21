@@ -37,7 +37,7 @@ from ..core import (
     DependencyAdded, DependencyRemoved, ScheduleRecalculated,
 )
 from ..calendar import CalendarStore
-from ..ai import AIService, JournalStore
+from ..ai import AIService, JournalStore, Route
 from ..commands import UndoStack
 from ..services import TaskService, SchedulingService, ExportService
 from ..persistence import SQLiteRepository, CalendarRepository

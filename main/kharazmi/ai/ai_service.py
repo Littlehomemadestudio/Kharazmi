@@ -1660,6 +1660,21 @@ class SimulationResult:
     step_completion_times: dict[str, list[int]] = field(default_factory=dict)
     completion_time_distribution: list[dict] = field(default_factory=list)
 
+    @property
+    def histogram(self) -> dict[int, int]:
+        """Convert completion_time_distribution to a dict of {bin_start_minute: count}.
+
+        This is the format expected by _HistogramWidget in simulation_view.py.
+        """
+        if not self.completion_time_distribution:
+            return {}
+        result: dict[int, int] = {}
+        for bin_data in self.completion_time_distribution:
+            key = int(bin_data.get("start", 0))
+            count = bin_data.get("count", 0)
+            result[key] = count
+        return result
+
     def to_dict(self) -> dict:
         return {
             "n_simulations": self.n_simulations,

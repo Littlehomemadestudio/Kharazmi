@@ -266,6 +266,14 @@ class CalendarStore:
                         results.append(occ)
         return results
 
+    def upcoming_events(self, days: int = 7) -> list[Event]:
+        """Return events starting within the next N days, sorted by start time."""
+        now = datetime.utcnow()
+        end = now + timedelta(days=days)
+        upcoming = self.events_in_range(now, end)
+        upcoming.sort(key=lambda e: e.start)
+        return upcoming
+
     def events_on_day(self, day: datetime.date) -> list[Event]:
         """All events on the given calendar day."""
         start = datetime.combine(day, datetime.min.time())
