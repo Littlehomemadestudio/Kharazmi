@@ -157,19 +157,19 @@ class YearView(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.TextAntialiasing, True)
+        try:
+            # Canvas background
+            p.fillRect(self.rect(), _C_BG)
 
-        # Canvas background
-        p.fillRect(self.rect(), _C_BG)
+            # Year header
+            self._paint_year_header(p)
 
-        # Year header
-        self._paint_year_header(p)
-
-        # Mini months
-        for idx in range(12):
-            rect = self._month_rect(idx)
-            self._paint_mini_month(p, rect, self._year, idx + 1, idx)
-
-        p.end()
+            # Mini months
+            for idx in range(12):
+                rect = self._month_rect(idx)
+                self._paint_mini_month(p, rect, self._year, idx + 1, idx)
+        finally:
+            p.end()
 
     # ──────────────────────────── Mouse Events ───────────────────────────────
 

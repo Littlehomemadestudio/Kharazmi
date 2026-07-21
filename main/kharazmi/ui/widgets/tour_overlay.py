@@ -545,38 +545,40 @@ class TourOverlay(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            # Fill with semi-transparent dark
+            p.fillRect(self.rect(), QColor(0, 0, 0, 180))
 
-        # Fill with semi-transparent dark
-        p.fillRect(self.rect(), QColor(0, 0, 0, 180))
+            # Cut out a spotlight around the target
+            if self._target_rect is not None:
+                # Soft glow around the target
+                margin = 8
+                glow_rect = self._target_rect.adjusted(-margin, -margin, margin, margin)
 
-        # Cut out a spotlight around the target
-        if self._target_rect is not None:
-            # Soft glow around the target
-            margin = 8
-            glow_rect = self._target_rect.adjusted(-margin, -margin, margin, margin)
-
-            # Clear a hole (use CompositionMode_Clear)
-            p.setCompositionMode(QPainter.CompositionMode_Clear)
-            p.setBrush(QBrush(QColor(0, 0, 0, 0)))
-            p.setPen(Qt.NoPen)
-            p.drawRoundedRect(glow_rect, 6, 6)
-            p.setCompositionMode(QPainter.CompositionMode_SourceOver)
-
-            # Draw a gold border around the spotlight
-            pen = QPen(QColor(Palette.GOLD_BRIGHT), 2)
-            p.setPen(pen)
-            p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(glow_rect, 6, 6)
-
-            # Arrow from spotlight to popup
-            popup_pos = self._popup.pos()
-            popup_rect = QRectF(popup_pos.x(), popup_pos.y(),
-                                self._popup.width(), self._popup.height())
-            arrow = self._compute_arrow(glow_rect, popup_rect)
-            if arrow is not None:
-                p.setBrush(QBrush(QColor(Palette.GOLD_BRIGHT)))
+                # Clear a hole (use CompositionMode_Clear)
+                p.setCompositionMode(QPainter.CompositionMode_Clear)
+                p.setBrush(QBrush(QColor(0, 0, 0, 0)))
                 p.setPen(Qt.NoPen)
-                p.drawPolygon(arrow)
+                p.drawRoundedRect(glow_rect, 6, 6)
+                p.setCompositionMode(QPainter.CompositionMode_SourceOver)
+
+                # Draw a gold border around the spotlight
+                pen = QPen(QColor(Palette.GOLD_BRIGHT), 2)
+                p.setPen(pen)
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(glow_rect, 6, 6)
+
+                # Arrow from spotlight to popup
+                popup_pos = self._popup.pos()
+                popup_rect = QRectF(popup_pos.x(), popup_pos.y(),
+                                    self._popup.width(), self._popup.height())
+                arrow = self._compute_arrow(glow_rect, popup_rect)
+                if arrow is not None:
+                    p.setBrush(QBrush(QColor(Palette.GOLD_BRIGHT)))
+                    p.setPen(Qt.NoPen)
+                    p.drawPolygon(arrow)
+        finally:
+            p.end()
 
     def _compute_arrow(self, src: QRectF, dst: QRectF) -> Optional[QPolygonF]:
         """Compute a small arrow polygon from src to dst."""

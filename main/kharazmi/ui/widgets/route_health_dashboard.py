@@ -59,76 +59,76 @@ class _CircularGauge(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.TextAntialiasing, True)
+        try:
+            w, h = self.width(), self.height()
+            cx, cy = w / 2, h / 2
 
-        w, h = self.width(), self.height()
-        cx, cy = w / 2, h / 2
+            # Ring geometry
+            pen_width = 16
+            radius = min(w, h) / 2 - pen_width - 8
+            rect = QRectF(cx - radius, cy - radius, radius * 2, radius * 2)
 
-        # Ring geometry
-        pen_width = 16
-        radius = min(w, h) / 2 - pen_width - 8
-        rect = QRectF(cx - radius, cy - radius, radius * 2, radius * 2)
+            # ── background ring ──
+            bg_pen = QPen(QColor(Palette.BG_TERTIARY), pen_width, Qt.SolidLine, Qt.RoundCap)
+            p.setPen(bg_pen)
+            p.setBrush(Qt.NoBrush)
+            p.drawArc(rect, 0, 360 * 16)
 
-        # ── background ring ──
-        bg_pen = QPen(QColor(Palette.BG_TERTIARY), pen_width, Qt.SolidLine, Qt.RoundCap)
-        p.setPen(bg_pen)
-        p.setBrush(Qt.NoBrush)
-        p.drawArc(rect, 0, 360 * 16)
+            # ── value arc with gradient ──
+            if self._anim_score > 0:
+                # The arc spans from the top (270°) clockwise
+                start_angle = 270 * 16
+                span = int(self._anim_score / 100.0 * 360 * 16)
 
-        # ── value arc with gradient ──
-        if self._anim_score > 0:
-            # The arc spans from the top (270°) clockwise
-            start_angle = 270 * 16
-            span = int(self._anim_score / 100.0 * 360 * 16)
+                # Build a conical gradient centred on the widget
+                grad = QConicalGradient(cx, cy, 270)  # 0° = right, 270 = top
+                # Red → Yellow → Green mapped over 0..1
+                grad.setColorAt(0.0, QColor("#C0392B"))      # deep red
+                grad.setColorAt(0.35, QColor("#E67E22"))      # orange
+                grad.setColorAt(0.55, QColor("#F1C40F"))      # yellow
+                grad.setColorAt(0.75, QColor("#27AE60"))      # green
+                grad.setColorAt(1.0, QColor("#1E8449"))       # dark green
 
-            # Build a conical gradient centred on the widget
-            grad = QConicalGradient(cx, cy, 270)  # 0° = right, 270 = top
-            # Red → Yellow → Green mapped over 0..1
-            grad.setColorAt(0.0, QColor("#C0392B"))      # deep red
-            grad.setColorAt(0.35, QColor("#E67E22"))      # orange
-            grad.setColorAt(0.55, QColor("#F1C40F"))      # yellow
-            grad.setColorAt(0.75, QColor("#27AE60"))      # green
-            grad.setColorAt(1.0, QColor("#1E8449"))       # dark green
+                arc_pen = QPen(QBrush(grad), pen_width, Qt.SolidLine, Qt.RoundCap)
+                p.setPen(arc_pen)
+                p.drawArc(rect, start_angle, -span)
 
-            arc_pen = QPen(QBrush(grad), pen_width, Qt.SolidLine, Qt.RoundCap)
-            p.setPen(arc_pen)
-            p.drawArc(rect, start_angle, -span)
+                # Glow effect — wider translucent arc behind
+                glow_pen = QPen(QBrush(grad), pen_width + 10, Qt.SolidLine, Qt.RoundCap)
+                glow_color = QColor(255, 255, 255, 25)
+                p.setPen(glow_pen)
+                p.drawArc(rect, start_angle, -span)
 
-            # Glow effect — wider translucent arc behind
-            glow_pen = QPen(QBrush(grad), pen_width + 10, Qt.SolidLine, Qt.RoundCap)
-            glow_color = QColor(255, 255, 255, 25)
-            p.setPen(glow_pen)
-            p.drawArc(rect, start_angle, -span)
+            # ── centre score number ──
+            score_font = QFont("Inter", 48, QFont.Bold)
+            p.setFont(score_font)
+            p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
 
-        # ── centre score number ──
-        score_font = QFont("Inter", 48, QFont.Bold)
-        p.setFont(score_font)
-        p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+            score_text = f"{int(round(self._anim_score))}"
+            fm = QFontMetrics(score_font)
+            sw = fm.horizontalAdvance(score_text)
+            p.drawText(QRectF(cx - sw / 2 - 4, cy - 34, sw + 8, 60), Qt.AlignCenter, score_text)
 
-        score_text = f"{int(round(self._anim_score))}"
-        fm = QFontMetrics(score_font)
-        sw = fm.horizontalAdvance(score_text)
-        p.drawText(QRectF(cx - sw / 2 - 4, cy - 34, sw + 8, 60), Qt.AlignCenter, score_text)
+            # ── grade label ──
+            grade_font = QFont("Inter", 18, QFont.DemiBold)
+            p.setFont(grade_font)
+            grade_color = self._grade_color()
+            p.setPen(QPen(grade_color))
+            grade_text = self._grade
+            fm_g = QFontMetrics(grade_font)
+            gw = fm_g.horizontalAdvance(grade_text)
+            p.drawText(QRectF(cx - gw / 2 - 4, cy + 22, gw + 8, 30), Qt.AlignCenter, grade_text)
 
-        # ── grade label ──
-        grade_font = QFont("Inter", 18, QFont.DemiBold)
-        p.setFont(grade_font)
-        grade_color = self._grade_color()
-        p.setPen(QPen(grade_color))
-        grade_text = self._grade
-        fm_g = QFontMetrics(grade_font)
-        gw = fm_g.horizontalAdvance(grade_text)
-        p.drawText(QRectF(cx - gw / 2 - 4, cy + 22, gw + 8, 30), Qt.AlignCenter, grade_text)
-
-        # ── "HEALTH SCORE" subtitle ──
-        sub_font = QFont("Inter", 8, QFont.Bold)
-        p.setFont(sub_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        sub_text = "HEALTH SCORE"
-        fm_s = QFontMetrics(sub_font)
-        subw = fm_s.horizontalAdvance(sub_text)
-        p.drawText(QRectF(cx - subw / 2 - 4, cy + 48, subw + 8, 16), Qt.AlignCenter, sub_text)
-
-        p.end()
+            # ── "HEALTH SCORE" subtitle ──
+            sub_font = QFont("Inter", 8, QFont.Bold)
+            p.setFont(sub_font)
+            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+            sub_text = "HEALTH SCORE"
+            fm_s = QFontMetrics(sub_font)
+            subw = fm_s.horizontalAdvance(sub_text)
+            p.drawText(QRectF(cx - subw / 2 - 4, cy + 48, subw + 8, 16), Qt.AlignCenter, sub_text)
+        finally:
+            p.end()
 
     def _grade_color(self) -> QColor:
         m = {
@@ -163,72 +163,71 @@ class _MiniHistogram(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.TextAntialiasing, True)
+        try:
+            w, h = self.width(), self.height()
+            margin_bottom = 18
+            margin_top = 6
+            margin_lr = 4
+            bar_area_h = h - margin_bottom - margin_top
+            bar_area_w = w - margin_lr * 2
 
-        w, h = self.width(), self.height()
-        margin_bottom = 18
-        margin_top = 6
-        margin_lr = 4
-        bar_area_h = h - margin_bottom - margin_top
-        bar_area_w = w - margin_lr * 2
+            if not self._bins:
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+                p.setFont(QFont("Inter", 9))
+                p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "No simulation data")
+                return
 
-        if not self._bins:
+            n = len(self._bins)
+            gap = 2
+            bar_w = max(4, (bar_area_w - gap * (n - 1)) / n)
+
+            # Gradient for bars
+            for i, bin_data in enumerate(self._bins):
+                count = bin_data.get("count", 0)
+                frac = count / self._max_count if self._max_count else 0
+                bar_h = max(2, frac * bar_area_h)
+                x = margin_lr + i * (bar_w + gap)
+                y = margin_top + bar_area_h - bar_h
+
+                # Color: green → yellow → red based on position (earlier = greener)
+                t = i / max(n - 1, 1)
+                if t < 0.5:
+                    r = int(46 + t * 2 * (241 - 46))
+                    g = int(204 - t * 2 * (204 - 196))
+                    b = int(113 - t * 2 * (113 - 15))
+                else:
+                    t2 = (t - 0.5) * 2
+                    r = int(241 + t2 * (231 - 241))
+                    g = int(196 - t2 * (196 - 76))
+                    b = int(15 + t2 * (60 - 15))
+
+                bar_color = QColor(r, g, b, 200)
+                p.setBrush(QBrush(bar_color))
+                p.setPen(Qt.NoPen)
+                p.drawRoundedRect(QRectF(x, y, bar_w, bar_h), 2, 2)
+
+            # X-axis labels (first, mid, last)
+            label_font = QFont("Inter", 7)
+            p.setFont(label_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("Inter", 9))
-            p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "No simulation data")
+
+            if n >= 1:
+                first_label = str(self._bins[0].get("start", ""))
+                p.drawText(QRectF(margin_lr, h - margin_bottom, bar_w + 10, margin_bottom),
+                           Qt.AlignLeft | Qt.AlignTop, first_label)
+            if n >= 2:
+                mid = n // 2
+                mid_label = str(self._bins[mid].get("start", ""))
+                mid_x = margin_lr + mid * (bar_w + gap)
+                p.drawText(QRectF(mid_x - 10, h - margin_bottom, bar_w + 20, margin_bottom),
+                           Qt.AlignCenter | Qt.AlignTop, mid_label)
+            if n >= 3:
+                last_label = str(self._bins[-1].get("end", ""))
+                last_x = margin_lr + (n - 1) * (bar_w + gap)
+                p.drawText(QRectF(last_x - 10, h - margin_bottom, bar_w + 20, margin_bottom),
+                           Qt.AlignRight | Qt.AlignTop, last_label)
+        finally:
             p.end()
-            return
-
-        n = len(self._bins)
-        gap = 2
-        bar_w = max(4, (bar_area_w - gap * (n - 1)) / n)
-
-        # Gradient for bars
-        for i, bin_data in enumerate(self._bins):
-            count = bin_data.get("count", 0)
-            frac = count / self._max_count if self._max_count else 0
-            bar_h = max(2, frac * bar_area_h)
-            x = margin_lr + i * (bar_w + gap)
-            y = margin_top + bar_area_h - bar_h
-
-            # Color: green → yellow → red based on position (earlier = greener)
-            t = i / max(n - 1, 1)
-            if t < 0.5:
-                r = int(46 + t * 2 * (241 - 46))
-                g = int(204 - t * 2 * (204 - 196))
-                b = int(113 - t * 2 * (113 - 15))
-            else:
-                t2 = (t - 0.5) * 2
-                r = int(241 + t2 * (231 - 241))
-                g = int(196 - t2 * (196 - 76))
-                b = int(15 + t2 * (60 - 15))
-
-            bar_color = QColor(r, g, b, 200)
-            p.setBrush(QBrush(bar_color))
-            p.setPen(Qt.NoPen)
-            p.drawRoundedRect(QRectF(x, y, bar_w, bar_h), 2, 2)
-
-        # X-axis labels (first, mid, last)
-        label_font = QFont("Inter", 7)
-        p.setFont(label_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-
-        if n >= 1:
-            first_label = str(self._bins[0].get("start", ""))
-            p.drawText(QRectF(margin_lr, h - margin_bottom, bar_w + 10, margin_bottom),
-                       Qt.AlignLeft | Qt.AlignTop, first_label)
-        if n >= 2:
-            mid = n // 2
-            mid_label = str(self._bins[mid].get("start", ""))
-            mid_x = margin_lr + mid * (bar_w + gap)
-            p.drawText(QRectF(mid_x - 10, h - margin_bottom, bar_w + 20, margin_bottom),
-                       Qt.AlignCenter | Qt.AlignTop, mid_label)
-        if n >= 3:
-            last_label = str(self._bins[-1].get("end", ""))
-            last_x = margin_lr + (n - 1) * (bar_w + gap)
-            p.drawText(QRectF(last_x - 10, h - margin_bottom, bar_w + 20, margin_bottom),
-                       Qt.AlignRight | Qt.AlignTop, last_label)
-
-        p.end()
 
 
 # ──────────────────────────────────────────────────────────────────────

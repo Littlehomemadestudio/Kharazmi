@@ -350,33 +350,33 @@ class MonthView(QWidget):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            # Apply transition opacity
+            painter.setOpacity(self._transition_opacity)
 
-        # Apply transition opacity
-        painter.setOpacity(self._transition_opacity)
+            # 1. Background
+            self._paint_background(painter)
 
-        # 1. Background
-        self._paint_background(painter)
+            # 2. Weekday header
+            self._paint_header(painter)
 
-        # 2. Weekday header
-        self._paint_header(painter)
+            # 3. Day cells
+            for row in range(_ROWS):
+                for col in range(_COLS):
+                    sd = None
+                    if row < len(self._grid) and col < len(self._grid[row]):
+                        sd = self._grid[row][col]
+                    cell_rect = self._cell_rect(row, col)
+                    self._paint_cell(painter, cell_rect, sd, row, col)
 
-        # 3. Day cells
-        for row in range(_ROWS):
-            for col in range(_COLS):
-                sd = None
-                if row < len(self._grid) and col < len(self._grid[row]):
-                    sd = self._grid[row][col]
-                cell_rect = self._cell_rect(row, col)
-                self._paint_cell(painter, cell_rect, sd, row, col)
+            # 4. Grid lines (on top of fills, below chips)
+            self._paint_grid_lines(painter)
 
-        # 4. Grid lines (on top of fills, below chips)
-        self._paint_grid_lines(painter)
-
-        # 5. Drag ghost
-        if self._drag_state == _DRAG_ACTIVE and self._drag_ghost_pos is not None:
-            self._paint_drag_ghost(painter)
-
-        painter.end()
+            # 5. Drag ghost
+            if self._drag_state == _DRAG_ACTIVE and self._drag_ghost_pos is not None:
+                self._paint_drag_ghost(painter)
+        finally:
+            painter.end()
 
     def _paint_background(self, painter: QPainter) -> None:
         """Fill the entire widget with the canvas background."""

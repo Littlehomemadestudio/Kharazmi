@@ -160,6 +160,10 @@ class PlannerLanding(QWidget):
         if self._underline_width < 1.0:
             self._underline_width = min(1.0, self._underline_width + 0.025)
 
+        # Update brand label opacity effect (outside paintEvent to avoid double-painter)
+        if hasattr(self, '_brand_opacity_effect'):
+            self._brand_opacity_effect.setOpacity(self._brand_opacity)
+
         self.update()
 
     def paintEvent(self, event) -> None:
@@ -194,11 +198,6 @@ class PlannerLanding(QWidget):
                 painter.setBrush(QBrush(grad))
                 painter.drawRoundedRect(QRectF(line_x, line_y, line_w, 2), 1, 1)
 
-            # ── Brand label pulse opacity ──
-            if hasattr(self, '_brand_label'):
-                op = QGraphicsOpacityEffect(self._brand_label)
-                op.setOpacity(self._brand_opacity)
-                self._brand_label.setGraphicsEffect(op)
         finally:
             painter.end()
 
@@ -228,6 +227,11 @@ class PlannerLanding(QWidget):
         brand_row.addWidget(self._brand_label)
         brand_row.addStretch()
         layout.addLayout(brand_row)
+
+        # Set up the brand label opacity effect ONCE (not in paintEvent)
+        self._brand_opacity_effect = QGraphicsOpacityEffect(self._brand_label)
+        self._brand_opacity_effect.setOpacity(1.0)
+        self._brand_label.setGraphicsEffect(self._brand_opacity_effect)
 
         layout.addSpacing(30)
 

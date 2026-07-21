@@ -34,18 +34,21 @@ class _Chart(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         p.setRenderHint(QPainter.TextAntialiasing, True)
-        # Background
-        p.fillRect(self.rect(), QColor(Palette.BG_SECONDARY))
-        # Frame
-        p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1))
-        p.setBrush(Qt.NoBrush)
-        p.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 6, 6)
-        # Title
-        p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
-        f = QFont("Inter", 9, QFont.Bold)
-        f.setLetterSpacing(QFont.AbsoluteSpacing, 1.2)
-        p.setFont(f)
-        p.drawText(12, 18, self._title.upper())
+        try:
+            # Background
+            p.fillRect(self.rect(), QColor(Palette.BG_SECONDARY))
+            # Frame
+            p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1))
+            p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 6, 6)
+            # Title
+            p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
+            f = QFont("Inter", 9, QFont.Bold)
+            f.setLetterSpacing(QFont.AbsoluteSpacing, 1.2)
+            p.setFont(f)
+            p.drawText(12, 18, self._title.upper())
+        finally:
+            p.end()
 
 
 class DonutChart(_Chart):
@@ -60,64 +63,66 @@ class DonutChart(_Chart):
         super().paintEvent(event)
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            cx = self.width() / 2
+            cy = self.height() / 2 + 10
+            radius = min(self.width(), self.height() - 30) / 2 - 30
+            inner = radius * 0.6
 
-        cx = self.width() / 2
-        cy = self.height() / 2 + 10
-        radius = min(self.width(), self.height() - 30) / 2 - 30
-        inner = radius * 0.6
+            total = sum(c for c, _ in self._data.values())
+            if total == 0:
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+                p.setFont(QFont("Inter", 10))
+                p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter, "No data")
+                return
 
-        total = sum(c for c, _ in self._data.values())
-        if total == 0:
-            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("Inter", 10))
-            p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter, "No data")
-            return
+            angle = 90.0  # start at top
+            for label, (count, color) in self._data.items():
+                if count == 0:
+                    continue
+                span = count / total * 360.0
+                from PySide6.QtCore import QRectF
+                rect = QRectF(cx - radius, cy - radius, radius * 2, radius * 2)
+                p.setBrush(QBrush(QColor(color)))
+                p.setPen(QPen(QColor(Palette.BG_SECONDARY), 2))
+                p.drawPie(rect, int(angle * 16), int(-span * 16))
+                angle -= span
 
-        angle = 90.0  # start at top
-        for label, (count, color) in self._data.items():
-            if count == 0:
-                continue
-            span = count / total * 360.0
-            from PySide6.QtCore import QRectF
-            rect = QRectF(cx - radius, cy - radius, radius * 2, radius * 2)
-            p.setBrush(QBrush(QColor(color)))
-            p.setPen(QPen(QColor(Palette.BG_SECONDARY), 2))
-            p.drawPie(rect, int(angle * 16), int(-span * 16))
-            angle -= span
-
-        # Inner hole
-        p.setBrush(QBrush(QColor(Palette.BG_SECONDARY)))
-        p.setPen(Qt.NoPen)
-        p.drawEllipse(QPointF(cx, cy), inner, inner)
-
-        # Center text
-        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-        p.setFont(QFont("Inter", 18, QFont.Bold))
-        p.drawText(QRectF(cx - radius, cy - radius, radius * 2, radius * 2),
-                   Qt.AlignCenter, str(total))
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.setFont(QFont("Inter", 8, QFont.Bold))
-        p.drawText(QRectF(cx - radius, cy + 8, radius * 2, radius),
-                   Qt.AlignCenter, "TOTAL")
-
-        # Legend
-        legend_y = 12
-        legend_x = 12
-        p.setFont(QFont("Inter", 9))
-        for label, (count, color) in self._data.items():
-            if count == 0:
-                continue
-            p.setBrush(QBrush(QColor(color)))
+            # Inner hole
+            p.setBrush(QBrush(QColor(Palette.BG_SECONDARY)))
             p.setPen(Qt.NoPen)
-            p.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 2, 2)
-            p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            p.drawText(QRectF(legend_x + 14, legend_y - 2, 150, 14),
-                       Qt.AlignLeft | Qt.AlignVCenter,
-                       f"{label}  {count}")
-            legend_y += 16
-            if legend_y > self.height() - 16:
-                legend_y = 12
-                legend_x = self.width() // 2
+            p.drawEllipse(QPointF(cx, cy), inner, inner)
+
+            # Center text
+            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+            p.setFont(QFont("Inter", 18, QFont.Bold))
+            p.drawText(QRectF(cx - radius, cy - radius, radius * 2, radius * 2),
+                       Qt.AlignCenter, str(total))
+            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+            p.setFont(QFont("Inter", 8, QFont.Bold))
+            p.drawText(QRectF(cx - radius, cy + 8, radius * 2, radius),
+                       Qt.AlignCenter, "TOTAL")
+
+            # Legend
+            legend_y = 12
+            legend_x = 12
+            p.setFont(QFont("Inter", 9))
+            for label, (count, color) in self._data.items():
+                if count == 0:
+                    continue
+                p.setBrush(QBrush(QColor(color)))
+                p.setPen(Qt.NoPen)
+                p.drawRoundedRect(QRectF(legend_x, legend_y, 10, 10), 2, 2)
+                p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+                p.drawText(QRectF(legend_x + 14, legend_y - 2, 150, 14),
+                           Qt.AlignLeft | Qt.AlignVCenter,
+                           f"{label}  {count}")
+                legend_y += 16
+                if legend_y > self.height() - 16:
+                    legend_y = 12
+                    legend_x = self.width() // 2
+        finally:
+            p.end()
 
 
 class BarChart(_Chart):
@@ -133,56 +138,58 @@ class BarChart(_Chart):
         super().paintEvent(event)
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            if not self._data:
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+                p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter, "No data")
+                return
 
-        if not self._data:
+            chart_x = 40
+            chart_y = 40
+            chart_w = self.width() - 60
+            chart_h = self.height() - 70
+
+            max_val = max(v for _, v in self._data) or 1
+            n = len(self._data)
+            bar_w = max(8, (chart_w - 10 * (n - 1)) / n)
+
+            # Y axis labels
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter, "No data")
-            return
+            p.setFont(QFont("JetBrains Mono", 7))
+            for i in range(5):
+                v = max_val * (4 - i) / 4
+                y = chart_y + chart_h * i / 4
+                p.drawText(QRectF(0, y - 7, 35, 14),
+                           Qt.AlignRight | Qt.AlignVCenter, f"{int(v)}")
+                # Grid line
+                p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1, Qt.DotLine))
+                p.drawLine(chart_x, y, chart_x + chart_w, y)
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
 
-        chart_x = 40
-        chart_y = 40
-        chart_w = self.width() - 60
-        chart_h = self.height() - 70
-
-        max_val = max(v for _, v in self._data) or 1
-        n = len(self._data)
-        bar_w = max(8, (chart_w - 10 * (n - 1)) / n)
-
-        # Y axis labels
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.setFont(QFont("JetBrains Mono", 7))
-        for i in range(5):
-            v = max_val * (4 - i) / 4
-            y = chart_y + chart_h * i / 4
-            p.drawText(QRectF(0, y - 7, 35, 14),
-                       Qt.AlignRight | Qt.AlignVCenter, f"{int(v)}")
-            # Grid line
-            p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1, Qt.DotLine))
-            p.drawLine(chart_x, y, chart_x + chart_w, y)
-            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-
-        # Bars
-        for i, (label, val) in enumerate(self._data):
-            x = chart_x + i * (bar_w + 10)
-            h = chart_h * val / max_val if max_val > 0 else 0
-            y = chart_y + chart_h - h
-            rect = QRectF(x, y, bar_w, h)
-            grad = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-            grad.setColorAt(0, QColor(self._color).lighter(130))
-            grad.setColorAt(1, QColor(self._color))
-            p.setBrush(QBrush(grad))
-            p.setPen(QPen(QColor(self._color).darker(150), 1))
-            p.drawRoundedRect(rect, 2, 2)
-            # Value label
-            p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-            p.setFont(QFont("JetBrains Mono", 8, QFont.Bold))
-            p.drawText(QRectF(x, y - 14, bar_w, 12),
-                       Qt.AlignCenter, str(val))
-            # X label
-            p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("Inter", 8))
-            p.drawText(QRectF(x - 10, chart_y + chart_h + 4, bar_w + 20, 14),
-                       Qt.AlignCenter, label[:10])
+            # Bars
+            for i, (label, val) in enumerate(self._data):
+                x = chart_x + i * (bar_w + 10)
+                h = chart_h * val / max_val if max_val > 0 else 0
+                y = chart_y + chart_h - h
+                rect = QRectF(x, y, bar_w, h)
+                grad = QLinearGradient(rect.topLeft(), rect.bottomLeft())
+                grad.setColorAt(0, QColor(self._color).lighter(130))
+                grad.setColorAt(1, QColor(self._color))
+                p.setBrush(QBrush(grad))
+                p.setPen(QPen(QColor(self._color).darker(150), 1))
+                p.drawRoundedRect(rect, 2, 2)
+                # Value label
+                p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+                p.setFont(QFont("JetBrains Mono", 8, QFont.Bold))
+                p.drawText(QRectF(x, y - 14, bar_w, 12),
+                           Qt.AlignCenter, str(val))
+                # X label
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+                p.setFont(QFont("Inter", 8))
+                p.drawText(QRectF(x - 10, chart_y + chart_h + 4, bar_w + 20, 14),
+                           Qt.AlignCenter, label[:10])
+        finally:
+            p.end()
 
 
 class HistogramChart(_Chart):
@@ -201,56 +208,58 @@ class HistogramChart(_Chart):
         super().paintEvent(event)
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            if not self._histogram:
+                p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+                p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter,
+                           "Run Monte Carlo to see distribution")
+                return
 
-        if not self._histogram:
+            chart_x = 50
+            chart_y = 40
+            chart_w = self.width() - 70
+            chart_h = self.height() - 70
+
+            n = len(self._histogram)
+            max_val = max(self._histogram) or 1
+            bar_w = max(2, chart_w / n)
+
+            # Bars
+            for i, count in enumerate(self._histogram):
+                x = chart_x + i * bar_w
+                h = chart_h * count / max_val
+                y = chart_y + chart_h - h
+                grad = QLinearGradient(0, y, 0, y + h)
+                grad.setColorAt(0, QColor(Palette.GOLD_BRIGHT))
+                grad.setColorAt(1, QColor(Palette.GOLD_DEEP))
+                p.setBrush(QBrush(grad))
+                p.setPen(Qt.NoPen)
+                p.drawRect(QRectF(x, y, max(1, bar_w - 1), h))
+
+            # P50 / P90 markers
+            def x_for_value(val: int) -> float:
+                offset = (val - self._min_val) / self._bucket_size
+                return chart_x + offset * bar_w
+
+            for val, label, color in [(self._p50, "P50", Palette.GOLD_BRIGHT),
+                                       (self._p90, "P90", Palette.STATUS_BLOCKED)]:
+                x = x_for_value(val)
+                p.setPen(QPen(QColor(color), 1.5, Qt.DashLine))
+                p.drawLine(x, chart_y, x, chart_y + chart_h)
+                p.setPen(QPen(QColor(color)))
+                p.setFont(QFont("Inter", 8, QFont.Bold))
+                p.drawText(QRectF(x - 20, chart_y - 14, 40, 12),
+                           Qt.AlignCenter, label)
+
+            # X axis labels (min/max)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter,
-                       "Run Monte Carlo to see distribution")
-            return
-
-        chart_x = 50
-        chart_y = 40
-        chart_w = self.width() - 70
-        chart_h = self.height() - 70
-
-        n = len(self._histogram)
-        max_val = max(self._histogram) or 1
-        bar_w = max(2, chart_w / n)
-
-        # Bars
-        for i, count in enumerate(self._histogram):
-            x = chart_x + i * bar_w
-            h = chart_h * count / max_val
-            y = chart_y + chart_h - h
-            grad = QLinearGradient(0, y, 0, y + h)
-            grad.setColorAt(0, QColor(Palette.GOLD_BRIGHT))
-            grad.setColorAt(1, QColor(Palette.GOLD_DEEP))
-            p.setBrush(QBrush(grad))
-            p.setPen(Qt.NoPen)
-            p.drawRect(QRectF(x, y, max(1, bar_w - 1), h))
-
-        # P50 / P90 markers
-        def x_for_value(val: int) -> float:
-            offset = (val - self._min_val) / self._bucket_size
-            return chart_x + offset * bar_w
-
-        for val, label, color in [(self._p50, "P50", Palette.GOLD_BRIGHT),
-                                   (self._p90, "P90", Palette.STATUS_BLOCKED)]:
-            x = x_for_value(val)
-            p.setPen(QPen(QColor(color), 1.5, Qt.DashLine))
-            p.drawLine(x, chart_y, x, chart_y + chart_h)
-            p.setPen(QPen(QColor(color)))
-            p.setFont(QFont("Inter", 8, QFont.Bold))
-            p.drawText(QRectF(x - 20, chart_y - 14, 40, 12),
-                       Qt.AlignCenter, label)
-
-        # X axis labels (min/max)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.setFont(QFont("JetBrains Mono", 8))
-        p.drawText(QRectF(chart_x, chart_y + chart_h + 4, 100, 14),
-                   Qt.AlignLeft, f"{self._min_val}m")
-        p.drawText(QRectF(chart_x + chart_w - 100, chart_y + chart_h + 4, 100, 14),
-                   Qt.AlignRight, f"{self._min_val + len(self._histogram) * self._bucket_size}m")
+            p.setFont(QFont("JetBrains Mono", 8))
+            p.drawText(QRectF(chart_x, chart_y + chart_h + 4, 100, 14),
+                       Qt.AlignLeft, f"{self._min_val}m")
+            p.drawText(QRectF(chart_x + chart_w - 100, chart_y + chart_h + 4, 100, 14),
+                       Qt.AlignRight, f"{self._min_val + len(self._histogram) * self._bucket_size}m")
+        finally:
+            p.end()
 
 
 class StatCard(QFrame):

@@ -162,9 +162,11 @@ class RippleOverlay(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        for r in self._ripples:
-            r.paint(p)
-        p.end()
+        try:
+            for r in self._ripples:
+                r.paint(p)
+        finally:
+            p.end()
 
 
 class _Ripple:

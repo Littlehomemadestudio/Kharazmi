@@ -139,30 +139,30 @@ class EventWidget(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802 — Qt naming
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        try:
+            rect = QRectF(0, 0, self.width(), self.height())
 
-        rect = QRectF(0, 0, self.width(), self.height())
+            options = EventRenderOptions(
+                show_time=True,
+                show_icon=True,
+                show_location=True,
+                show_attendees=bool(self._event.attendees),
+                show_completion=True,
+                show_priority=True,
+                compact=self.height() < Metrics.MIN_EVENT_HEIGHT + 12,
+                hovered=self._hovered,
+                selected=self._selected,
+                dragging=self.is_dragging(),
+            )
 
-        options = EventRenderOptions(
-            show_time=True,
-            show_icon=True,
-            show_location=True,
-            show_attendees=bool(self._event.attendees),
-            show_completion=True,
-            show_priority=True,
-            compact=self.height() < Metrics.MIN_EVENT_HEIGHT + 12,
-            hovered=self._hovered,
-            selected=self._selected,
-            dragging=self.is_dragging(),
-        )
+            EventRenderer.paint(painter, rect, self._event, self._color, options)
 
-        EventRenderer.paint(painter, rect, self._event, self._color, options)
-
-        # ── Resize handle indicator ──
-        # Draw a subtle grip at the bottom when hovered or selected
-        if self._hovered or self._selected:
-            self._paint_resize_handle(painter, rect)
-
-        painter.end()
+            # ── Resize handle indicator ──
+            # Draw a subtle grip at the bottom when hovered or selected
+            if self._hovered or self._selected:
+                self._paint_resize_handle(painter, rect)
+        finally:
+            painter.end()
 
     def _paint_resize_handle(self, painter: QPainter, rect: QRectF) -> None:
         """Paint the resize grip indicator at the bottom edge."""

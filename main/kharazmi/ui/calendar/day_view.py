@@ -130,15 +130,15 @@ class _DayGridWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
-
-        self._paint_background(painter)
-        self._paint_grid_lines(painter)
-        self._paint_time_ruler(painter)
-        self._paint_now_line(painter)
-        self._paint_hover_line(painter)
-        self._paint_drag_create(painter)
-
-        painter.end()
+        try:
+            self._paint_background(painter)
+            self._paint_grid_lines(painter)
+            self._paint_time_ruler(painter)
+            self._paint_now_line(painter)
+            self._paint_hover_line(painter)
+            self._paint_drag_create(painter)
+        finally:
+            painter.end()
 
     def _paint_background(self, p: QPainter) -> None:
         """Fill the ruler and day-column backgrounds."""
@@ -420,58 +420,58 @@ class _AllDayArea(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            w, h = self.width(), self.height()
 
-        w, h = self.width(), self.height()
+            # Background
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(qcolor(Surface.CANVAS)))
+            p.drawRect(0, 0, w, h)
 
-        # Background
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(qcolor(Surface.CANVAS)))
-        p.drawRect(0, 0, w, h)
+            # Bottom border
+            border_pen = QPen(qcolor(Border.SUBTLE), 1.0)
+            border_pen.setCosmetic(True)
+            p.setPen(border_pen)
+            p.drawLine(0, h - 1, w, h - 1)
 
-        # Bottom border
-        border_pen = QPen(qcolor(Border.SUBTLE), 1.0)
-        border_pen.setCosmetic(True)
-        p.setPen(border_pen)
-        p.drawLine(0, h - 1, w, h - 1)
-
-        # "کل‌روز" label on the ruler area
-        if self._events:
-            label_font = font_small()
-            p.setFont(label_font)
-            p.setPen(QPen(qcolor(Text.TERTIARY)))
-            p.drawText(
-                QRectF(0, 0, _RULER_W - 10, h),
-                Qt.AlignRight | Qt.AlignVCenter,
-                "کل\u200cروز",
-            )
-
-        # Event chips
-        chip_x = _RULER_W + _ALL_DAY_PAD
-        chip_w = w - chip_x - _ALL_DAY_PAD
-
-        for i, evt in enumerate(self._events):
-            if i >= _ALL_DAY_MAX:
-                # Overflow indicator
-                remaining = len(self._events) - _ALL_DAY_MAX
-                overflow_label = f"+{to_persian_digits(str(remaining))} مورد دیگر"
-                p.setFont(font_small())
+            # "کل‌روز" label on the ruler area
+            if self._events:
+                label_font = font_small()
+                p.setFont(label_font)
                 p.setPen(QPen(qcolor(Text.TERTIARY)))
-                y_center = _ALL_DAY_PAD + _ALL_DAY_MAX * _ALL_DAY_ROW_H - _ALL_DAY_ROW_H // 2
                 p.drawText(
-                    QRectF(chip_x, y_center - 10, chip_w, 20),
-                    Qt.AlignLeft | Qt.AlignVCenter,
-                    overflow_label,
+                    QRectF(0, 0, _RULER_W - 10, h),
+                    Qt.AlignRight | Qt.AlignVCenter,
+                    "کل\u200cروز",
                 )
-                break
 
-            y = _ALL_DAY_PAD + i * (_ALL_DAY_CHIP_H + _ALL_DAY_CHIP_GAP)
-            chip_rect = QRectF(chip_x, y, chip_w, _ALL_DAY_CHIP_H)
-            color = self._colors.get(evt.id, Gold.PRIMARY)
-            hovered = (i == self._hovered_idx)
-            selected = (evt.id == self._selected_id)
-            EventRenderer.paint_all_day_chip(p, chip_rect, evt, color, hovered, selected)
+            # Event chips
+            chip_x = _RULER_W + _ALL_DAY_PAD
+            chip_w = w - chip_x - _ALL_DAY_PAD
 
-        p.end()
+            for i, evt in enumerate(self._events):
+                if i >= _ALL_DAY_MAX:
+                    # Overflow indicator
+                    remaining = len(self._events) - _ALL_DAY_MAX
+                    overflow_label = f"+{to_persian_digits(str(remaining))} مورد دیگر"
+                    p.setFont(font_small())
+                    p.setPen(QPen(qcolor(Text.TERTIARY)))
+                    y_center = _ALL_DAY_PAD + _ALL_DAY_MAX * _ALL_DAY_ROW_H - _ALL_DAY_ROW_H // 2
+                    p.drawText(
+                        QRectF(chip_x, y_center - 10, chip_w, 20),
+                        Qt.AlignLeft | Qt.AlignVCenter,
+                        overflow_label,
+                    )
+                    break
+
+                y = _ALL_DAY_PAD + i * (_ALL_DAY_CHIP_H + _ALL_DAY_CHIP_GAP)
+                chip_rect = QRectF(chip_x, y, chip_w, _ALL_DAY_CHIP_H)
+                color = self._colors.get(evt.id, Gold.PRIMARY)
+                hovered = (i == self._hovered_idx)
+                selected = (evt.id == self._selected_id)
+                EventRenderer.paint_all_day_chip(p, chip_rect, evt, color, hovered, selected)
+        finally:
+            p.end()
 
     # ── Hit testing ─────────────────────────────────────────────────────────
 
@@ -550,66 +550,66 @@ class _DayHeader(QWidget):
 
         p = QPainter(self)
         p.setRenderHint(QPainter.TextAntialiasing, True)
+        try:
+            w, h = self.width(), self.height()
 
-        w, h = self.width(), self.height()
-
-        # Background
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(qcolor(Surface.CANVAS)))
-        p.drawRect(0, 0, w, h)
-
-        # Bottom border
-        border_pen = QPen(qcolor(Border.SUBTLE), 1.0)
-        border_pen.setCosmetic(True)
-        p.setPen(border_pen)
-        p.drawLine(0, h - 1, w, h - 1)
-
-        # Date string: "سه‌شنبه  ۱۵  مرداد  ۱۴۰۳"
-        date_text = self._day.format("EEEE  dd  MMMM  yyyy", use_persian_digits=True)
-
-        header_font = font_header()
-        p.setFont(header_font)
-
-        if self._is_today:
-            p.setPen(QPen(qcolor(Gold.PRIMARY)))
-        else:
-            p.setPen(QPen(qcolor(Text.PRIMARY)))
-
-        text_x = _RULER_W + Spacing.MD
-        text_area_w = w - text_x - Spacing.MD
-        p.drawText(
-            QRectF(text_x, 0, text_area_w, h),
-            Qt.AlignLeft | Qt.AlignVCenter,
-            date_text,
-        )
-
-        # "امروز" badge for today
-        if self._is_today:
-            badge_text = "امروز"
-            badge_font = font_small()
-            p.setFont(badge_font)
-            badge_fm = p.fontMetrics()
-            badge_w = badge_fm.horizontalAdvance(badge_text) + 14
-
-            # Measure the main date text width to position the badge
-            p.setFont(header_font)
-            main_fm = p.fontMetrics()
-            date_text_w = main_fm.horizontalAdvance(date_text)
-
-            badge_x = text_x + date_text_w + Spacing.LG
-            badge_rect = QRectF(badge_x, h / 2 - 10, badge_w, 20)
-
-            # Badge background
+            # Background
             p.setPen(Qt.NoPen)
-            p.setBrush(QBrush(with_alpha(Gold.PRIMARY, 40)))
-            p.drawRoundedRect(badge_rect, 10, 10)
+            p.setBrush(QBrush(qcolor(Surface.CANVAS)))
+            p.drawRect(0, 0, w, h)
 
-            # Badge text
-            p.setFont(badge_font)
-            p.setPen(QPen(qcolor(Gold.PRIMARY)))
-            p.drawText(badge_rect, Qt.AlignCenter, badge_text)
+            # Bottom border
+            border_pen = QPen(qcolor(Border.SUBTLE), 1.0)
+            border_pen.setCosmetic(True)
+            p.setPen(border_pen)
+            p.drawLine(0, h - 1, w, h - 1)
 
-        p.end()
+            # Date string: "سه‌شنبه  ۱۵  مرداد  ۱۴۰۳"
+            date_text = self._day.format("EEEE  dd  MMMM  yyyy", use_persian_digits=True)
+
+            header_font = font_header()
+            p.setFont(header_font)
+
+            if self._is_today:
+                p.setPen(QPen(qcolor(Gold.PRIMARY)))
+            else:
+                p.setPen(QPen(qcolor(Text.PRIMARY)))
+
+            text_x = _RULER_W + Spacing.MD
+            text_area_w = w - text_x - Spacing.MD
+            p.drawText(
+                QRectF(text_x, 0, text_area_w, h),
+                Qt.AlignLeft | Qt.AlignVCenter,
+                date_text,
+            )
+
+            # "امروز" badge for today
+            if self._is_today:
+                badge_text = "امروز"
+                badge_font = font_small()
+                p.setFont(badge_font)
+                badge_fm = p.fontMetrics()
+                badge_w = badge_fm.horizontalAdvance(badge_text) + 14
+
+                # Measure the main date text width to position the badge
+                p.setFont(header_font)
+                main_fm = p.fontMetrics()
+                date_text_w = main_fm.horizontalAdvance(date_text)
+
+                badge_x = text_x + date_text_w + Spacing.LG
+                badge_rect = QRectF(badge_x, h / 2 - 10, badge_w, 20)
+
+                # Badge background
+                p.setPen(Qt.NoPen)
+                p.setBrush(QBrush(with_alpha(Gold.PRIMARY, 40)))
+                p.drawRoundedRect(badge_rect, 10, 10)
+
+                # Badge text
+                p.setFont(badge_font)
+                p.setPen(QPen(qcolor(Gold.PRIMARY)))
+                p.drawText(badge_rect, Qt.AlignCenter, badge_text)
+        finally:
+            p.end()
 
 
 # ──────────────────────────────── DayView ───────────────────────────────────

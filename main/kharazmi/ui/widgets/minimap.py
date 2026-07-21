@@ -39,52 +39,54 @@ class MinimapOverlay(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            scene = self._view.scene()
+            if scene is None:
+                return
+            items_rect = scene.itemsBoundingRect()
+            if items_rect.isNull():
+                items_rect = QRectF(0, 0, 100, 100)
 
-        scene = self._view.scene()
-        if scene is None:
-            return
-        items_rect = scene.itemsBoundingRect()
-        if items_rect.isNull():
-            items_rect = QRectF(0, 0, 100, 100)
+            # Compute scale to fit
+            margin = 6
+            w = self.width() - 2 * margin
+            h = self.height() - 2 * margin
+            sx = w / max(items_rect.width(), 1)
+            sy = h / max(items_rect.height(), 1)
+            s = min(sx, sy)
 
-        # Compute scale to fit
-        margin = 6
-        w = self.width() - 2 * margin
-        h = self.height() - 2 * margin
-        sx = w / max(items_rect.width(), 1)
-        sy = h / max(items_rect.height(), 1)
-        s = min(sx, sy)
+            # Map items_rect to local
+            def to_local(pt: QPointF) -> QPointF:
+                x = margin + (pt.x() - items_rect.left()) * s
+                y = margin + (pt.y() - items_rect.top()) * s
+                return QPointF(x, y)
 
-        # Map items_rect to local
-        def to_local(p: QPointF) -> QPointF:
-            x = margin + (p.x() - items_rect.left()) * s
-            y = margin + (p.y() - items_rect.top()) * s
-            return QPointF(x, y)
+            # Background
+            p.fillRect(self.rect(), QColor(8, 8, 10, 200))
 
-        # Background
-        p.fillRect(self.rect(), QColor(8, 8, 10, 200))
+            # Draw nodes as tiny rectangles
+            from .task_node_item import TaskNodeItem
+            from .edge_item import EdgeItem
+            for item in scene.items():
+                if isinstance(item, TaskNodeItem):
+                    r = item.sceneBoundingRect()
+                    top_left = to_local(r.topLeft())
+                    bot_right = to_local(r.bottomRight())
+                    rect = QRectF(top_left, bot_right)
+                    color = QColor(Palette.GOLD_BRIGHT) if item.task.is_critical else QColor(Palette.TEXT_TERTIARY)
+                    p.setBrush(QBrush(color))
+                    p.setPen(Qt.NoPen)
+                    p.drawRect(rect)
 
-        # Draw nodes as tiny rectangles
-        from .task_node_item import TaskNodeItem
-        from .edge_item import EdgeItem
-        for item in scene.items():
-            if isinstance(item, TaskNodeItem):
-                r = item.sceneBoundingRect()
-                top_left = to_local(r.topLeft())
-                bot_right = to_local(r.bottomRight())
-                rect = QRectF(top_left, bot_right)
-                color = QColor(Palette.GOLD_BRIGHT) if item.task.is_critical else QColor(Palette.TEXT_TERTIARY)
-                p.setBrush(QBrush(color))
-                p.setPen(Qt.NoPen)
-                p.drawRect(rect)
-
-        # Viewport rectangle
-        viewport_rect = self._view.mapToScene(self._view.viewport().rect()).boundingRect()
-        tl = to_local(viewport_rect.topLeft())
-        br = to_local(viewport_rect.bottomRight())
-        p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT), 1.5))
-        p.drawRect(QRectF(tl, br))
+            # Viewport rectangle
+            viewport_rect = self._view.mapToScene(self._view.viewport().rect()).boundingRect()
+            tl = to_local(viewport_rect.topLeft())
+            br = to_local(viewport_rect.bottomRight())
+            p.setBrush(Qt.NoBrush)
+            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT), 1.5))
+            p.drawRect(QRectF(tl, br))
+        finally:
+            p.end()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         self._navigate_to(event.position())

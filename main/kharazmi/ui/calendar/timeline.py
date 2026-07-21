@@ -127,98 +127,98 @@ class TimelineWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
         painter.setRenderHint(QPainter.TextAntialiasing, True)
+        try:
+            w: int = self.width()
+            h_total: int = self.height()
 
-        w: int = self.width()
-        h_total: int = self.height()
+            # Label drawing area: full widget width minus the right margin
+            label_w: float = float(w - _LABEL_RIGHT_MARGIN)
 
-        # Label drawing area: full widget width minus the right margin
-        label_w: float = float(w - _LABEL_RIGHT_MARGIN)
+            # ── 24-hour loop ───────────────────────────────────────────────────
+            for hour in range(24):
+                y0: float = hour * _HOUR_HEIGHT
 
-        # ── 24-hour loop ───────────────────────────────────────────────────
-        for hour in range(24):
-            y0: float = hour * _HOUR_HEIGHT
+                # ── Full-hour separator (spans entire widget width) ─────────────
+                painter.setPen(self._pen_hour)
+                painter.drawLine(0, int(y0), w, int(y0))
 
-            # ── Full-hour separator (spans entire widget width) ─────────────
-            painter.setPen(self._pen_hour)
-            painter.drawLine(0, int(y0), w, int(y0))
-
-            # ── Hour label, right-aligned, vertically centred just above line
-            painter.setFont(self._font_hour)
-            painter.setPen(self._color_hour)
-            fm = painter.fontMetrics()
-            label_h: float = float(fm.height())
-            # Place text so its vertical centre sits ~5 px above the hour line
-            label_rect = QRectF(
-                0.0,
-                y0 - label_h - 2.0,
-                label_w,
-                label_h,
-            )
-            painter.drawText(label_rect, Qt.AlignRight | Qt.AlignVCenter, self._fmt_hour(hour))
-
-            # ── Full-hour tick mark (right edge) ────────────────────────────
-            painter.setPen(self._pen_hour)
-            painter.drawLine(w - _HOUR_TICK_LEN, int(y0), w, int(y0))
-
-            # ── 15-minute sub-ticks ─────────────────────────────────────────
-            for sub in range(1, _SUB_TICKS_PER_HOUR):
-                y_sub: float = y0 + sub * _SUB_TICK_HEIGHT
-
-                if sub == 2:
-                    # ── Half-hour ───────────────────────────────────────────
-                    painter.setPen(self._pen_half)
-                    # Separator across widget
-                    painter.drawLine(0, int(y_sub), w, int(y_sub))
-                    # Tick on right edge
-                    painter.drawLine(
-                        w - _HALF_HOUR_TICK_LEN, int(y_sub), w, int(y_sub)
-                    )
-                    # Label (smaller, dimmer)
-                    painter.setFont(self._font_half)
-                    painter.setPen(self._color_half)
-                    fm_half = painter.fontMetrics()
-                    half_h: float = float(fm_half.height())
-                    half_rect = QRectF(
-                        0.0,
-                        y_sub - half_h - 2.0,
-                        label_w,
-                        half_h,
-                    )
-                    painter.drawText(
-                        half_rect,
-                        Qt.AlignRight | Qt.AlignVCenter,
-                        self._fmt_half(hour),
-                    )
-                    painter.setFont(self._font_hour)
-                else:
-                    # ── Quarter-hour (:15 / :45) — short tick only ─────────
-                    painter.setPen(self._pen_quarter)
-                    painter.drawLine(
-                        w - _QUARTER_TICK_LEN, int(y_sub), w, int(y_sub)
-                    )
-
-        # ── Closing line at 24:00 ──────────────────────────────────────────
-        y_24: int = 24 * _HOUR_HEIGHT
-        painter.setPen(self._pen_hour)
-        painter.drawLine(0, y_24, w, y_24)
-
-        # ── Current-time indicator ─────────────────────────────────────────
-        now_y: float = self._now_y()
-        if 0.0 <= now_y <= float(h_total):
-            # Red horizontal line spanning the widget
-            painter.setPen(self._pen_now)
-            painter.drawLine(0, int(now_y), w, int(now_y))
-
-            # Red dot centred on the left edge of the widget
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(NowLine.DOT)
-            painter.drawEllipse(
-                QRectF(
-                    0.0,                             # left edge of dot = x=0
-                    now_y - _NOW_DOT_RADIUS,
-                    _NOW_DOT_RADIUS * 2.0,
-                    _NOW_DOT_RADIUS * 2.0,
+                # ── Hour label, right-aligned, vertically centred just above line
+                painter.setFont(self._font_hour)
+                painter.setPen(self._color_hour)
+                fm = painter.fontMetrics()
+                label_h: float = float(fm.height())
+                # Place text so its vertical centre sits ~5 px above the hour line
+                label_rect = QRectF(
+                    0.0,
+                    y0 - label_h - 2.0,
+                    label_w,
+                    label_h,
                 )
-            )
+                painter.drawText(label_rect, Qt.AlignRight | Qt.AlignVCenter, self._fmt_hour(hour))
 
-        painter.end()
+                # ── Full-hour tick mark (right edge) ────────────────────────────
+                painter.setPen(self._pen_hour)
+                painter.drawLine(w - _HOUR_TICK_LEN, int(y0), w, int(y0))
+
+                # ── 15-minute sub-ticks ─────────────────────────────────────────
+                for sub in range(1, _SUB_TICKS_PER_HOUR):
+                    y_sub: float = y0 + sub * _SUB_TICK_HEIGHT
+
+                    if sub == 2:
+                        # ── Half-hour ───────────────────────────────────────────
+                        painter.setPen(self._pen_half)
+                        # Separator across widget
+                        painter.drawLine(0, int(y_sub), w, int(y_sub))
+                        # Tick on right edge
+                        painter.drawLine(
+                            w - _HALF_HOUR_TICK_LEN, int(y_sub), w, int(y_sub)
+                        )
+                        # Label (smaller, dimmer)
+                        painter.setFont(self._font_half)
+                        painter.setPen(self._color_half)
+                        fm_half = painter.fontMetrics()
+                        half_h: float = float(fm_half.height())
+                        half_rect = QRectF(
+                            0.0,
+                            y_sub - half_h - 2.0,
+                            label_w,
+                            half_h,
+                        )
+                        painter.drawText(
+                            half_rect,
+                            Qt.AlignRight | Qt.AlignVCenter,
+                            self._fmt_half(hour),
+                        )
+                        painter.setFont(self._font_hour)
+                    else:
+                        # ── Quarter-hour (:15 / :45) — short tick only ─────────
+                        painter.setPen(self._pen_quarter)
+                        painter.drawLine(
+                            w - _QUARTER_TICK_LEN, int(y_sub), w, int(y_sub)
+                        )
+
+            # ── Closing line at 24:00 ──────────────────────────────────────────
+            y_24: int = 24 * _HOUR_HEIGHT
+            painter.setPen(self._pen_hour)
+            painter.drawLine(0, y_24, w, y_24)
+
+            # ── Current-time indicator ─────────────────────────────────────────
+            now_y: float = self._now_y()
+            if 0.0 <= now_y <= float(h_total):
+                # Red horizontal line spanning the widget
+                painter.setPen(self._pen_now)
+                painter.drawLine(0, int(now_y), w, int(now_y))
+
+                # Red dot centred on the left edge of the widget
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(NowLine.DOT)
+                painter.drawEllipse(
+                    QRectF(
+                        0.0,                             # left edge of dot = x=0
+                        now_y - _NOW_DOT_RADIUS,
+                        _NOW_DOT_RADIUS * 2.0,
+                        _NOW_DOT_RADIUS * 2.0,
+                    )
+                )
+        finally:
+            painter.end()

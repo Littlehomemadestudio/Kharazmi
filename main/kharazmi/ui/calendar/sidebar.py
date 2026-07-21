@@ -94,63 +94,63 @@ class MiniMonthWidget(QWidget):
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
+        try:
+            cs = self._cell_size()
+            left = 4
 
-        cs = self._cell_size()
-        left = 4
+            # Month name
+            month_name = ShamsiDate(self._year, self._month, 1).month_name_fa
+            p.setFont(font_header())
+            p.setPen(qcolor(Text.PRIMARY))
+            p.drawText(QRectF(left, 0, self.width() - 12, 22), Qt.AlignCenter, month_name)
 
-        # Month name
-        month_name = ShamsiDate(self._year, self._month, 1).month_name_fa
-        p.setFont(font_header())
-        p.setPen(qcolor(Text.PRIMARY))
-        p.drawText(QRectF(left, 0, self.width() - 12, 22), Qt.AlignCenter, month_name)
+            # Weekday headers
+            p.setFont(font_mini_day())
+            p.setPen(qcolor(Text.TERTIARY))
+            header_y = 22
+            for i, name in enumerate(SHAMSI_WEEKDAYS_SHORT_EN):
+                p.drawText(QRectF(left + i * cs, header_y, cs, 22),
+                           Qt.AlignCenter, name[:2])
 
-        # Weekday headers
-        p.setFont(font_mini_day())
-        p.setPen(qcolor(Text.TERTIARY))
-        header_y = 22
-        for i, name in enumerate(SHAMSI_WEEKDAYS_SHORT_EN):
-            p.drawText(QRectF(left + i * cs, header_y, cs, 22),
-                       Qt.AlignCenter, name[:2])
+            # Day cells
+            for row in range(6):
+                for col in range(7):
+                    sd = self._grid[row][col]
+                    if sd is None:
+                        continue
+                    r = self._cell_rect(row, col)
 
-        # Day cells
-        for row in range(6):
-            for col in range(7):
-                sd = self._grid[row][col]
-                if sd is None:
-                    continue
-                r = self._cell_rect(row, col)
+                    # Background
+                    is_current_month = sd.month == self._month and sd.year == self._year
+                    is_today = sd == self._today
+                    is_hovered = self._hovered_cell == (row, col)
+                    is_selected = sd == self._ctrl.selection.selected_date
 
-                # Background
-                is_current_month = sd.month == self._month and sd.year == self._year
-                is_today = sd == self._today
-                is_hovered = self._hovered_cell == (row, col)
-                is_selected = sd == self._ctrl.selection.selected_date
+                    if is_selected:
+                        p.setBrush(QBrush(with_alpha(Gold.PRIMARY, 40)))
+                        p.setPen(Qt.NoPen)
+                        p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 3, 3)
+                    elif is_hovered and is_current_month:
+                        p.setBrush(QBrush(qcolor(Surface.CARD_HOVER)))
+                        p.setPen(Qt.NoPen)
+                        p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 3, 3)
 
-                if is_selected:
-                    p.setBrush(QBrush(with_alpha(Gold.PRIMARY, 40)))
-                    p.setPen(Qt.NoPen)
-                    p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 3, 3)
-                elif is_hovered and is_current_month:
-                    p.setBrush(QBrush(qcolor(Surface.CARD_HOVER)))
-                    p.setPen(Qt.NoPen)
-                    p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 3, 3)
+                    # Today circle
+                    if is_today:
+                        p.setBrush(QBrush(qcolor(Gold.PRIMARY)))
+                        p.setPen(Qt.NoPen)
+                        p.drawEllipse(r.center(), cs / 2 - 3, cs / 2 - 3)
+                        text_color = qcolor(Text.ON_GOLD)
+                    else:
+                        text_color = qcolor(Text.PRIMARY) if is_current_month else qcolor(Text.TERTIARY)
 
-                # Today circle
-                if is_today:
-                    p.setBrush(QBrush(qcolor(Gold.PRIMARY)))
-                    p.setPen(Qt.NoPen)
-                    p.drawEllipse(r.center(), cs / 2 - 3, cs / 2 - 3)
-                    text_color = qcolor(Text.ON_GOLD)
-                else:
-                    text_color = qcolor(Text.PRIMARY) if is_current_month else qcolor(Text.TERTIARY)
-
-                # Day number
-                p.setFont(font_mini_day())
-                p.setPen(text_color)
-                day_text = to_persian_digits(str(sd.day))
-                p.drawText(r, Qt.AlignCenter, day_text)
-
-        p.end()
+                    # Day number
+                    p.setFont(font_mini_day())
+                    p.setPen(text_color)
+                    day_text = to_persian_digits(str(sd.day))
+                    p.drawText(r, Qt.AlignCenter, day_text)
+        finally:
+            p.end()
 
     # ── Mouse ──
 

@@ -38,47 +38,47 @@ class _JournalIcon(QWidget):
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
+        try:
+            # Notebook body
+            body_rect = self.rect().adjusted(20, 10, -10, -10)
+            p.setPen(QPen(QColor(Palette.BORDER_GOLD), 2))
+            p.setBrush(QColor(Palette.BG_TERTIARY))
+            p.drawRoundedRect(body_rect, 8, 8)
 
-        # Notebook body
-        body_rect = self.rect().adjusted(20, 10, -10, -10)
-        p.setPen(QPen(QColor(Palette.BORDER_GOLD), 2))
-        p.setBrush(QColor(Palette.BG_TERTIARY))
-        p.drawRoundedRect(body_rect, 8, 8)
+            # Spine
+            spine_rect = body_rect.adjusted(0, 0, -body_rect.width() + 14, 0)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(Palette.GOLD_DEEP))
+            p.drawRoundedRect(spine_rect, 4, 4)
 
-        # Spine
-        spine_rect = body_rect.adjusted(0, 0, -body_rect.width() + 14, 0)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(Palette.GOLD_DEEP))
-        p.drawRoundedRect(spine_rect, 4, 4)
+            # Gold accent line on spine
+            p.setPen(QPen(QColor(Palette.GOLD_PRIMARY), 2))
+            spine_center_x = spine_rect.x() + spine_rect.width() // 2
+            p.drawLine(spine_center_x, body_rect.y() + 16, spine_center_x, body_rect.bottom() - 16)
 
-        # Gold accent line on spine
-        p.setPen(QPen(QColor(Palette.GOLD_PRIMARY), 2))
-        spine_center_x = spine_rect.x() + spine_rect.width() // 2
-        p.drawLine(spine_center_x, body_rect.y() + 16, spine_center_x, body_rect.bottom() - 16)
+            # Page lines
+            p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
+            for i in range(5):
+                y = body_rect.y() + 28 + i * 18
+                if y < body_rect.bottom() - 12:
+                    p.drawLine(body_rect.x() + 24, y, body_rect.right() - 8, y)
 
-        # Page lines
-        p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
-        for i in range(5):
-            y = body_rect.y() + 28 + i * 18
-            if y < body_rect.bottom() - 12:
-                p.drawLine(body_rect.x() + 24, y, body_rect.right() - 8, y)
-
-        # Small gold star in the corner
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(Palette.GOLD_BRIGHT))
-        star_cx = body_rect.right() - 18
-        star_cy = body_rect.y() + 20
-        from PySide6.QtGui import QPolygonF
-        from PySide6.QtCore import QPointF
-        star = QPolygonF()
-        import math
-        for i in range(10):
-            angle = math.pi / 2 + i * math.pi / 5
-            r = 7 if i % 2 == 0 else 3
-            star.append(QPointF(star_cx + r * math.cos(angle), star_cy - r * math.sin(angle)))
-        p.drawPolygon(star)
-
-        p.end()
+            # Small gold star in the corner
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(Palette.GOLD_BRIGHT))
+            star_cx = body_rect.right() - 18
+            star_cy = body_rect.y() + 20
+            from PySide6.QtGui import QPolygonF
+            from PySide6.QtCore import QPointF
+            star = QPolygonF()
+            import math
+            for i in range(10):
+                angle = math.pi / 2 + i * math.pi / 5
+                r = 7 if i % 2 == 0 else 3
+                star.append(QPointF(star_cx + r * math.cos(angle), star_cy - r * math.sin(angle)))
+            p.drawPolygon(star)
+        finally:
+            p.end()
 
 
 class JournalEntryCard(QFrame):
