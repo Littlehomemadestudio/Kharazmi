@@ -25,7 +25,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget, QApplication
 
-from .theme import Palette
+from ..theme import Palette
 
 
 class _SplashParticle:

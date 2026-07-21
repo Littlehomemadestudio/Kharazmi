@@ -20,7 +20,7 @@ import random
 from datetime import datetime, timedelta
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, QRectF, QPointF, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QTimer, QRect, QRectF, QPointF, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QBrush, QFont, QPixmap,
     QPainterPath, QLinearGradient, QRadialGradient, QFontMetrics,
@@ -35,7 +35,7 @@ from ...calendar import CalendarStore
 from ...ai import JournalStore
 from ...core import Project
 from ..theme import Palette
-from .particle_background import GoldParticleBackground
+from ..widgets.particle_background import GoldParticleBackground
 
 
 # ──────────────────────────── Animated Counter ────────────────────────────
@@ -79,9 +79,12 @@ class _AnimatedCounter(QWidget):
 
         # Subtle top color accent line
         accent = QLinearGradient(0, 0, self.width(), 0)
-        accent.setColorAt(0, QColor(self._color, 0))
-        accent.setColorAt(0.5, QColor(self._color, 180))
-        accent.setColorAt(1, QColor(self._color, 0))
+        c0 = QColor(self._color); c0.setAlpha(0)
+        c1 = QColor(self._color); c1.setAlpha(180)
+        c2 = QColor(self._color); c2.setAlpha(0)
+        accent.setColorAt(0, c0)
+        accent.setColorAt(0.5, c1)
+        accent.setColorAt(1, c2)
         p.setPen(Qt.NoPen)
         p.setBrush(QBrush(accent))
 
@@ -89,18 +92,23 @@ class _AnimatedCounter(QWidget):
         top_path.addRoundedRect(QRectF(0, 0, self.width(), 3), r, r)
         p.drawPath(top_path)
 
-        # Icon
-        icon_font = QFont("Segoe UI Emoji", 20)
-        p.setFont(icon_font)
-        p.setPen(QPen(QColor(self._color)))
-        p.drawText(QRectF(16, 16, 40, 40), Qt.AlignLeft | Qt.AlignTop, self._icon)
+        # Icon — colored circle with abbreviation letter (no emoji)
+        icon_cx, icon_cy, icon_r = 32, 28, 14
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(QColor(self._color)))
+        p.drawEllipse(QPointF(icon_cx, icon_cy), icon_r, icon_r)
+        abbr_font = QFont("Inter", 12, QFont.Bold)
+        p.setFont(abbr_font)
+        p.setPen(QPen(QColor("#FFFFFF")))
+        p.drawText(QRectF(icon_cx - icon_r, icon_cy - icon_r, icon_r * 2, icon_r * 2),
+                   Qt.AlignCenter, self._icon)
 
-        # Number
-        num_font = QFont("Segoe UI", 28, QFont.Bold)
+        # Number — use Latin digits for counter since labels are in English
+        num_font = QFont("Inter", 30, QFont.Bold)
         p.setFont(num_font)
-        num_text = to_persian_digits(str(self._current))
+        num_text = str(self._current)
         p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(16, 44, self.width() - 32, 40), Qt.AlignLeft, num_text)
+        p.drawText(QRectF(16, 40, self.width() - 32, 44), Qt.AlignLeft, num_text)
 
         # Label
         label_font = QFont("Inter", 10)
@@ -142,9 +150,59 @@ class _EventRow(QWidget):
         # Time
         time_font = QFont("Inter", 11)
         p.setFont(time_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
         p.drawText(QRectF(self.width() - 120, 0, 110, self.height()),
                     Qt.AlignRight | Qt.AlignVCenter, self._time)
+
+        p.end()
+
+
+# ──────────────────────────── Progress Ring ──────────────────────────────
+
+class _ProgressRing(QWidget):
+    """Circular progress indicator with percentage text."""
+
+    def __init__(self, value: int, maximum: int, color: str, label: str,
+                 parent=None) -> None:
+        super().__init__(parent)
+        self._value = value
+        self._max = max(maximum, 1)
+        self._color = color
+        self._label = label
+        self.setFixedSize(80, 90)
+
+    def paintEvent(self, event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+
+        cx, cy = 40, 38
+        radius = 30
+        pen_w = 5
+
+        # Background ring
+        p.setPen(QPen(QColor(Palette.BORDER_NORMAL), pen_w, Qt.SolidLine, Qt.RoundCap))
+        p.setBrush(Qt.NoBrush)
+        p.drawEllipse(QPointF(cx, cy), radius, radius)
+
+        # Progress arc
+        frac = self._value / self._max if self._max > 0 else 0
+        pct_val = int(frac * 100)
+        span = int(frac * 360 * 16)
+        p.setPen(QPen(QColor(self._color), pen_w, Qt.SolidLine, Qt.RoundCap))
+        arc_rect = QRect(int(cx - radius), int(cy - radius),
+                         int(radius * 2), int(radius * 2))
+        p.drawArc(arc_rect, 90 * 16, -span)
+
+        # Percentage text — use Latin digits since labels are English
+        pct = str(pct_val) + "%"
+        p.setFont(QFont("Inter", 12, QFont.Bold))
+        p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
+        p.drawText(QRectF(0, 18, 80, 40), Qt.AlignCenter, pct)
+
+        # Label below
+        p.setFont(QFont("Inter", 8))
+        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+        p.drawText(QRectF(0, 70, 80, 20), Qt.AlignCenter, self._label)
 
         p.end()
 
@@ -236,6 +294,9 @@ class DashboardView(QWidget):
         # ── Upcoming Events ──
         self._build_upcoming_events()
 
+        # ── AI Insights ──
+        self._build_ai_insights()
+
         self._content_layout.addStretch()
 
         scroll.setWidget(content)
@@ -264,10 +325,10 @@ class DashboardView(QWidget):
         journal_count = len(self._journal)
 
         cards = [
-            _AnimatedCounter(event_count, "Events", "📅", Palette.GOLD_PRIMARY, row),
-            _AnimatedCounter(task_count, "Tasks", "✦", "#5A7FA8", row),
-            _AnimatedCounter(journal_count, "AI Routes", "🧠", "#8A6AAA", row),
-            _AnimatedCounter(0, "Streak Days", "🔥", "#C07060", row),
+            _AnimatedCounter(event_count, "Events", "E", Palette.GOLD_PRIMARY, row),
+            _AnimatedCounter(task_count, "Tasks", "T", "#5A7FA8", row),
+            _AnimatedCounter(journal_count, "AI Routes", "A", "#8A6AAA", row),
+            _AnimatedCounter(0, "Streak Days", "S", "#C07060", row),
         ]
         for card in cards:
             row_layout.addWidget(card)
@@ -283,9 +344,9 @@ class DashboardView(QWidget):
         row_layout.setSpacing(12)
 
         actions = [
-            ("📅  New Event", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
+            ("+  New Event", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
             ("✦  AI Planner", self.plannerTabRequested.emit, "#8A6AAA"),
-            ("📊  Calendar", self.calendarTabRequested.emit, "#5A7FA8"),
+            ("◈  Calendar", self.calendarTabRequested.emit, "#5A7FA8"),
         ]
 
         for label, callback, color in actions:
@@ -341,8 +402,75 @@ class DashboardView(QWidget):
         else:
             empty = QLabel("No upcoming events this week")
             empty.setFont(QFont("Inter", 11))
-            empty.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; padding: 8px 0;")
+            empty.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; background: transparent; padding: 8px 0;")
             self._content_layout.addWidget(empty)
+
+    def _build_ai_insights(self) -> None:
+        """Build productivity insights section with progress rings."""
+        header = QLabel("PRODUCTIVITY")
+        header.setFont(QFont("Inter", 11, QFont.Bold))
+        header.setStyleSheet(f"""
+            color: {Palette.GOLD_PRIMARY};
+            background: transparent;
+            letter-spacing: 2px;
+            padding: 8px 0 4px 0;
+        """)
+        self._content_layout.addWidget(header)
+
+        # Card container
+        card = QWidget()
+        card.setStyleSheet(
+            f"background: {Palette.BG_TERTIARY};"
+            f" border: 1px solid {Palette.BORDER_NORMAL};"
+            f" border-radius: 12px;"
+        )
+        card_layout = QHBoxLayout(card)
+        card_layout.setContentsMargins(24, 20, 24, 20)
+        card_layout.setSpacing(32)
+
+        # Compute done task count
+        task_count = self._project.task_count
+        done_count = (sum(1 for t in self._project.tasks
+                         if t.status.value == "done")
+                     if task_count > 0 else 0)
+
+        # Progress rings
+        rings_data = [
+            (done_count, task_count, Palette.GOLD_PRIMARY, "Tasks"),
+            (len(self._journal), max(len(self._journal), 1), "#8A6AAA", "Journals"),
+        ]
+        for val, mx, color, label in rings_data:
+            ring = _ProgressRing(val, mx, color, label, card)
+            card_layout.addWidget(ring)
+
+        # Tip text on the right
+        tip_container = QWidget()
+        tip_container.setStyleSheet("background: transparent;")
+        tip_layout = QVBoxLayout(tip_container)
+        tip_layout.setContentsMargins(0, 0, 0, 0)
+        tip_layout.setSpacing(6)
+
+        tip_title = QLabel("Daily Tip")
+        tip_title.setFont(QFont("Inter", 12, QFont.Bold))
+        tip_title.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; background: transparent;"
+        )
+        tip_layout.addWidget(tip_title)
+
+        tip_text = QLabel(
+            "Plan your day in 30 seconds with AI \u2014 "
+            "break down goals into actionable steps."
+        )
+        tip_text.setFont(QFont("Inter", 11))
+        tip_text.setWordWrap(True)
+        tip_text.setStyleSheet(
+            f"color: {Palette.TEXT_SECONDARY}; background: transparent;"
+        )
+        tip_layout.addWidget(tip_text)
+
+        card_layout.addWidget(tip_container, stretch=1)
+
+        self._content_layout.addWidget(card)
 
     def _refresh(self) -> None:
         self._today = ShamsiDate.today()
@@ -360,7 +488,7 @@ class _HeroWidget(QWidget):
     def __init__(self, today: ShamsiDate, parent=None) -> None:
         super().__init__(parent)
         self._today = today
-        self.setFixedHeight(160)
+        self.setFixedHeight(200)
         self._tick = 0
         self._timer = QTimer(self)
         self._timer.setInterval(50)
@@ -378,39 +506,39 @@ class _HeroWidget(QWidget):
         w, h = self.width(), self.height()
 
         # ── Date display ──
-        day_text = to_persian_digits(str(self._today.day))
+        day_text = str(self._today.day)
         month_text = SHAMSI_MONTHS_FA[self._today.month - 1]
-        year_text = to_persian_digits(str(self._today.year))
+        year_text = str(self._today.year)
         weekday_text = self._today.weekday_fa
 
         # Big day number — hero gold gradient
-        day_font = QFont("Segoe UI", 72, QFont.Bold)
+        day_font = QFont("Segoe UI", 96, QFont.Bold)
         p.setFont(day_font)
 
-        day_grad = QLinearGradient(0, 20, 0, 100)
+        day_grad = QLinearGradient(0, 10, 0, 130)
         day_grad.setColorAt(0, QColor(245, 200, 66))
         day_grad.setColorAt(0.6, QColor(212, 175, 55))
         day_grad.setColorAt(1, QColor(140, 112, 18))
         p.setPen(QPen(QBrush(day_grad), 1))
-        p.drawText(QRectF(0, 10, 160, 100), Qt.AlignCenter, day_text)
+        p.drawText(QRectF(0, 5, 200, 130), Qt.AlignCenter, day_text)
 
         # Month name
-        month_font = QFont("Segoe UI", 28, QFont.Bold)
+        month_font = QFont("Segoe UI", 36, QFont.Bold)
         p.setFont(month_font)
         p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-        p.drawText(QRectF(160, 15, w - 180, 40), Qt.AlignLeft, month_text)
+        p.drawText(QRectF(200, 20, w - 220, 50), Qt.AlignLeft, month_text)
 
         # Year
-        year_font = QFont("Inter", 14)
+        year_font = QFont("Inter", 18)
         p.setFont(year_font)
         p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(160, 55, w - 180, 25), Qt.AlignLeft, year_text)
+        p.drawText(QRectF(200, 70, w - 220, 30), Qt.AlignLeft, year_text)
 
         # Weekday
-        wd_font = QFont("Inter", 13)
+        wd_font = QFont("Inter", 16)
         p.setFont(wd_font)
-        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.drawText(QRectF(160, 78, w - 180, 25), Qt.AlignLeft, weekday_text)
+        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+        p.drawText(QRectF(200, 100, w - 220, 30), Qt.AlignLeft, weekday_text)
 
         # ── Subtle divider ──
         div_grad = QLinearGradient(0, 0, w, 0)

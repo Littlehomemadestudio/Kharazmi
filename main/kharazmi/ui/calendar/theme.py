@@ -148,8 +148,8 @@ def font_header() -> QFont:
     return f
 
 def font_body() -> QFont:
-    """Primary body text — event titles, buttons, labels."""
-    f = QFont("Inter", 12)
+    """Primary body text — event titles, buttons, labels, day numbers."""
+    f = QFont("Inter", 12, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
@@ -167,7 +167,7 @@ def font_time_label() -> QFont:
 
 def font_mini_day() -> QFont:
     """Small day numbers in mini-month and year view."""
-    f = QFont("Inter", 10)
+    f = QFont("Inter", 10, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
@@ -190,7 +190,7 @@ class Metrics:
     # Month view
     MONTH_ROW_HEIGHT       = 38       # weekday header row (was 32)
     MONTH_CELL_MIN_HEIGHT  = 120      # minimum cell height (was 90)
-    MONTH_CELL_PAD         = 6        # cell internal padding (was 4)
+    MONTH_CELL_PAD         = 10       # cell internal padding (was 6)
     MONTH_DAY_NUMBER_H     = 26       # day number area height (was 22)
     MONTH_EVENT_CHIP_H     = 24       # event chip height (was 20)
     MONTH_EVENT_GAP        = 3        # gap between chips (was 2)

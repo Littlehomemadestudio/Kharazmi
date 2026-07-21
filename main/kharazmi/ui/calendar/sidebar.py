@@ -313,7 +313,7 @@ class QuickAddInput(QLineEdit):
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
         self._ctrl = controller
-        self.setPlaceholderText("⚡ Quick add...  e.g. «Lunch tomorrow at 1pm»")
+        self.setPlaceholderText("⚡ افزودن سریع...  مثلاً: جلسه ساعت ۳...")
         self.setFont(font_body())
         self.setStyleSheet(f"""
             QLineEdit {{

@@ -47,7 +47,8 @@ class _CategoryTab(QPushButton):
                 border: 1px solid {Palette.BORDER_SUBTLE};
                 border-radius: 12px;
                 padding: 10px 18px;
-                font-size: 12px;
+                font-size: 13px;
+                font-weight: bold;
                 text-align: center;
             }}
             QPushButton:hover {{
@@ -63,8 +64,27 @@ class _CategoryTab(QPushButton):
         """)
 
     def paintEvent(self, event) -> None:
-        # Let stylesheet handle everything
+        # Let stylesheet handle background, then draw icon + label
         super().paintEvent(event)
+        from PySide6.QtGui import QPainter, QFont, QPen
+        from PySide6.QtCore import QRectF, Qt
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+
+        # Use the current text color from the stylesheet
+        if self.isChecked():
+            color = QColor(Palette.GOLD_BRIGHT)
+        elif self.underMouse():
+            color = QColor(Palette.GOLD_PRIMARY)
+        else:
+            color = QColor(Palette.TEXT_SECONDARY)
+
+        # Draw label text centered
+        p.setPen(QPen(color))
+        p.setFont(QFont("Inter", 13, QFont.Bold))
+        p.drawText(QRectF(0, 0, self.width(), self.height()),
+                   Qt.AlignCenter, self._label)
+        p.end()
 
 
 class PlannerLanding(QWidget):
@@ -174,7 +194,7 @@ class PlannerLanding(QWidget):
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet(f"""
-            color: {Palette.TEXT_SECONDARY};
+            color: {Palette.TEXT_PRIMARY};
             font-size: 15px;
             font-weight: normal;
         """)
@@ -270,7 +290,50 @@ class PlannerLanding(QWidget):
         input_row.addStretch()
         layout.addLayout(input_row)
 
-        layout.addSpacing(50)
+        layout.addSpacing(24)
+
+        # ---- Suggestion chips ----
+        chips_row = QHBoxLayout()
+        chips_row.setSpacing(10)
+        chips_row.addStretch()
+
+        suggestions = [
+            "برنامه‌ریزی سفر ۹ روزه",
+            "یادگیری زبان جدید",
+            "راه‌اندازی استارتاپ",
+            "آمادگی کنکور",
+        ]
+        self._suggestion_chips: list[QPushButton] = []
+        for text in suggestions:
+            chip = QPushButton(text)
+            chip.setCursor(Qt.PointingHandCursor)
+            chip.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Palette.BG_TERTIARY};
+                    color: {Palette.TEXT_PRIMARY};
+                    border: 1px solid {Palette.BORDER_GOLD};
+                    border-radius: 20px;
+                    padding: 8px 18px;
+                    font-size: 12px;
+                    font-weight: normal;
+                }}
+                QPushButton:hover {{
+                    background-color: {Palette.BG_SELECTED};
+                    color: {Palette.GOLD_BRIGHT};
+                    border: 1px solid {Palette.GOLD_PRIMARY};
+                }}
+                QPushButton:pressed {{
+                    background-color: {Palette.GOLD_MUTED};
+                }}
+            """)
+            chip.clicked.connect(lambda checked, t=text: self._on_chip_clicked(t))
+            chips_row.addWidget(chip)
+            self._suggestion_chips.append(chip)
+
+        chips_row.addStretch()
+        layout.addLayout(chips_row)
+
+        layout.addSpacing(30)
 
         # ---- Category tabs ----
         tabs_row = QHBoxLayout()
@@ -278,9 +341,9 @@ class PlannerLanding(QWidget):
         tabs_row.addStretch()
 
         categories = [
-            ("🗺", "برنامه‌ریزی", "plan"),
-            ("📅", "زمان‌بندی", "schedule"),
-            ("📊", "تحلیل", "analyze"),
+            ("◉", "برنامه‌ریزی", "plan"),
+            ("⏱", "زمان‌بندی", "schedule"),
+            ("◈", "تحلیل", "analyze"),
             ("⚡", "بهینه‌سازی", "optimize"),
         ]
 
@@ -316,6 +379,11 @@ class PlannerLanding(QWidget):
         self._selected_category = key
         for tab in self._tab_buttons:
             tab.setChecked(tab.property("category_key") == key)
+
+    def _on_chip_clicked(self, text: str) -> None:
+        """Fill the input with the clicked suggestion and submit."""
+        self._input.setText(text)
+        self.goalSubmitted.emit(text)
 
     def _on_submit(self) -> None:
         goal = self._input.text().strip()

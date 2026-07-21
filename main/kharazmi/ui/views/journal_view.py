@@ -15,16 +15,70 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPainter, QPen, QBrush, QPaintEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QScrollArea,
-    QListWidget, QListWidget, QListWidgetItem, QPushButton, QLineEdit,
+    QListWidget, QListWidgetItem, QPushButton, QLineEdit,
     QMessageBox, QInputDialog, QSizePolicy,
 )
 
 from ...ai import JournalStore, JournalEntry, Route
 from ...core.shamsi import ShamsiDate, format_shamsi
 from ..theme import Palette
+
+
+class _JournalIcon(QWidget):
+    """A simple hand-drawn journal/notebook icon rendered with QPainter."""
+
+    def __init__(self, parent: QWidget = None) -> None:
+        super().__init__(parent)
+        self.setFixedSize(120, 140)
+        self.setStyleSheet("background: transparent;")
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+
+        # Notebook body
+        body_rect = self.rect().adjusted(20, 10, -10, -10)
+        p.setPen(QPen(QColor(Palette.BORDER_GOLD), 2))
+        p.setBrush(QColor(Palette.BG_TERTIARY))
+        p.drawRoundedRect(body_rect, 8, 8)
+
+        # Spine
+        spine_rect = body_rect.adjusted(0, 0, -body_rect.width() + 14, 0)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(Palette.GOLD_DEEP))
+        p.drawRoundedRect(spine_rect, 4, 4)
+
+        # Gold accent line on spine
+        p.setPen(QPen(QColor(Palette.GOLD_PRIMARY), 2))
+        spine_center_x = spine_rect.x() + spine_rect.width() // 2
+        p.drawLine(spine_center_x, body_rect.y() + 16, spine_center_x, body_rect.bottom() - 16)
+
+        # Page lines
+        p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
+        for i in range(5):
+            y = body_rect.y() + 28 + i * 18
+            if y < body_rect.bottom() - 12:
+                p.drawLine(body_rect.x() + 24, y, body_rect.right() - 8, y)
+
+        # Small gold star in the corner
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(Palette.GOLD_BRIGHT))
+        star_cx = body_rect.right() - 18
+        star_cy = body_rect.y() + 20
+        from PySide6.QtGui import QPolygonF
+        from PySide6.QtCore import QPointF
+        star = QPolygonF()
+        import math
+        for i in range(10):
+            angle = math.pi / 2 + i * math.pi / 5
+            r = 7 if i % 2 == 0 else 3
+            star.append(QPointF(star_cx + r * math.cos(angle), star_cy - r * math.sin(angle)))
+        p.drawPolygon(star)
+
+        p.end()
 
 
 class JournalEntryCard(QFrame):
@@ -62,7 +116,7 @@ class JournalEntryCard(QFrame):
             _parse_iso(entry.timestamp), include_time=True
         ) if entry.timestamp else "—")
         ts_label.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
+            f"color: {Palette.TEXT_SECONDARY}; font-size: 10px; "
             f"font-family: 'JetBrains Mono', monospace;"
         )
         header.addWidget(ts_label)
@@ -103,7 +157,7 @@ class JournalEntryCard(QFrame):
         if entry.notes:
             notes_label = QLabel(f"📝 {entry.notes}")
             notes_label.setStyleSheet(
-                f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; font-style: italic;"
+                f"color: {Palette.TEXT_SECONDARY}; font-size: 11px; font-style: italic;"
             )
             notes_label.setWordWrap(True)
             layout.addWidget(notes_label)
@@ -113,7 +167,7 @@ class JournalEntryCard(QFrame):
         actions.addStretch()
         edit_btn = QPushButton("Edit notes")
         edit_btn.setStyleSheet(
-            f"background: transparent; color: {Palette.TEXT_TERTIARY}; "
+            f"background: transparent; color: {Palette.TEXT_SECONDARY}; "
             f"border: none; padding: 2px 8px; font-size: 10px;"
         )
         edit_btn.setCursor(Qt.PointingHandCursor)
@@ -147,6 +201,7 @@ def _parse_iso(s: str):
 class JournalView(QWidget):
     """The journal screen — list of past AI-generated routes."""
     entrySelected = Signal(object)  # JournalEntry
+    goToPlannerRequested = Signal()  # Navigate to AI Planner tab
 
     def __init__(self, journal: JournalStore, parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -165,16 +220,16 @@ class JournalView(QWidget):
         )
         layout.addWidget(title)
 
-        subtitle = QLabel(
-            "Every goal you plan with Rask is saved here — your complete history of AI-built routes."
+        self._subtitle = QLabel(
+            "هر هدفی که با رَسک برنامه‌ریزی کنید اینجا ذخیره می‌شود — تاریخچه کامل مسیرهای ساخته‌شده با هوش مصنوعی."
         )
-        subtitle.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 12px;")
-        subtitle.setWordWrap(True)
-        layout.addWidget(subtitle)
+        self._subtitle.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 12px;")
+        self._subtitle.setWordWrap(True)
+        layout.addWidget(self._subtitle)
 
         # Search
         self._search = QLineEdit()
-        self._search.setPlaceholderText("🔍  Search journal entries…")
+        self._search.setPlaceholderText("🔍  جستجوی یادداشت‌ها...")
         self._search.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {Palette.BG_TERTIARY};
@@ -192,18 +247,19 @@ class JournalView(QWidget):
         layout.addWidget(self._search)
 
         # List
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.NoFrame)
+        self._scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
-        container = QWidget()
-        self._list_layout = QVBoxLayout(container)
+        self._container = QWidget()
+        self._container.setStyleSheet("background: transparent;")
+        self._list_layout = QVBoxLayout(self._container)
         self._list_layout.setContentsMargins(0, 0, 0, 0)
         self._list_layout.setSpacing(8)
         self._list_layout.addStretch()
-        scroll.setWidget(container)
-        layout.addWidget(scroll, stretch=1)
+        self._scroll.setWidget(self._container)
+        layout.addWidget(self._scroll, stretch=1)
 
         self.refresh()
 
@@ -216,18 +272,121 @@ class JournalView(QWidget):
 
         query = self._search.text().strip()
         entries = self.journal.search(query) if query else self.journal.all()
+        has_entries = len(self.journal) > 0
+
+        # Show/hide search bar based on whether there are any entries at all
+        self._search.setVisible(has_entries)
 
         if not entries:
-            empty = QLabel(
-                "No journal entries yet.\n\nDescribe a goal in the AI Planner tab to create your first route."
-                if not query else "No entries match your search."
-            )
-            empty.setStyleSheet(
-                f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; "
-                f"padding: 40px; font-style: italic;"
-            )
-            empty.setAlignment(Qt.AlignCenter)
-            self._list_layout.insertWidget(0, empty)
+            # Build a centered empty state widget
+            empty_widget = QWidget()
+            empty_widget.setStyleSheet("background: transparent;")
+            empty_layout = QVBoxLayout(empty_widget)
+            empty_layout.setContentsMargins(0, 0, 0, 0)
+            empty_layout.setSpacing(16)
+            empty_layout.setAlignment(Qt.AlignCenter)
+
+            if not has_entries and not query:
+                # ---- Completely empty journal (no entries at all) ----
+                # Journal icon
+                icon = _JournalIcon()
+                icon_layout = QHBoxLayout()
+                icon_layout.addStretch()
+                icon_layout.addWidget(icon)
+                icon_layout.addStretch()
+                empty_layout.addLayout(icon_layout)
+
+                # Main empty text
+                empty_title = QLabel("هنوز یادداشتی ندارید")
+                empty_title.setAlignment(Qt.AlignCenter)
+                empty_title.setStyleSheet(f"""
+                    color: {Palette.TEXT_PRIMARY};
+                    font-size: 18px;
+                    font-weight: bold;
+                """)
+                empty_title_layout = QHBoxLayout()
+                empty_title_layout.addStretch()
+                empty_title_layout.addWidget(empty_title)
+                empty_title_layout.addStretch()
+                empty_layout.addLayout(empty_title_layout)
+
+                # Description
+                empty_desc = QLabel("هدفتان را در برنامه‌ریز هوش مصنوعی شرح دهید تا اولین مسیر شما ساخته شود")
+                empty_desc.setAlignment(Qt.AlignCenter)
+                empty_desc.setWordWrap(True)
+                empty_desc.setMaximumWidth(400)
+                empty_desc.setStyleSheet(f"""
+                    color: {Palette.TEXT_SECONDARY};
+                    font-size: 13px;
+                """)
+                desc_layout = QHBoxLayout()
+                desc_layout.addStretch()
+                desc_layout.addWidget(empty_desc)
+                desc_layout.addStretch()
+                empty_layout.addLayout(desc_layout)
+
+                empty_layout.addSpacing(8)
+
+                # CTA button
+                cta_btn = QPushButton("شروع برنامه‌ریزی با هوش مصنوعی")
+                cta_btn.setCursor(Qt.PointingHandCursor)
+                cta_btn.setProperty("variant", "primary")
+                cta_btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Palette.GOLD_PRIMARY};
+                        color: {Palette.TEXT_ON_GOLD};
+                        border: 1px solid {Palette.GOLD_DEEP};
+                        border-radius: 8px;
+                        padding: 12px 28px;
+                        font-size: 14px;
+                        font-weight: bold;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {Palette.GOLD_BRIGHT};
+                        border: 1px solid {Palette.GOLD_PRIMARY};
+                    }}
+                    QPushButton:pressed {{
+                        background-color: {Palette.GOLD_DEEP};
+                    }}
+                """)
+                cta_btn.clicked.connect(self.goToPlannerRequested.emit)
+                cta_layout = QHBoxLayout()
+                cta_layout.addStretch()
+                cta_layout.addWidget(cta_btn)
+                cta_layout.addStretch()
+                empty_layout.addLayout(cta_layout)
+            else:
+                # ---- Search returned no results ----
+                empty_label = QLabel("نتیجه‌ای یافت نشد")
+                empty_label.setAlignment(Qt.AlignCenter)
+                empty_label.setStyleSheet(f"""
+                    color: {Palette.TEXT_SECONDARY};
+                    font-size: 14px;
+                    padding: 40px;
+                """)
+                label_layout = QHBoxLayout()
+                label_layout.addStretch()
+                label_layout.addWidget(empty_label)
+                label_layout.addStretch()
+                empty_layout.addLayout(label_layout)
+
+            # Wrap in a layout that vertically centers the content
+            wrapper = QVBoxLayout()
+            wrapper.addStretch()
+            wrapper.addWidget(empty_widget)
+            wrapper.addStretch()
+
+            # We need a container widget for the wrapper layout
+            centered = QWidget()
+            centered.setStyleSheet("background: transparent;")
+            centered_layout = QVBoxLayout(centered)
+            centered_layout.setContentsMargins(0, 0, 0, 0)
+            centered_layout.setSpacing(0)
+            centered_layout.addStretch()
+            centered_layout.addWidget(empty_widget)
+            centered_layout.addStretch()
+
+            self._list_layout.insertWidget(0, centered)
             return
 
         for entry in entries:

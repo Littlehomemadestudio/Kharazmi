@@ -491,10 +491,12 @@ class MonthView(QWidget):
             self._paint_today_badge(painter, day_num_rect, shamsi_date)
         else:
             day_color = qcolor(Text.PRIMARY) if is_current_month else qcolor(Text.TERTIARY)
-            painter.setFont(font_body())
+            day_font = font_body()
+            painter.setFont(day_font)
             painter.setPen(QPen(day_color))
             day_text = to_persian_digits(str(shamsi_date.day))
-            painter.drawText(day_num_rect, Qt.AlignLeft | Qt.AlignVCenter, day_text)
+            # Right-align for RTL layout, with vertical centering
+            painter.drawText(day_num_rect, Qt.AlignRight | Qt.AlignVCenter, day_text)
 
         # ── Event chips ──
         events = self._cell_events.get((row, col), [])
@@ -511,9 +513,9 @@ class MonthView(QWidget):
         text_w = fm.horizontalAdvance(day_text)
         text_h = fm.height()
 
-        # Circle center
+        # Circle center — right-aligned for RTL layout
         badge_r = max(text_w, text_h) / 2 + 4
-        cx = rect.left() + badge_r + 2
+        cx = rect.right() - badge_r - 2
         cy = rect.center().y()
 
         # Gold filled circle

@@ -20,7 +20,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QWidget
 
-from .theme import Palette
+from ..theme import Palette
 
 
 class Particle:

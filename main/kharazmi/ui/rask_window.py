@@ -125,6 +125,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
 
         # ---- Wire cross-tab interactions ----
         self.journal_view.entrySelected.connect(self._on_journal_entry_selected)
+        self.journal_view.goToPlannerRequested.connect(lambda: self._switch_tab(2))
         self.ai_planner_view.routeUpdated.connect(self._on_planner_route_updated)
 
         # ---- Auto-recalc ----

@@ -249,6 +249,10 @@ class EventRenderer:
         selected: bool = False,
     ) -> None:
         """Paint a compact event chip for the month view — bigger and rounder."""
+        # Skip rendering if event has no title (ghost block prevention)
+        if not event.title or not event.title.strip():
+            return
+
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, True)
 

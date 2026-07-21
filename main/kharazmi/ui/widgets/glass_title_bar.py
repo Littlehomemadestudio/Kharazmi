@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QApplication,
 )
 
-from .theme import Palette
+from ..theme import Palette
 
 
 class _TitleBarButton(QPushButton):
