@@ -195,13 +195,23 @@ def main(argv: Optional[list[str]] = None) -> int:
         task_count = project.task_count
 
     # ── Stage 3: Data stores ──
-    _step(42, "Hydrating calendar store...", "[OK] Calendar store hydrated (45 events)")
+    from .calendar import CalendarStore as _CS
+    from .persistence import CalendarRepository as _CR
+    _cal_repo = _CR()
+    _cal_store = _cal_repo.load_latest() or _CS()
+    _evt_count = _cal_store.event_count
+    _step(42, "Hydrating calendar store...",
+          f"[OK] Calendar store hydrated ({_evt_count} events)")
     app.processEvents()
 
     _step(52, "Configuring AI service...", "[OK] AI service configured (GLM-4.5)")
     app.processEvents()
 
-    _step(60, "Loading journal entries...", "[OK] Journal store loaded (18 entries)")
+    from .ai import JournalStore as _JS
+    _journal = _JS()
+    _jcount = len(_journal)
+    _step(60, "Loading journal entries...",
+          f"[OK] Journal store loaded ({_jcount} entries)")
     app.processEvents()
 
     # ── Stage 4: Workspace ──

@@ -150,7 +150,7 @@ class AIPlannerView(QWidget):
         self._stack = QStackedWidget()
 
         # ---- Page 0: Landing page ----
-        self._landing = PlannerLanding()
+        self._landing = PlannerLanding(journal_store=self.journal)
         self._landing.goalSubmitted.connect(self._on_landing_goal)
         self._stack.addWidget(self._landing)
 
