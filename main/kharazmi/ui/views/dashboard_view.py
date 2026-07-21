@@ -430,7 +430,7 @@ class DashboardView(QWidget):
 
         # Compute done task count
         task_count = self._project.task_count
-        done_count = (sum(1 for t in self._project.tasks
+        done_count = (sum(1 for t in self._project.tasks()
                          if t.status.value == "done")
                      if task_count > 0 else 0)
 
