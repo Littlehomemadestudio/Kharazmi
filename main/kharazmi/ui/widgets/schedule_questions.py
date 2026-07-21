@@ -998,6 +998,11 @@ class ScheduleQuestionsWidget(QFrame):
 
     def _set_answer(self, step: int, value: str) -> None:
         self._answers[step] = value
+        # Update Next button enabled state — it depends on whether the
+        # current step has an answer.  Without this the button stayed
+        # disabled even after the user picked an option.
+        if step == self._current_step:
+            self._next_btn.setEnabled(value is not None)
 
     def _go_next(self) -> None:
         if self._current_step < len(self._step_pages) - 1:
