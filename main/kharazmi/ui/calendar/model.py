@@ -68,8 +68,11 @@ class CalendarModel:
         return self._store.get_calendar(event.calendar_id)
 
     def event_color(self, event: Event) -> str:
+        """Return the display color for an event (event override, or calendar color)."""
+        if event.color:
+            return event.color
         cal = self.calendar_for_event(event)
-        return event.effective_color(cal.color if cal else "#D4AF37")
+        return cal.color if cal else "#D4AF37"
 
     # ── Shamsi Date Range Queries ──
 
