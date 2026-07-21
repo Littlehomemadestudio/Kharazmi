@@ -250,28 +250,63 @@ class AIPlannerView(QWidget):
         self.graph_view.stepBreakdownRequested.connect(self._on_step_breakdown_requested)
         left_layout.addWidget(self.graph_view, stretch=1)
 
-        # Multiple-choice questions container
-        self._questions_container = QFrame()
-        self._questions_container.setStyleSheet(f"""
-            QFrame {{
+        # Multiple-choice questions container (scrollable)
+        self._questions_outer = QFrame()
+        self._questions_outer.setStyleSheet(f"""
+            QFrame#questionsOuter {{
                 background-color: {Palette.BG_TERTIARY};
                 border-top: 2px solid {Palette.GOLD_PRIMARY};
+                max-height: 400px;
             }}
         """)
-        self._questions_layout = QVBoxLayout(self._questions_container)
-        self._questions_layout.setContentsMargins(12, 8, 12, 8)
-        self._questions_layout.setSpacing(6)
-        q_header = QLabel("RASK NEEDS CLARIFICATION — answer the questions below")
+        self._questions_outer.setObjectName("questionsOuter")
+        q_outer_layout = QVBoxLayout(self._questions_outer)
+        q_outer_layout.setContentsMargins(0, 0, 0, 0)
+        q_outer_layout.setSpacing(0)
+
+        q_header = QLabel("⚡ RASK NEEDS CLARIFICATION — answer the questions below")
         q_header.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; font-size: 11px; "
-            f"font-weight: bold; letter-spacing: 1.5px;"
+            f"font-weight: bold; letter-spacing: 1.5px; "
+            f"padding: 10px 14px 6px 14px; background: transparent;"
         )
-        self._questions_layout.addWidget(q_header)
-        self._questions_list = QVBoxLayout()
-        self._questions_list.setSpacing(6)
-        self._questions_layout.addLayout(self._questions_list)
-        self._questions_container.hide()
-        left_layout.addWidget(self._questions_container)
+        q_header.setWordWrap(True)
+        q_outer_layout.addWidget(q_header)
+
+        self._questions_scroll = QScrollArea()
+        self._questions_scroll.setWidgetResizable(True)
+        self._questions_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._questions_scroll.setStyleSheet(f"""
+            QScrollArea {{
+                background: transparent;
+                border: none;
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: 8px;
+                margin: 0;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {Palette.BORDER_STRONG};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0;
+            }}
+        """)
+
+        self._questions_container = QWidget()
+        self._questions_layout = QVBoxLayout(self._questions_container)
+        self._questions_layout.setContentsMargins(10, 4, 10, 10)
+        self._questions_layout.setSpacing(8)
+        self._questions_layout.addStretch()  # push questions to top
+
+        self._questions_scroll.setWidget(self._questions_container)
+        q_outer_layout.addWidget(self._questions_scroll, 1)
+
+        self._questions_outer.hide()
+        left_layout.addWidget(self._questions_outer)
 
         splitter.addWidget(left_container)
 
@@ -603,15 +638,24 @@ class AIPlannerView(QWidget):
             )
 
     def _show_multiple_choice_questions(self, questions: list[MultipleChoiceQuestion]) -> None:
-        while self._questions_list.count():
-            item = self._questions_list.takeAt(0)
+        # Remove old question widgets (keep the stretch at the end)
+        while self._questions_layout.count() > 1:
+            item = self._questions_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+            elif item.layout():
+                # Clear sub-layout items
+                while item.layout().count():
+                    sub = item.layout().takeAt(0)
+                    if sub.widget():
+                        sub.widget().deleteLater()
+
+        # Insert new questions before the stretch
         for i, q in enumerate(questions):
             qw = MultipleChoiceQuestionWidget(q, i)
             qw.answered.connect(lambda answer, question=q: self._on_question_answered(question, answer))
-            self._questions_list.addWidget(qw)
-        self._questions_container.show()
+            self._questions_layout.insertWidget(self._questions_layout.count() - 1, qw)
+        self._questions_outer.show()
 
     def _on_question_answered(self, question: MultipleChoiceQuestion, answer: str) -> None:
         self._clarifying_qa.append((question.question, answer))
@@ -619,18 +663,19 @@ class AIPlannerView(QWidget):
             f"<b>Q:</b> {question.question}<br><b>A:</b> {answer}",
             role="user", as_html=True,
         )
-        for i in range(self._questions_list.count()):
-            item = self._questions_list.itemAt(i)
+        # Find and remove the answered question widget
+        for i in range(self._questions_layout.count()):
+            item = self._questions_layout.itemAt(i)
             widget = item.widget() if item else None
             if widget is not None and isinstance(widget, MultipleChoiceQuestionWidget):
                 if widget.question is question:
-                    self._questions_list.removeWidget(widget)
+                    self._questions_layout.removeWidget(widget)
                     widget.deleteLater()
                     break
         if question in self._awaiting_questions:
             self._awaiting_questions.remove(question)
         if not self._awaiting_questions:
-            self._questions_container.hide()
+            self._questions_outer.hide()
             self._set_status("⏳ Generating route…")
             self._generate_route()
         else:
