@@ -1241,11 +1241,17 @@ class AIPlannerView(QWidget):
     # ---- Public API ----
     def set_route(self, route: Route) -> None:
         """Load a route from the journal."""
+        # Switch from landing page to workspace (index 1)
+        if self._stack.currentIndex() == 0:
+            self._landing.animate_out()
+            QTimer.singleShot(150, lambda: self._stack.setCurrentIndex(1))
+
         self._current_route = route
         self._pending_goal = route.goal
         self._clarifying_qa = []
         self.graph_view.set_route(route)
         self._update_stats(route)
+        self._goal_input.setText(route.goal)
         self._schedule_btn.setEnabled(True)
         self._schedule_pulse_timer.start()  # Start glowing pulse
         self._critique_btn.setEnabled(True)
