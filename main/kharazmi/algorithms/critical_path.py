@@ -198,7 +198,7 @@ def run_cpm(project: Project, start_anchor: Optional[datetime] = None) -> CPMRes
             es = _snap_to_work_hours(es)
             for dep in preds:
                 pred_task = project.get_task(dep.predecessor_id)
-                if pred_task is None or pred_task.early_finish is None and pred_task.early_start is None:
+                if pred_task is None or (pred_task.early_finish is None and pred_task.early_start is None):
                     continue
                 lag = dep.lag.minutes
                 if dep.type == DependencyType.FINISH_START:
@@ -255,7 +255,7 @@ def run_cpm(project: Project, start_anchor: Optional[datetime] = None) -> CPMRes
             lf = project_end
             for dep in succs:
                 succ_task = project.get_task(dep.successor_id)
-                if succ_task is None or succ_task.late_start is None and succ_task.late_finish is None:
+                if succ_task is None or (succ_task.late_start is None and succ_task.late_finish is None):
                     continue
                 lag = dep.lag.minutes
                 if dep.type == DependencyType.FINISH_START:
