@@ -52,6 +52,7 @@ from ...calendar.enums import CalendarViewKind
 from ...calendar.natural_language import parse as nl_parse
 from ...core.shamsi import ShamsiDate, format_shamsi, to_persian_digits
 from ..theme import Palette
+from ..widgets.calendar_ai_panel import CalendarAIPanel
 from ..dialogs import EventEditorDialog, CalendarSettingsDialog
 from .controller import CalendarController
 from .model import CalendarModel
@@ -267,13 +268,15 @@ class CalendarView(QWidget):
     """
     Main calendar view — the widget that goes into the Calendar tab.
 
-    Contains: toolbar, sidebar, and stacked sub-views (Month/Week/Day/Year).
+    Contains: toolbar, sidebar, stacked sub-views (Month/Week/Day/Year),
+    and an AI assistant panel.
     """
 
-    def __init__(self, store: CalendarStore, parent=None) -> None:
+    def __init__(self, store: CalendarStore, ai_service=None, parent=None) -> None:
         super().__init__(parent)
         self._store = store
         self._ctrl = CalendarController(store, self)
+        self._ai_service = ai_service
 
         self._build_ui()
         self._wire_signals()
@@ -323,7 +326,58 @@ class CalendarView(QWidget):
         self._stack.addWidget(self._year_view)
 
         body_layout.addWidget(self._stack, 1)
-        main_layout.addWidget(body, 1)
+
+        # AI Assistant toggle button (bottom-right floating)
+        self._ai_toggle_btn = QPushButton("✦")
+        self._ai_toggle_btn.setFixedSize(44, 44)
+        self._ai_toggle_btn.setCursor(Qt.PointingHandCursor)
+        self._ai_toggle_btn.setToolTip("Rask AI Assistant")
+        self._ai_toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 {Palette.GOLD_PRIMARY}, stop:1 {Palette.GOLD_BRIGHT});
+                color: {Palette.TEXT_ON_GOLD};
+                border: none;
+                border-radius: 22px;
+                font-size: 18px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 {Palette.GOLD_BRIGHT}, stop:1 #F5D060);
+            }}
+        """)
+
+        # AI Panel (initially hidden)
+        self._ai_panel = None  # Created lazily when AI service is available
+        self._ai_panel_visible = False
+
+        # Overlay container for the toggle button
+        ai_overlay = QWidget(body)
+        ai_overlay.setStyleSheet("background: transparent;")
+        ai_overlay_layout = QVBoxLayout(ai_overlay)
+        ai_overlay_layout.setContentsMargins(0, 0, 12, 12)
+        ai_overlay_layout.setAlignment(Qt.AlignBottom | Qt.AlignRight)
+        ai_overlay_layout.addWidget(self._ai_toggle_btn)
+
+        # Stack the body and the overlay
+        body_container = QWidget()
+        body_container_layout = QVBoxLayout(body_container)
+        body_container_layout.setContentsMargins(0, 0, 0, 0)
+        body_container_layout.setSpacing(0)
+        body_container_layout.addWidget(body, 1)
+        body_container_layout.addWidget(ai_overlay)
+
+        # The AI panel goes to the right of the main content if visible
+        self._main_layout = QHBoxLayout()
+        self._main_layout.setContentsMargins(0, 0, 0, 0)
+        self._main_layout.setSpacing(0)
+        self._main_layout.addWidget(body_container, 1)
+
+        main_layout.addLayout(self._main_layout, 1)
+
+        # Connect toggle button
+        self._ai_toggle_btn.clicked.connect(self._toggle_ai_panel)
 
     # ── Signal Wiring ──
 
@@ -461,7 +515,82 @@ class CalendarView(QWidget):
     def controller(self) -> CalendarController:
         return self._ctrl
 
+    def set_ai_service(self, ai_service) -> None:
+        """Set the AI service for the calendar AI assistant panel."""
+        self._ai_service = ai_service
+        if self._ai_panel and self._ai_panel is not None:
+            self._ai_panel.ai_service = ai_service
+
+    def _toggle_ai_panel(self) -> None:
+        """Toggle the AI assistant panel visibility."""
+        if self._ai_service is None:
+            return
+
+        if self._ai_panel is None:
+            # Create the panel lazily
+            self._ai_panel = CalendarAIPanel(
+                calendar_store=self._store,
+                ai_service=self._ai_service,
+                parent=self,
+            )
+            self._main_layout.addWidget(self._ai_panel)
+            self._ai_panel.hide()
+
+        if self._ai_panel_visible:
+            self._ai_panel.hide()
+            self._ai_panel_visible = False
+            self._ai_toggle_btn.setText("✦")
+        else:
+            # Update context before showing
+            self._update_ai_context()
+            self._ai_panel.show()
+            self._ai_panel_visible = True
+            self._ai_toggle_btn.setText("✕")
+
+    def _update_ai_context(self) -> None:
+        """Update the AI panel with current calendar context."""
+        if self._ai_panel is None or self._ai_service is None:
+            return
+
+        try:
+            today = ShamsiDate.today()
+            current_date = format_shamsi(None, "yyyy/mm/dd")
+            today_str = today.format("yyyy/mm/dd")
+
+            # Get today's events
+            now = datetime.now()
+            end_day = now.replace(hour=23, minute=59, second=59)
+            today_events = []
+            for evt in self._store.events_in_range(now, end_day):
+                today_events.append({
+                    "title": evt.title,
+                    "start": format_shamsi(evt.start, include_time=True) if evt.start else "",
+                    "end": format_shamsi(evt.end, "HH:mm") if evt.end else "",
+                })
+
+            # Get upcoming events (7 days)
+            upcoming = self._store.upcoming_events(7) if hasattr(self._store, 'upcoming_events') else []
+            upcoming_events = []
+            for evt in upcoming[:10]:
+                upcoming_events.append({
+                    "title": evt.title,
+                    "start": format_shamsi(evt.start, include_time=True) if evt.start else "",
+                })
+
+            self._ai_panel.set_context(
+                current_date=today_str,
+                current_view=self._ctrl.view_kind.value,
+                visible_events=[],
+                today_events=today_events,
+                upcoming_events=upcoming_events,
+            )
+        except Exception:
+            pass
+
     def refresh(self) -> None:
         """Force refresh all views."""
         self._show_current_view()
         self._sidebar.refresh()
+        # Update AI context if panel is visible
+        if self._ai_panel_visible:
+            self._update_ai_context()

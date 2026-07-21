@@ -22,6 +22,8 @@ from .route_annotation import BreakthroughFlash, SkipWhirl, LoopCurl
 from .particle_background import GoldParticleBackground
 from .glass_title_bar import GlassTitleBar, FramelessWindowMixin
 from .splash_screen import RaskSplashScreen
+from .schedule_questions import ScheduleQuestionsWidget
+from .calendar_ai_panel import CalendarAIPanel
 
 __all__ = [
     "TaskNodeItem", "NODE_WIDTH", "NODE_HEIGHT", "EdgeItem",
@@ -43,4 +45,6 @@ __all__ = [
     "GoldParticleBackground",
     "GlassTitleBar", "FramelessWindowMixin",
     "RaskSplashScreen",
+    "ScheduleQuestionsWidget",
+    "CalendarAIPanel",
 ]

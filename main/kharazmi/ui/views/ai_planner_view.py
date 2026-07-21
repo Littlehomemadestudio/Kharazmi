@@ -65,6 +65,7 @@ from ..widgets.route_health_dashboard import RouteHealthDashboard
 from ..widgets.credits_panel import CreditsPanel
 from ..widgets.feedback_dialog import FeedbackDialog
 from ..widgets.planner_landing import PlannerLanding
+from ..widgets.schedule_questions import ScheduleQuestionsWidget
 
 
 class AIPlannerView(QWidget):
@@ -192,28 +193,41 @@ class AIPlannerView(QWidget):
         gh_layout.addStretch()
 
         # Schedule in calendar button
-        self._schedule_btn = QToolButton()
-        self._schedule_btn.setText("📅  Schedule in Calendar")
+        # Big glowing Schedule in Calendar button
+        self._schedule_btn = QPushButton("📅  Schedule in Calendar")
+        self._schedule_btn.setCursor(Qt.PointingHandCursor)
+        self._schedule_btn.setFixedHeight(28)
         self._schedule_btn.setStyleSheet(f"""
-            QToolButton {{
-                background-color: {Palette.GOLD_PRIMARY};
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {Palette.GOLD_PRIMARY}, stop:1 {Palette.GOLD_BRIGHT});
                 color: {Palette.TEXT_ON_GOLD};
                 border: none;
-                border-radius: 3px;
-                padding: 4px 12px;
-                font-size: 11px;
+                border-radius: 6px;
+                padding: 4px 16px;
+                font-size: 12px;
                 font-weight: bold;
+                letter-spacing: 0.5px;
             }}
-            QToolButton:hover {{
-                background-color: {Palette.GOLD_BRIGHT};
+            QPushButton:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {Palette.GOLD_BRIGHT}, stop:1 #F5D060);
             }}
-            QToolButton:disabled {{
-                background-color: {Palette.BG_TERTIARY};
+            QPushButton:pressed {{
+                background: {Palette.GOLD_PRIMARY};
+            }}
+            QPushButton:disabled {{
+                background: {Palette.BG_TERTIARY};
                 color: {Palette.TEXT_TERTIARY};
             }}
         """)
         self._schedule_btn.setEnabled(False)
         self._schedule_btn.clicked.connect(self._on_schedule_in_calendar)
+        # Pulse animation for the button when enabled
+        self._schedule_pulse_timer = QTimer(self)
+        self._schedule_pulse_timer.setInterval(1200)
+        self._schedule_pulse_timer.timeout.connect(self._pulse_schedule_btn)
+        self._schedule_pulse_state = False
         gh_layout.addWidget(self._schedule_btn)
 
         self._critique_btn = QToolButton()
@@ -768,6 +782,7 @@ class AIPlannerView(QWidget):
         self.graph_view.finalize_route(result)
         self._update_stats(result)
         self._schedule_btn.setEnabled(True)
+        self._schedule_pulse_timer.start()  # Start glowing pulse
         self._critique_btn.setEnabled(True)
 
         msg = (
@@ -915,15 +930,134 @@ class AIPlannerView(QWidget):
         self._set_status("■ Stopped")
 
     # ---- Schedule in calendar ----
+    def _pulse_schedule_btn(self) -> None:
+        """Animate the schedule button with a pulsing glow."""
+        if not self._schedule_btn.isEnabled():
+            self._schedule_pulse_timer.stop()
+            return
+        self._schedule_pulse_state = not self._schedule_pulse_state
+        if self._schedule_pulse_state:
+            self._schedule_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #F5D060, stop:1 #FBE88A);
+                    color: {Palette.TEXT_ON_GOLD};
+                    border: 2px solid {Palette.GOLD_BRIGHT};
+                    border-radius: 6px;
+                    padding: 4px 16px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                }}
+            """)
+        else:
+            self._schedule_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {Palette.GOLD_PRIMARY}, stop:1 {Palette.GOLD_BRIGHT});
+                    color: {Palette.TEXT_ON_GOLD};
+                    border: none;
+                    border-radius: 6px;
+                    padding: 4px 16px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                }}
+            """)
+
     def _on_schedule_in_calendar(self) -> None:
+        """Show scheduling preferences wizard before scheduling."""
         if self._current_route is None or self.calendar_store is None:
             return
 
-        now = datetime.now().replace(second=0, microsecond=0)
-        now = now + timedelta(minutes=15 - now.minute % 15)
+        # Stop the pulse animation
+        self._schedule_pulse_timer.stop()
 
-        self.chat_panel.start_status_box("Scheduling route into your calendar…")
-        self._set_status("⏳ Scheduling…")
+        # Show the scheduling questions widget
+        self._schedule_questions = ScheduleQuestionsWidget(
+            route_goal=self._current_route.goal, parent=self
+        )
+        self._schedule_questions.schedulingRequested.connect(self._on_schedule_preferences_ready)
+        self._schedule_questions.cancelled.connect(self._on_schedule_cancelled)
+
+        # Replace the questions_outer content with scheduling questions
+        # Clear any existing widgets from the questions scroll
+        if hasattr(self, '_questions_container'):
+            layout = self._questions_container.layout()
+            if layout:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    if item.widget():
+                        item.widget().deleteLater()
+
+        # Add schedule questions to the questions overlay
+        q_layout = self._questions_outer.layout()
+        # Remove the scroll area and add schedule questions directly
+        # Clear existing children
+        for i in reversed(range(q_layout.count())):
+            item = q_layout.takeAt(i)
+            if item.widget():
+                item.widget().hide()
+                item.widget().deleteLater()
+
+        q_layout.addWidget(self._schedule_questions)
+
+        # Show the questions overlay, hide the splitter
+        self._splitter.hide()
+        self._questions_outer.show()
+        self._set_status("⚙ Configure your schedule…")
+
+    def _on_schedule_cancelled(self) -> None:
+        """User cancelled the scheduling questions."""
+        self._questions_outer.hide()
+        self._splitter.show()
+        self._set_status("✓ Schedule cancelled")
+        # Restart the pulse
+        if self._schedule_btn.isEnabled():
+            self._schedule_pulse_timer.start()
+
+    def _on_schedule_preferences_ready(self, preferences: dict) -> None:
+        """User answered all scheduling questions — now call AI to schedule."""
+        # Hide the questions overlay
+        self._questions_outer.hide()
+        self._splitter.show()
+
+        # Build existing events context from calendar store
+        existing_events = []
+        try:
+            now = datetime.now()
+            end = now + timedelta(days=30)
+            for evt in self.calendar_store.events_in_range(now, end):
+                existing_events.append({
+                    "title": evt.title,
+                    "start_iso": evt.start.isoformat() if evt.start else "",
+                    "end_iso": evt.end.isoformat() if evt.end else "",
+                })
+        except Exception:
+            pass  # If we can't get events, just proceed without context
+
+        # Determine start datetime from preferences
+        start_date_str = preferences.get("start_date", "")
+        if start_date_str:
+            try:
+                # Try Shamsi date parsing (format: YYYY/MM/DD)
+                parts = start_date_str.split("/")
+                if len(parts) == 3:
+                    from ...core.shamsi import ShamsiDate
+                    shamsi = ShamsiDate(int(parts[0]), int(parts[1]), int(parts[2]))
+                    greg = shamsi.to_gregorian()
+                    start_dt = datetime(greg.year, greg.month, greg.day, 8, 0)
+                else:
+                    start_dt = datetime.fromisoformat(start_date_str)
+            except Exception:
+                start_dt = datetime.now().replace(second=0, microsecond=0)
+                start_dt = start_dt + timedelta(minutes=15 - start_dt.minute % 15)
+        else:
+            start_dt = datetime.now().replace(second=0, microsecond=0)
+            start_dt = start_dt + timedelta(minutes=15 - start_dt.minute % 15)
+
+        self.chat_panel.start_status_box("Building your intelligent schedule…")
+        self._set_status("⏳ AI is scheduling…")
 
         self._current_request_id = f"sched-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -931,9 +1065,11 @@ class AIPlannerView(QWidget):
         self._credits_panel.increment()
         self.ai.schedule_in_calendar_streaming(
             self._current_route,
-            now.isoformat(),
+            start_dt.isoformat(),
             on_status=lambda s: self._statusUpdate.emit(s),
             callback=lambda success, result: self._scheduleReady.emit(success, result),
+            preferences=preferences,
+            existing_events=existing_events,
             request_id=self._current_request_id,
         )
 
@@ -942,10 +1078,13 @@ class AIPlannerView(QWidget):
         if not success:
             self._set_status("✗ Scheduling failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
+            # Restart pulse so user can retry
+            if self._schedule_btn.isEnabled():
+                self._schedule_pulse_timer.start()
             return
 
         events_data = result.get("events", [])
-        summary = result.get("summary", "")
+        schedule_summary = result.get("schedule_summary", {})
 
         count = 0
         for ev_data in events_data:
@@ -955,20 +1094,15 @@ class AIPlannerView(QWidget):
                 end_str = ev_data.get("end", "")
                 start = datetime.fromisoformat(start_str) if start_str else datetime.now()
                 end = datetime.fromisoformat(end_str) if end_str else start + timedelta(hours=1)
-                location = ev_data.get("location", "")
                 description = ev_data.get("description", "")
-                calendar_name = ev_data.get("calendar_name", "Personal")
+                color = ev_data.get("color", "") or None
 
+                # Find a writable calendar
                 cal_id = None
                 for cal in self.calendar_store.calendars():
-                    if cal.name == calendar_name and not cal.is_readonly:
+                    if not cal.is_readonly:
                         cal_id = cal.id
                         break
-                if cal_id is None:
-                    for cal in self.calendar_store.calendars():
-                        if not cal.is_readonly:
-                            cal_id = cal.id
-                            break
                 if cal_id is None:
                     continue
 
@@ -978,19 +1112,32 @@ class AIPlannerView(QWidget):
                     start=start,
                     end=end,
                     description=description,
-                    location=location,
                     event_type=EventType.TASK,
                     availability=Availability.BUSY,
+                    color=color,
                 )
                 self.calendar_store.add_event(evt)
                 count += 1
             except Exception:
                 continue
 
+        # Build a rich summary message
+        total_hours = schedule_summary.get("total_hours", 0)
+        est_completion = schedule_summary.get("estimated_completion", "")
+        guarantee = schedule_summary.get("guarantee_note", "")
+
+        summary_html = (
+            f"<b>📅 Scheduled!</b> Created {count} calendar events<br><br>"
+            f"<b>Total hours:</b> {total_hours:.1f}h<br>"
+        )
+        if est_completion:
+            summary_html += f"<b>Estimated completion:</b> {est_completion}<br>"
+        if guarantee:
+            summary_html += f"<br><i>💡 {guarantee}</i><br>"
+        summary_html += "<br>Switch to the Calendar tab to see your schedule."
+
         self.chat_panel.add_message(
-            f"<b>Scheduled!</b> Created {count} calendar events from the route. "
-            f"Switch to the Calendar tab to see them. {summary}",
-            role="assistant", as_html=True,
+            summary_html, role="assistant", as_html=True,
         )
         self._set_status(f"✓ Scheduled {count} events")
 
@@ -1100,6 +1247,7 @@ class AIPlannerView(QWidget):
         self.graph_view.set_route(route)
         self._update_stats(route)
         self._schedule_btn.setEnabled(True)
+        self._schedule_pulse_timer.start()  # Start glowing pulse
         self._critique_btn.setEnabled(True)
         self._health_dashboard.set_route(route)
         if route and route.steps:

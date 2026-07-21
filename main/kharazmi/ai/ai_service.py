@@ -21,6 +21,7 @@ import threading
 import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional, Any, Iterator
 
@@ -862,72 +863,353 @@ class AIService:
 
         self._run_async(_do, callback)
 
-    # ---- Schedule route in calendar ----
+    # ---- Schedule route in calendar (context-aware, intelligent) ----
     def schedule_in_calendar_streaming(
         self, route: Route, start_datetime: str,
         on_status: Callable[[str], None],
         callback: Callable[[bool, Any], None],
+        preferences: Optional[dict] = None,
+        existing_events: Optional[list[dict]] = None,
         request_id: Optional[str] = None,
     ) -> None:
         """
-        Break the route into bite-sized calendar events at the right times.
+        Context-aware, intelligent AI scheduler.
 
-        Returns a list of event dicts:
-          {title, start, end, location, description, calendar_name}
+        Creates a REALISTIC schedule that guarantees goal achievement by
+        respecting user preferences, existing calendar events, and pacing
+        work appropriately for the goal's scope.
+
+        New parameters:
+          preferences: dict with keys like:
+            - daily_hours: float (hours available per day)
+            - preferred_time: str ("morning" | "afternoon" | "evening")
+            - start_date: str (ISO date)
+            - avoid_days: list[str] (e.g. ["Friday"])
+            - intensity: str ("relaxed" | "balanced" | "intensive")
+          existing_events: list[dict] where each has:
+            - title: str
+            - start_iso: str (ISO 8601 datetime)
+            - end_iso: str (ISO 8601 datetime)
+
+        Returns a dict with:
+          events: list of event dicts
+          schedule_summary: dict with total_events, total_hours, etc.
         """
         try:
-            on_status("Scheduling route into your calendar…")
+            on_status("Building your intelligent schedule…")
         except Exception:
             pass
 
+        preferences = preferences or {}
+        existing_events = existing_events or []
+
+        # ── Comprehensive system prompt ──────────────────────────────────
         system_prompt = (
-            "You are Rask. Convert the user's route into bite-sized calendar "
-            "events starting at the given start time.\n\n"
-            "Output STRICT JSON only:\n"
+            "You are Rask, an intelligent scheduling AI. You create MEANINGFUL, "
+            "REALISTIC schedules that guarantee the user reaches their goal.\n\n"
+            "CRITICAL RULES:\n"
+            "1. CONTEXT AWARENESS: You receive the user's existing calendar events. "
+            "NEVER schedule over them. Leave gaps before/after existing events.\n"
+            "2. GOAL-APPROPRIATE PACING:\n"
+            "   - Short goals (baking a cake, 1 meeting) → schedule within days\n"
+            "   - Medium goals (learning a skill, small project) → schedule over weeks\n"
+            "   - Long-term goals (کنکور/Konkur exam, university degree) → schedule "
+            "over MONTHS or YEARS with daily/weekly study blocks\n"
+            "3. MEANINGFUL TIME BLOCKS:\n"
+            "   - Study blocks should be 45-90 minutes (research-backed optimal focus duration)\n"
+            "   - Include 10-15 min breaks between blocks\n"
+            "   - Don't cram — space learning over time (spaced repetition)\n"
+            "   - For long-term goals, create RECURRING patterns (e.g., 'Math Practice' "
+            "every Mon/Wed/Fri)\n"
+            "4. NO OVERFLOW: Respect the user's daily available hours. Don't schedule "
+            "more than they said they can do.\n"
+            "5. REALISTIC DAILY LOAD:\n"
+            "   - 'Relaxed' intensity → 2-3 hours of work per day max\n"
+            "   - 'Balanced' → 4-6 hours\n"
+            "   - 'Intensive' → 6-8 hours with proper breaks\n"
+            "6. AVOID SCHEDULING ON: user-specified avoid_days (e.g., Fridays for rest)\n"
+            "7. PREFERRED TIME: Schedule during the user's preferred hours "
+            "(morning: 7-12, afternoon: 13-17, evening: 18-22)\n"
+            "8. GUARANTEE: The schedule MUST be completable. Every step in the route "
+            "should have allocated time. If a step takes 300 hours and the user has "
+            "2 hours/day, that's 150 days — schedule it accordingly.\n\n"
+            "OUTPUT FORMAT — Strict JSON:\n"
             "{\n"
-            "  \"events\": [\n"
+            '  "events": [\n'
             "    {\n"
-            "      \"title\": string,\n"
-            "      \"start\": string,  // ISO 8601 datetime\n"
-            "      \"end\": string,    // ISO 8601 datetime\n"
-            "      \"location\": string,\n"
-            "      \"description\": string,\n"
-            "      \"calendar_name\": string  // \"Personal\" | \"Work\" | etc.\n"
+            '      "title": string,          // Clear, actionable title\n'
+            '      "start": string,          // ISO 8601 datetime (e.g., "2024-03-15T09:00:00")\n'
+            '      "end": string,            // ISO 8601 datetime\n'
+            '      "description": string,    // What to do in this block + which route step it serves\n'
+            '      "color": string,          // Hex color based on step kind\n'
+            '      "step_id": string,        // ID of the route step this maps to\n'
+            '      "recurrence": string|null // RRULE for recurring events (e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR") or null\n'
             "    }\n"
             "  ],\n"
-            "  \"summary\": string\n"
+            '  "schedule_summary": {\n'
+            '    "total_events": int,\n'
+            '    "total_hours": float,\n'
+            '    "estimated_completion": string,  // ISO date\n'
+            '    "daily_hours_average": float,\n'
+            '    "guarantee_note": string  // Brief explanation of how this schedule ensures goal completion\n'
+            "  }\n"
             "}\n\n"
-            "Rules:\n"
-            "- Create one event per step in the route's primary path.\n"
-            "- Sequence events back-to-back, respecting duration_minutes.\n"
-            "- Use the start time as the beginning of the first event.\n"
-            "- Set the calendar_name based on the step's nature (work, personal, etc.).\n"
+            "COLOR MAPPING for event types:\n"
+            '- action/study: "#D4AF37" (gold)\n'
+            '- decision: "#5A8A5A" (green)\n'
+            '- milestone: "#C07060" (warm red)\n'
+            '- wait: "#5A7FA8" (blue)\n'
+            '- checkpoint/review: "#8A6AAA" (purple)\n'
+            '- research: "#5A8A8A" (teal)\n'
+            '- deliver: "#D4AF37" (gold)\n'
+            '- collaborate: "#7A6AAA" (violet)\n'
+            '- default: "#D4AF37"\n\n'
+            "PERSIAN LANGUAGE: If the route goal is in Persian/Farsi, write event titles "
+            "and descriptions in Persian. Use natural, fluent Persian — not word-by-word "
+            "translation.\n"
         )
-        route_summary = (
-            f"Route goal: {route.goal}\n"
-            f"Start datetime: {start_datetime}\n"
-            f"Steps ({len(route.steps)}):\n"
+
+        # ── Build rich context string from parameters ────────────────────
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Route steps with durations, kinds, dependencies
+        route_section = (
+            f"ROUTE GOAL: {route.goal}\n"
+            f"TOTAL ROUTE DURATION: {route.total_duration_minutes} minutes "
+            f"({route.total_duration_minutes / 60:.1f} hours)\n"
+            f"OVERALL SUCCESS PROBABILITY: {route.overall_success_probability:.0%}\n"
+            f"ROUTE SUMMARY: {route.summary}\n"
+            f"LAYOUT STYLE: {route.layout_style}\n\n"
+            f"STEPS ({len(route.steps)}):\n"
         )
         for s in route.steps:
-            route_summary += (
-                f"  [{s.id}] {s.title} — {s.duration_minutes}m, "
-                f"location={s.location or 'n/a'}, branch={s.branch}\n"
+            deps = ", ".join(s.depends_on) if s.depends_on else "none"
+            route_section += (
+                f"  [{s.id}] {s.title}\n"
+                f"    Duration: {s.duration_minutes} min | "
+                f"Kind: {s.kind} | Branch: {s.branch}\n"
+                f"    Risk: {s.risk_level} | Success prob: {s.success_probability:.0%} | "
+                f"Depends on: {deps}\n"
+                f"    Description: {s.description}\n"
+                f"    Location: {s.location or 'n/a'} | "
+                f"Fallback: {s.fallback or 'none'}\n"
             )
+
+        route_section += f"\nEDGES ({len(route.edges)}):\n"
+        for e in route.edges:
+            route_section += (
+                f"  {e.source_id} --[{e.kind}]--> {e.target_id}"
+                f"{' (' + e.label + ')' if e.label else ''}\n"
+            )
+
+        # User preferences section
+        pref_section = "USER SCHEDULING PREFERENCES:\n"
+        if preferences:
+            daily_hours = preferences.get("daily_hours")
+            pref_section += f"  Daily available hours: {daily_hours}\n" if daily_hours else ""
+            preferred_time = preferences.get("preferred_time")
+            pref_section += f"  Preferred time of day: {preferred_time}\n" if preferred_time else ""
+            start_date = preferences.get("start_date")
+            pref_section += f"  Start date: {start_date}\n" if start_date else ""
+            avoid_days = preferences.get("avoid_days")
+            pref_section += f"  Avoid days: {avoid_days}\n" if avoid_days else ""
+            intensity = preferences.get("intensity")
+            pref_section += f"  Intensity: {intensity}\n" if intensity else ""
+            # Pass through any other preference keys
+            known_keys = {"daily_hours", "preferred_time", "start_date", "avoid_days", "intensity"}
+            for k, v in preferences.items():
+                if k not in known_keys:
+                    pref_section += f"  {k}: {v}\n"
+        else:
+            pref_section += "  (No specific preferences provided — use balanced defaults)\n"
+
+        pref_section += f"\n  Requested start datetime: {start_datetime}\n"
+
+        # Existing calendar events (next 30 days)
+        events_section = "EXISTING CALENDAR EVENTS (DO NOT SCHEDULE OVER THESE):\n"
+        if existing_events:
+            for ev in existing_events:
+                events_section += (
+                    f"  • {ev.get('title', 'Untitled')}: "
+                    f"{ev.get('start_iso', '?')} → {ev.get('end_iso', '?')}\n"
+                )
+        else:
+            events_section += "  (No existing events — calendar is clear)\n"
+
+        # Combine everything into the user message
+        user_message = (
+            f"CURRENT DATE/TIME (UTC): {now_iso}\n\n"
+            f"{route_section}\n"
+            f"{pref_section}\n"
+            f"{events_section}\n"
+        )
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": route_summary},
+            {"role": "user", "content": user_message},
         ]
 
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
-                temperature=0.3, response_format_json=True,
-                max_tokens=4096,
+                temperature=0.4, response_format_json=True,
+                max_tokens=8192,
             )
             full = _strip_markdown_fences(full)
             parsed = json.loads(full)
             return parsed
+
+        self._run_async(_do, callback)
+
+    # ---- Calendar AI chat (streaming) ----
+    def calendar_chat_streaming(
+        self, user_message: str, context: dict,
+        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        Context-aware AI chat for the Calendar view.
+
+        context contains:
+          - current_date: str (Shamsi formatted)
+          - current_view: str (month/week/day/year)
+          - visible_events: list[dict] (events currently in view)
+          - upcoming_events: list[dict] (next 7 days)
+          - today_events: list[dict]
+        """
+        try:
+            on_status("Thinking about your schedule…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask, a calendar-savvy AI assistant. You help users understand "
+            "their schedule, find conflicts, suggest optimizations, and plan around "
+            "busy periods.\n\n"
+            "You have access to the user's current calendar view and events. Use this "
+            "context to give specific, actionable answers.\n\n"
+            "RULES:\n"
+            "1. Be concise and practical. Suggest concrete actions.\n"
+            "2. When you see conflicts, point them out and suggest resolutions.\n"
+            "3. Help the user find free time slots for new activities.\n"
+            "4. If the user asks to move things around, suggest the best new times "
+            "based on their existing schedule.\n"
+            "5. Notice patterns: too many back-to-back meetings, no break time, "
+            "overloaded days, etc.\n"
+            "6. PERSIAN LANGUAGE: If the user writes in Persian/Farsi, respond "
+            "ENTIRELY in Persian. Use natural, idiomatic Persian.\n"
+            "7. Never invent events that aren't in the provided context.\n"
+            "8. Respond in plain text (not JSON).\n"
+        )
+
+        # Build calendar context string
+        ctx_parts = []
+        current_date = context.get("current_date", "")
+        if current_date:
+            ctx_parts.append(f"Current date (Shamsi): {current_date}")
+        current_view = context.get("current_view", "")
+        if current_view:
+            ctx_parts.append(f"Current calendar view: {current_view}")
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ctx_parts.append(f"Current UTC time: {now_iso}")
+
+        today_events = context.get("today_events", [])
+        if today_events:
+            ctx_parts.append("\nTODAY'S EVENTS:")
+            for ev in today_events:
+                ctx_parts.append(
+                    f"  • {ev.get('title', '?')}: "
+                    f"{ev.get('start_iso', ev.get('start', '?'))} → "
+                    f"{ev.get('end_iso', ev.get('end', '?'))}"
+                )
+        else:
+            ctx_parts.append("\nTODAY'S EVENTS: (none)")
+
+        upcoming_events = context.get("upcoming_events", [])
+        if upcoming_events:
+            ctx_parts.append("\nUPCOMING EVENTS (next 7 days):")
+            for ev in upcoming_events:
+                ctx_parts.append(
+                    f"  • {ev.get('title', '?')}: "
+                    f"{ev.get('start_iso', ev.get('start', '?'))} → "
+                    f"{ev.get('end_iso', ev.get('end', '?'))}"
+                )
+        else:
+            ctx_parts.append("\nUPCOMING EVENTS (next 7 days): (none)")
+
+        visible_events = context.get("visible_events", [])
+        if visible_events:
+            ctx_parts.append("\nVISIBLE EVENTS IN CURRENT VIEW:")
+            for ev in visible_events:
+                ctx_parts.append(
+                    f"  • {ev.get('title', '?')}: "
+                    f"{ev.get('start_iso', ev.get('start', '?'))} → "
+                    f"{ev.get('end_iso', ev.get('end', '?'))}"
+                )
+
+        context_str = "\n".join(ctx_parts)
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Calendar context:\n{context_str}\n\nUser question: {user_message}"},
+        ]
+
+        def _do():
+            # For calendar chat, we stream text chunks directly (like chat_streaming)
+            payload = {
+                "model": self.settings.get("model", DEFAULT_MODEL),
+                "messages": messages,
+                "thinking": {"type": "disabled"},
+                "temperature": 0.6,
+                "max_tokens": self.settings.get("max_tokens", 8192),
+                "stream": True,
+            }
+            body = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self.settings.get("base_url", API_URL),
+                data=body,
+                headers={
+                    "Authorization": f"Bearer {self.settings.get('api_key', '')}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                },
+                method="POST",
+            )
+            full_text = ""
+            try:
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    for raw_line in resp:
+                        line = raw_line.decode("utf-8", errors="replace").strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        if request_id and self._cancel_flags.get(request_id):
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            full_text += content
+                            try:
+                                on_chunk(content)
+                            except Exception:
+                                pass
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+                raise RuntimeError(f"HTTP {e.code}: {error_body}") from e
+            except urllib.error.URLError as e:
+                raise RuntimeError(f"Network error: {e.reason}") from e
+            return full_text
 
         self._run_async(_do, callback)
 

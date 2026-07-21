@@ -334,7 +334,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._tabs.addTab(dash_container, "🏠  Home")
 
         # ---- Tab 1: Calendar ----
-        self.calendar_view = CalendarView(self.calendar_store)
+        self.calendar_view = CalendarView(self.calendar_store, ai_service=self.ai_service)
         cal_container = QWidget()
         cal_layout = QVBoxLayout(cal_container)
         cal_layout.setContentsMargins(0, 0, 0, 0)
