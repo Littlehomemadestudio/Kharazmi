@@ -142,9 +142,23 @@ class EventEditorDialog(QDialog):
 
         # Calendar selector
         self._calendar_combo = QComboBox()
+        self._original_calendar_id: Optional[str] = None  # track to prevent drift
         for cal in self.store.calendars():
             if not cal.is_readonly:
                 self._calendar_combo.addItem(cal.name, cal.id)
+        # If editing an event on a readonly calendar, add it to the combo
+        # so the calendar_id doesn't drift to a different calendar on save
+        if event is not None and event.calendar_id:
+            self._original_calendar_id = event.calendar_id
+            found = False
+            for i in range(self._calendar_combo.count()):
+                if self._calendar_combo.itemData(i) == event.calendar_id:
+                    found = True
+                    break
+            if not found:
+                cal = self.store.get_calendar(event.calendar_id)
+                if cal:
+                    self._calendar_combo.addItem(cal.name + " (read-only)", cal.id)
         form.addRow("Calendar", self._calendar_combo)
 
         # Color override
@@ -204,6 +218,15 @@ class EventEditorDialog(QDialog):
         for t in EventType:
             self._type_combo.addItem(t.value.replace("_", " ").title(), t)
         form.addRow("Type", self._type_combo)
+
+        # Completed checkbox (for tasks)
+        self._completed_check = QCheckBox("Completed")
+        self._completed_check.setStyleSheet(f"""
+            QCheckBox {{ color: {Palette.TEXT_PRIMARY}; spacing: 8px; }}
+            QCheckBox::indicator {{ width: 18px; height: 18px; border: 2px solid {Palette.BORDER_STRONG}; border-radius: 4px; background: {Palette.BG_TERTIARY}; }}
+            QCheckBox::indicator:checked {{ background: #5A8A5A; border: 2px solid #5A8A5A; }}
+        """)
+        form.addRow("Done", self._completed_check)
 
         # Availability
         self._avail_combo = QComboBox()
@@ -373,6 +396,8 @@ class EventEditorDialog(QDialog):
             if self._status_combo.itemData(i) == event.status:
                 self._status_combo.setCurrentIndex(i)
                 break
+        # Completed state
+        self._completed_check.setChecked(event.completed)
         # Recurrence
         if event.recurrence is None:
             self._recur_none.setChecked(True)
@@ -511,6 +536,8 @@ class EventEditorDialog(QDialog):
 
         color = self._custom_color if self._color_checkbox.isChecked() else None
 
+        completed = self._completed_check.isChecked()
+
         if self.evt is None:
             # Create new
             evt = CalEvent.create(
@@ -530,6 +557,7 @@ class EventEditorDialog(QDialog):
                 reminders=reminders,
                 attachments=attachments,
                 meeting_link=self._meeting_link.text(),
+                completed=completed,
             )
             self.store.add_event(evt)
         else:
@@ -552,6 +580,7 @@ class EventEditorDialog(QDialog):
                 reminders=reminders,
                 attachments=attachments,
                 meeting_link=self._meeting_link.text(),
+                completed=completed,
             )
         self.accept()
 

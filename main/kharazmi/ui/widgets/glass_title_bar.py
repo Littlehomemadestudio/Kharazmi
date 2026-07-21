@@ -235,8 +235,23 @@ class FramelessWindowMixin:
         """Toggle between fullscreen and normal mode."""
         if self.isFullScreen():
             self.showNormal()
+            # Show the title bar when exiting fullscreen
+            if hasattr(self, '_title_bar') and self._title_bar:
+                self._title_bar.show()
         else:
+            # Hide the title bar when entering fullscreen
+            if hasattr(self, '_title_bar') and self._title_bar:
+                self._title_bar.hide()
             self.showFullScreen()
+
+    def keyPressEvent(self, event) -> None:
+        """Handle Escape to exit fullscreen."""
+        from PySide6.QtCore import Qt
+        if event.key() == Qt.Key_Escape and self.isFullScreen():
+            self.toggle_fullscreen()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _add_titlebar_to_layout(self, layout: QVBoxLayout) -> None:
         """Insert the title bar at the top of a VBoxLayout."""

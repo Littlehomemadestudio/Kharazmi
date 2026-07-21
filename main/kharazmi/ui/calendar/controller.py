@@ -206,13 +206,17 @@ class CalendarController(QObject):
         self.events_changed.emit()
 
     def toggle_event_completed(self, event_id: str) -> None:
+        """Toggle the completed state of an event. Uses store.update_event
+        so the change is properly emitted and persisted."""
         evt = self._model.store.get_event(event_id)
         if evt:
-            if evt.completed:
-                evt.completed = False
-            else:
-                evt.complete()
-            self.events_changed.emit()
+            new_completed = not evt.completed
+            self._model.store.update_event(
+                event_id,
+                completed=new_completed,
+                status=EventStatus.CONFIRMED if new_completed else EventStatus.CONFIRMED,
+            )
+            # events_changed will be emitted via the store subscription
 
     # ── Store Events ──
 

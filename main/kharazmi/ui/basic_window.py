@@ -215,8 +215,13 @@ class BasicMainWindow(QMainWindow):
             f"{self.calendar_store.calendar_count} calendars",
             0,
         ))
-        # Autosave on any change
-        QTimer.singleShot(1000, self._autosave)
+        # Persist deletions and updates immediately so they don't get lost
+        from ..calendar.store import EventRemoved, CalendarRemoved, EventUpdated
+        if isinstance(event, (EventRemoved, CalendarRemoved, EventUpdated)):
+            self._autosave()
+        else:
+            # For additions, use a delayed save to batch rapid changes
+            QTimer.singleShot(1000, self._autosave)
 
     # ---- Actions ----
     def _on_new_event(self) -> None:

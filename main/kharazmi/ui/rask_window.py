@@ -444,11 +444,15 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
 
     def _on_calendar_store_event(self, event) -> None:
         QTimer.singleShot(0, self._refresh_statusbar)
-        # Persist deletions immediately so they don't "come back" on restart
+        # Persist deletions and updates immediately so they don't "come back" or get lost on restart
+        from ..calendar.store import EventUpdated
         if isinstance(event, (EventRemoved, CalendarRemoved)):
             self._persist_calendar()
+        elif isinstance(event, EventUpdated):
+            # Persist updates immediately so renamed/modified events are saved
+            self._persist_calendar()
         else:
-            # For additions/updates, use a delayed save to batch rapid changes
+            # For additions, use a delayed save to batch rapid changes
             QTimer.singleShot(1000, self._autosave)
 
     def _on_undo_stack_changed(self) -> None:
