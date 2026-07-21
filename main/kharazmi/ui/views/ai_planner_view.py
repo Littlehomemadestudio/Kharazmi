@@ -1092,12 +1092,15 @@ class AIPlannerView(QWidget):
         # Replace the questions_outer content with scheduling questions
         # Clear any existing widgets from the questions scroll
         if hasattr(self, '_questions_container'):
-            layout = self._questions_container.layout()
-            if layout:
-                while layout.count():
-                    item = layout.takeAt(0)
-                    if item.widget():
-                        item.widget().deleteLater()
+            try:
+                layout = self._questions_container.layout()
+                if layout:
+                    while layout.count():
+                        item = layout.takeAt(0)
+                        if item.widget():
+                            item.widget().deleteLater()
+            except RuntimeError:
+                self._questions_container = None  # C++ object already deleted
 
         # Add schedule questions to the questions overlay
         q_layout = self._questions_outer.layout()

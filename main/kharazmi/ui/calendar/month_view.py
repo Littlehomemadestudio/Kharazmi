@@ -218,8 +218,12 @@ class MonthView(QWidget):
         """Animate a month-change transition (fade)."""
         from PySide6.QtCore import QAbstractAnimation, QVariantAnimation, QEasingCurve
 
-        if self._transition_anim and self._transition_anim.state() == QAbstractAnimation.Running:
-            self._transition_anim.stop()
+        if self._transition_anim:
+            try:
+                if self._transition_anim.state() == QAbstractAnimation.Running:
+                    self._transition_anim.stop()
+            except RuntimeError:
+                self._transition_anim = None
 
         self._transition_opacity = 0.0
 

@@ -2512,17 +2512,21 @@ class UnifiedGraphView(QGraphicsView):
                     s.depends_on = [d for d in s.depends_on if d != step_id]
 
         # 2. Cancel any running layout animations targeting this node
+        stale_anims = []
         for anim in list(self._layout_anims):
-            if anim.state() == QPropertyAnimation.Running:
-                try:
+            try:
+                if anim.state() == QPropertyAnimation.Running:
                     target = anim.targetObject()
                     if target is not None and (
                         (isinstance(target, RouteNodeItem) and target.step.id == step_id) or
                         target is self._node_items.get(step_id)
                     ):
                         anim.stop()
-                except RuntimeError:
-                    pass  # target already deleted
+            except RuntimeError:
+                stale_anims.append(anim)  # C++ object already deleted
+        for sa in stale_anims:
+            if sa in self._layout_anims:
+                self._layout_anims.remove(sa)
 
         # 3. Remove connected edges FIRST (before removing node, so edge _update_path won't crash)
         to_remove = [e for e in self._edge_items

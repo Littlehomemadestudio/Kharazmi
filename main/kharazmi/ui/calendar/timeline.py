@@ -66,7 +66,8 @@ class TimelineWidget(QWidget):
         # ── Fonts ───────────────────────────────────────────────────────────
         self._font_hour: QFont = font_time_label()
         self._font_half: QFont = font_time_label()
-        self._font_half.setPointSize(self._font_half.pointSize() - 1)
+        _half_pt = max(1, self._font_half.pointSize() - 1)
+        self._font_half.setPointSize(_half_pt)
 
         # ── Pens (created once, reused every paint) ─────────────────────────
         self._pen_hour = QPen(QColor(Border.SUBTLE), 1.0)
