@@ -284,6 +284,7 @@ class UnifiedGraphView(QGraphicsView):
     taskCreated = Signal(str, float, float)  # title, x, y
     stepBreakdownRequested = Signal(str)  # step_id
     stepFieldChanged = Signal(str, str, object)  # step_id, field, value
+    routeModified = Signal()           # emitted when route is mutated (step removed/field changed)
 
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -2204,6 +2205,8 @@ class UnifiedGraphView(QGraphicsView):
             item.update()
         # Emit signal
         self.stepFieldChanged.emit(step_id, field, value)
+        # Notify that the route data model was mutated
+        self.routeModified.emit()
 
     # ---- Pan & zoom ----
     def wheelEvent(self, event: QWheelEvent) -> None:
@@ -2607,6 +2610,9 @@ class UnifiedGraphView(QGraphicsView):
 
         # 7. Force scene update to clear any ghost rendering
         self._scene.update()
+
+        # 8. Notify that the route data model was mutated
+        self.routeModified.emit()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()

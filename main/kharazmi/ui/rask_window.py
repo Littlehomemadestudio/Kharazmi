@@ -474,7 +474,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         """Load a journal entry's route into the AI planner view."""
         if entry.route is not None:
             self._switch_tab(2)  # Planner & Tasks tab
-            self.ai_planner_view.set_route(entry.route)
+            self.ai_planner_view.set_route(entry.route, entry_id=entry.id)
             # Also update graphs and simulation views
             self.graphs_view.set_route(entry.route)
             self.simulation_view.set_route(entry.route)
@@ -623,6 +623,10 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             self.calendar_repository.save(self.calendar_store, kind="autosave")
         except Exception:
             pass
+        try:
+            self.journal_store.save()
+        except Exception:
+            pass
 
     def _persist_calendar(self) -> None:
         """Immediately persist the calendar store (used after deletions)."""
@@ -636,6 +640,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         try:
             self.repository.save_snapshot(self.project, kind="autosave")
             self.calendar_repository.save(self.calendar_store, kind="autosave")
+            self.journal_store.save()
         except Exception:
             pass
         super().closeEvent(event)

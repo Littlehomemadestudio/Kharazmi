@@ -106,6 +106,7 @@ class AIPlannerView(QWidget):
         self.calendar_store = calendar_store
         self.project = project
         self._current_route: Optional[Route] = None
+        self._current_journal_entry_id: Optional[str] = None  # tracks which journal entry the current route belongs to
         self._pending_goal: str = ""
         self._clarifying_qa: list[tuple[str, str]] = []
         self._awaiting_questions: list[MultipleChoiceQuestion] = []
@@ -316,6 +317,7 @@ class AIPlannerView(QWidget):
             self.graph_view.set_project(self.project)
         self.graph_view.taskCreated.connect(self._taskCreated.emit)
         self.graph_view.stepBreakdownRequested.connect(self._on_step_breakdown_requested)
+        self.graph_view.routeModified.connect(self._on_route_modified)
         left_layout.addWidget(self.graph_view, stretch=1)
 
         # Multiple-choice questions container (scrollable) — takes full left panel
@@ -910,6 +912,11 @@ class AIPlannerView(QWidget):
             clarifying_qa=self._clarifying_qa,
             route=result,
         )
+        # Track which journal entry holds the current route
+        # The newly added entry is the last one in the list (newest by timestamp)
+        all_entries = self.journal.all()
+        if all_entries:
+            self._current_journal_entry_id = all_entries[0].id
         self._set_status("✓ Route saved — AI is continuing to work…")
 
         # Emit route update for other views (Graphs, Simulation)
@@ -960,11 +967,11 @@ class AIPlannerView(QWidget):
             )
 
         if new_steps or new_edges or new_insights:
+            # add_steps_and_edges already appends to the shared Route object
+            # (self.graph_view._route IS self._current_route), so we must NOT
+            # extend the lists again — that would create duplicates.
             self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
             if self._current_route is not None:
-                self._current_route.steps.extend(new_steps)
-                self._current_route.edges.extend(new_edges)
-                self._current_route.insights.extend(new_insights)
                 self._update_stats(self._current_route)
             parts = []
             if new_steps:
@@ -980,6 +987,9 @@ class AIPlannerView(QWidget):
             )
 
         self._set_status(f"✓ Done · {len(self._current_route.steps) if self._current_route else 0} steps")
+
+        # Persist the updated route (with new steps/edges/insights) to the journal
+        self._persist_route_to_journal()
 
     # ---- Free-form chat ----
     def _on_chat_send(self, text: str) -> None:
@@ -1326,10 +1336,9 @@ class AIPlannerView(QWidget):
                     self.graph_view._scene.removeItem(item)
 
                 # Add new sub-steps
+                # add_steps_and_edges already appends to the shared Route object,
+                # so we must NOT extend the lists again — that would create duplicates.
                 self.graph_view.add_steps_and_edges(new_steps, new_edges + edges_to_parents)
-                self._current_route.steps.extend(new_steps)
-                self._current_route.edges.extend(new_edges)
-                self._current_route.edges.extend(edges_to_parents)
 
                 self.chat_panel.add_message(
                     f"Replaced <b>{step.title}</b> with <b>{len(new_steps)} sub-steps</b>. "
@@ -1342,6 +1351,8 @@ class AIPlannerView(QWidget):
             if self._current_route:
                 health = RouteHealthEngine.compute(self._current_route)
                 self._health_dashboard.update_health(health)
+            # Persist the modified route to the journal
+            self._persist_route_to_journal()
 
         self.ai.breakdown_step_streaming(
             step, self._current_route,
@@ -1351,14 +1362,20 @@ class AIPlannerView(QWidget):
         )
 
     # ---- Public API ----
-    def set_route(self, route: Route) -> None:
-        """Load a route from the journal."""
+    def set_route(self, route: Route, entry_id: Optional[str] = None) -> None:
+        """Load a route from the journal.
+
+        Args:
+            route: The route to load.
+            entry_id: The journal entry ID this route belongs to (for persistence).
+        """
         # Switch from landing page to workspace (index 1)
         if self._stack.currentIndex() == 0:
             self._landing.animate_out()
             QTimer.singleShot(150, lambda: self._stack.setCurrentIndex(1))
 
         self._current_route = route
+        self._current_journal_entry_id = entry_id
         self._pending_goal = route.goal
         self._clarifying_qa = []
         self.graph_view.set_route(route)
@@ -1465,11 +1482,9 @@ class AIPlannerView(QWidget):
             self.chat_panel.add_message("<br><br>".join(parts), role="assistant", as_html=True)
 
         if new_steps or new_edges or new_insights:
+            # add_steps_and_edges already appends to the shared Route object,
+            # so we must NOT extend the lists again — that would create duplicates.
             self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
-            if self._current_route is not None:
-                self._current_route.steps.extend(new_steps)
-                self._current_route.edges.extend(new_edges)
-                self._current_route.insights.extend(new_insights)
             self.chat_panel.add_message(f"Added {len(new_steps)} new steps, {len(new_edges)} new edges, {len(new_insights)} new insights to the route.", role="assistant", as_html=True)
 
         self._set_status("✓ Optimization applied")
@@ -1477,6 +1492,8 @@ class AIPlannerView(QWidget):
         if self._current_route:
             health = RouteHealthEngine.compute(self._current_route)
             self._health_dashboard.update_health(health)
+        # Persist the modified route to the journal
+        self._persist_route_to_journal()
 
     # ---- AI Risk Analysis ----
     def _on_risk_analysis_clicked(self) -> None:
@@ -1583,11 +1600,10 @@ class AIPlannerView(QWidget):
         self.chat_panel.add_message(msg, role="assistant", as_html=True)
 
         if new_steps or new_edges or new_insights:
+            # add_steps_and_edges already appends to the shared Route object,
+            # so we must NOT extend the lists again — that would create duplicates.
             self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
             if self._current_route is not None:
-                self._current_route.steps.extend(new_steps)
-                self._current_route.edges.extend(new_edges)
-                self._current_route.insights.extend(new_insights)
                 self._update_stats(self._current_route)
             parts = []
             if new_steps:
@@ -1606,6 +1622,8 @@ class AIPlannerView(QWidget):
         if self._current_route:
             health = RouteHealthEngine.compute(self._current_route)
             self._health_dashboard.update_health(health)
+        # Persist the modified route to the journal
+        self._persist_route_to_journal()
 
     # ---- Smart Re-plan ----
     def _on_replan_clicked(self) -> None:
@@ -1653,14 +1671,44 @@ class AIPlannerView(QWidget):
             self.chat_panel.add_message(msg, role="assistant", as_html=True)
 
         if new_steps or new_edges or new_insights:
+            # add_steps_and_edges already appends to the shared Route object,
+            # so we must NOT extend the lists again — that would create duplicates.
             self.graph_view.add_steps_and_edges(new_steps, new_edges, new_insights)
-            if self._current_route is not None:
-                self._current_route.steps.extend(new_steps)
-                self._current_route.edges.extend(new_edges)
-                self._current_route.insights.extend(new_insights)
             self.chat_panel.add_message(f"Added {len(new_steps)} new steps and {len(new_edges)} new edges.", role="assistant", as_html=True)
 
         self._set_status("✓ Re-plan applied")
+        # Persist the modified route to the journal
+        self._persist_route_to_journal()
+
+    # ---- Route persistence helper ----
+    def _persist_route_to_journal(self) -> None:
+        """Persist the current route back to the journal store.
+
+        This is the single point where route mutations are saved to disk.
+        Called after deletions, edits, AI continue/breakdown/optimize/critique/replan.
+        """
+        if self._current_route is None:
+            return
+        if self._current_journal_entry_id is not None:
+            self.journal.update_route(self._current_journal_entry_id, self._current_route)
+        else:
+            # No journal entry tracked yet — just save the whole store
+            # (the in-memory entry.route may already be the same object)
+            self.journal.save()
+
+    def _on_route_modified(self) -> None:
+        """Handle route mutation from the graph view (step deleted or field changed).
+
+        Syncs the planner's _current_route with the graph view's route and persists.
+        """
+        # The graph view's _route and our _current_route may be the same object,
+        # but if the steps/edges lists were replaced (not mutated in-place), we
+        # need to re-sync.  The safest approach: point our reference to the
+        # graph view's route (the source of truth for the current workspace).
+        if self.graph_view._route is not None:
+            self._current_route = self.graph_view._route
+            self._update_stats(self._current_route)
+        self._persist_route_to_journal()
 
     # ---- Export methods ----
     def _on_export_csv(self) -> None:

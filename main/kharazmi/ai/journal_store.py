@@ -82,6 +82,18 @@ class JournalStore:
                 self._save()
                 return
 
+    def update_route(self, entry_id: str, route: Route) -> None:
+        """Update the route of a journal entry and persist to disk."""
+        for e in self._entries:
+            if e.id == entry_id:
+                e.route = route
+                self._save()
+                return
+
+    def save(self) -> None:
+        """Persist all entries to disk. Call after any in-memory modification."""
+        self._save()
+
     def delete(self, entry_id: str) -> None:
         self._entries = [e for e in self._entries if e.id != entry_id]
         self._save()
