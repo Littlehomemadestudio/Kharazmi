@@ -1,33 +1,30 @@
 """
-DashboardView — Premium home/dashboard view for RASK!
+DashboardView — Revamped premium home/dashboard view for RASK!
 
-A stunning dashboard that serves as the app's landing experience:
-  - Hero section: Shamsi date in large Persian typography with gold gradient
-  - Stat cards with animated counters (events, tasks, AI routes, journal entries)
-  - Mini calendar preview
+A stunning, fully Persian dashboard that serves as the app's landing experience:
+  - Hero section: Shamsi date in centered Persian typography with animated glow
+  - Stat cards in 2x2 grid with Persian labels and left-border color accents
+  - Quick action buttons in Persian
   - Upcoming events list with colored indicators
-  - AI insights panel
-  - Productivity streak / activity indicator
-  - Quick-action buttons
+  - Productivity section with thicker progress rings and Persian labels
+  - Gold particle background
 
-All rendered with QPainter for maximum visual control and smooth
-animations. No generic Qt widgets — every pixel is custom.
+All rendered with QPainter for maximum visual control.
 """
 from __future__ import annotations
 
 import math
-import random
 from datetime import datetime, timedelta
 from typing import Optional
 
-from PySide6.QtCore import Qt, QTimer, QRect, QRectF, QPointF, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QTimer, QRect, QRectF, QPointF, Signal
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QBrush, QFont, QPixmap,
+    QPainter, QColor, QPen, QBrush, QFont,
     QPainterPath, QLinearGradient, QRadialGradient, QFontMetrics,
 )
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QSizePolicy, QScrollArea,
+    QFrame, QSizePolicy, QScrollArea, QGridLayout,
 )
 
 from ...core.shamsi import ShamsiDate, format_shamsi, to_persian_digits, SHAMSI_MONTHS_FA
@@ -38,20 +35,151 @@ from ..theme import Palette
 from ..widgets.particle_background import GoldParticleBackground
 
 
-# ──────────────────────────── Animated Counter ────────────────────────────
+# ──────────────────────────── Helper ────────────────────────────
 
-class _AnimatedCounter(QWidget):
-    """A number that animates from 0 to its target value."""
+def _greeting_fa() -> str:
+    """Return a Persian greeting based on the current hour."""
+    hour = datetime.now().hour
+    if 5 <= hour < 12:
+        return "صبح بخیر"
+    elif 12 <= hour < 17:
+        return "ظهر بخیر"
+    elif 17 <= hour < 21:
+        return "عصر بخیر"
+    else:
+        return "شب بخیر"
 
-    def __init__(self, target: int, label: str, icon: str, color: str,
+
+# ──────────────────────────── Hero Widget ────────────────────────────
+
+class _HeroWidget(QWidget):
+    """Custom-painted hero section with centered Shamsi date, greeting, and glow."""
+
+    def __init__(self, today: ShamsiDate, parent=None) -> None:
+        super().__init__(parent)
+        self._today = today
+        self.setFixedHeight(220)
+        self._tick = 0
+        self._timer = QTimer(self)
+        self._timer.setInterval(50)
+        self._timer.timeout.connect(self._on_tick)
+        self._timer.start()
+
+    def _on_tick(self) -> None:
+        self._tick += 1
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+
+        w, h = self.width(), self.height()
+
+        # ── Animated glow behind the date ──
+        pulse = 0.5 + 0.5 * math.sin(self._tick * 0.04)
+        glow_alpha = int(18 + 12 * pulse)
+        glow_r = 140 + 20 * pulse
+        glow_grad = QRadialGradient(QPointF(w / 2, h / 2 - 10), glow_r)
+        glow_grad.setColorAt(0, QColor(212, 175, 55, glow_alpha))
+        glow_grad.setColorAt(0.6, QColor(212, 175, 55, glow_alpha // 3))
+        glow_grad.setColorAt(1, QColor(212, 175, 55, 0))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(glow_grad))
+        p.drawEllipse(QPointF(w / 2, h / 2 - 10), glow_r, glow_r)
+
+        # ── "امروز" badge ──
+        badge_text = "امروز"
+        badge_font = QFont("Segoe UI", 10)
+        p.setFont(badge_font)
+        fm = QFontMetrics(badge_font)
+        badge_w = fm.horizontalAdvance(badge_text) + 20
+        badge_h = 24
+        badge_x = (w - badge_w) / 2
+        badge_y = 14
+
+        badge_path = QPainterPath()
+        badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 12, 12)
+        p.setPen(Qt.NoPen)
+        badge_fill = QColor(Palette.GOLD_PRIMARY)
+        badge_fill.setAlpha(35)
+        p.setBrush(QBrush(badge_fill))
+        p.drawPath(badge_path)
+
+        badge_border = QColor(Palette.GOLD_PRIMARY)
+        badge_border.setAlpha(80)
+        p.setPen(QPen(badge_border, 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(badge_path)
+
+        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+        p.drawText(QRectF(badge_x, badge_y, badge_w, badge_h),
+                   Qt.AlignCenter, badge_text)
+
+        # ── Date display ──
+        day_text = to_persian_digits(str(self._today.day))
+        month_text = SHAMSI_MONTHS_FA[self._today.month - 1]
+        year_text = to_persian_digits(str(self._today.year))
+        weekday_text = self._today.weekday_fa
+
+        # Big centered day number with gold gradient
+        day_font = QFont("Segoe UI", 80, QFont.Bold)
+        p.setFont(day_font)
+
+        day_grad = QLinearGradient(0, 40, 0, 140)
+        day_grad.setColorAt(0, QColor(245, 200, 66))
+        day_grad.setColorAt(0.5, QColor(212, 175, 55))
+        day_grad.setColorAt(1, QColor(140, 112, 18))
+        p.setPen(QPen(QBrush(day_grad), 1))
+        p.drawText(QRectF(0, 38, w, 100), Qt.AlignHCenter | Qt.AlignTop, day_text)
+
+        # Month name centered below day
+        month_font = QFont("Segoe UI", 28, QFont.Bold)
+        p.setFont(month_font)
+        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+        p.drawText(QRectF(0, 130, w, 40), Qt.AlignHCenter, month_text)
+
+        # Year + Weekday on one line
+        year_week_font = QFont("Segoe UI", 13)
+        p.setFont(year_week_font)
+        year_weekday = f"{year_text}  ·  {weekday_text}"
+        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
+        p.drawText(QRectF(0, 170, w, 24), Qt.AlignHCenter, year_weekday)
+
+        # ── Greeting ──
+        greeting = _greeting_fa()
+        greet_font = QFont("Segoe UI", 12)
+        p.setFont(greet_font)
+        p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
+        p.drawText(QRectF(0, 194, w, 20), Qt.AlignHCenter, greeting)
+
+        # ── Subtle divider ──
+        div_grad = QLinearGradient(0, 0, w, 0)
+        div_grad.setColorAt(0, QColor(212, 175, 55, 0))
+        div_grad.setColorAt(0.2, QColor(212, 175, 55, 50))
+        div_grad.setColorAt(0.5, QColor(212, 175, 55, 70))
+        div_grad.setColorAt(0.8, QColor(212, 175, 55, 50))
+        div_grad.setColorAt(1, QColor(212, 175, 55, 0))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(div_grad))
+        p.drawRect(QRectF(0, h - 1, w, 1))
+
+        p.end()
+
+
+# ──────────────────────────── Stat Card ────────────────────────────
+
+class _StatCard(QWidget):
+    """A stat card with left-border accent, QPainter-drawn icon, and Persian label."""
+
+    def __init__(self, target: int, label: str, icon_type: str, color: str,
                  parent=None) -> None:
         super().__init__(parent)
         self._target = target
         self._current = 0
         self._label = label
-        self._icon = icon
+        self._icon_type = icon_type  # "calendar", "checkmark", "star", "book"
         self._color = color
-        self.setFixedSize(180, 110)
+        self.setFixedSize(200, 120)
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(30)
         self._anim_timer.timeout.connect(self._tick)
@@ -70,51 +198,99 @@ class _AnimatedCounter(QWidget):
         p.setRenderHint(QPainter.Antialiasing, True)
 
         r = 12
-        # Card background with subtle border
+        # Card background
         card_path = QPainterPath()
         card_path.addRoundedRect(QRectF(0.5, 0.5, self.width() - 1, self.height() - 1), r, r)
         p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
         p.setBrush(QBrush(QColor(Palette.BG_TERTIARY)))
         p.drawPath(card_path)
 
-        # Subtle top color accent line
-        accent = QLinearGradient(0, 0, self.width(), 0)
-        c0 = QColor(self._color); c0.setAlpha(0)
-        c1 = QColor(self._color); c1.setAlpha(180)
-        c2 = QColor(self._color); c2.setAlpha(0)
-        accent.setColorAt(0, c0)
-        accent.setColorAt(0.5, c1)
-        accent.setColorAt(1, c2)
+        # Left color accent border
+        accent_path = QPainterPath()
+        accent_path.addRoundedRect(QRectF(0, 0, 4, self.height()), r, r)
+        accent_fill = QColor(self._color)
+        accent_fill.setAlpha(220)
         p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(accent))
+        p.setBrush(QBrush(accent_fill))
+        p.drawPath(accent_path)
 
-        top_path = QPainterPath()
-        top_path.addRoundedRect(QRectF(0, 0, self.width(), 3), r, r)
-        p.drawPath(top_path)
-
-        # Icon — colored circle with abbreviation letter (no emoji)
-        icon_cx, icon_cy, icon_r = 32, 28, 14
+        # ── Draw icon ──
+        icon_x, icon_y = 170, 18
         p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(QColor(self._color)))
-        p.drawEllipse(QPointF(icon_cx, icon_cy), icon_r, icon_r)
-        abbr_font = QFont("Inter", 12, QFont.Bold)
-        p.setFont(abbr_font)
-        p.setPen(QPen(QColor("#FFFFFF")))
-        p.drawText(QRectF(icon_cx - icon_r, icon_cy - icon_r, icon_r * 2, icon_r * 2),
-                   Qt.AlignCenter, self._icon)
+        p.setBrush(QBrush(QColor(self._color).lighter(130)))
 
-        # Number — use Latin digits for counter since labels are in English
-        num_font = QFont("Inter", 30, QFont.Bold)
+        if self._icon_type == "calendar":
+            # Calendar: rectangle with small squares
+            cal_x, cal_y = icon_x - 10, icon_y - 4
+            p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 18), 3, 3)
+            # Top bar
+            p.setBrush(QBrush(QColor(self._color)))
+            p.drawRoundedRect(QRectF(cal_x, cal_y, 20, 6), 3, 3)
+            # Grid dots
+            p.setBrush(QBrush(QColor(Palette.TEXT_TERTIARY)))
+            for row in range(2):
+                for col in range(3):
+                    p.drawEllipse(QPointF(cal_x + 4 + col * 6, cal_y + 10 + row * 5), 1.2, 1.2)
+
+        elif self._icon_type == "checkmark":
+            # Checkmark in circle
+            p.drawEllipse(QPointF(icon_x, icon_y + 5), 12, 12)
+            p.setPen(QPen(QColor("#FFFFFF"), 2.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setBrush(Qt.NoBrush)
+            check_path = QPainterPath()
+            check_path.moveTo(icon_x - 5, icon_y + 5)
+            check_path.lineTo(icon_x - 1, icon_y + 9)
+            check_path.lineTo(icon_x + 6, icon_y + 1)
+            p.drawPath(check_path)
+
+        elif self._icon_type == "star":
+            # 5-point star
+            p.setBrush(QBrush(QColor(self._color).lighter(120)))
+            p.setPen(Qt.NoPen)
+            star_path = QPainterPath()
+            cx_s, cy_s, outer_r, inner_r = icon_x, icon_y + 5, 12, 5
+            for i in range(5):
+                angle_outer = math.radians(-90 + i * 72)
+                angle_inner = math.radians(-90 + i * 72 + 36)
+                ox = cx_s + outer_r * math.cos(angle_outer)
+                oy = cy_s + outer_r * math.sin(angle_outer)
+                ix = cx_s + inner_r * math.cos(angle_inner)
+                iy = cy_s + inner_r * math.sin(angle_inner)
+                if i == 0:
+                    star_path.moveTo(ox, oy)
+                else:
+                    star_path.lineTo(ox, oy)
+                star_path.lineTo(ix, iy)
+            star_path.closeSubpath()
+            p.drawPath(star_path)
+
+        elif self._icon_type == "book":
+            # Open book shape
+            p.setPen(QPen(QColor(self._color).lighter(130), 2))
+            p.setBrush(Qt.NoBrush)
+            # Left page
+            p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
+            p.drawLine(QPointF(icon_x - 10, icon_y + 2), QPointF(icon_x - 10, icon_y + 18))
+            p.drawLine(QPointF(icon_x - 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
+            # Right page
+            p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x, icon_y + 10))
+            p.drawLine(QPointF(icon_x + 10, icon_y + 2), QPointF(icon_x + 10, icon_y + 18))
+            p.drawLine(QPointF(icon_x + 10, icon_y + 18), QPointF(icon_x, icon_y + 10))
+            # Spine
+            p.drawLine(QPointF(icon_x, icon_y), QPointF(icon_x, icon_y + 10))
+
+        # ── Number (Persian digits) ──
+        num_text = to_persian_digits(str(self._current))
+        num_font = QFont("Segoe UI", 28, QFont.Bold)
         p.setFont(num_font)
-        num_text = str(self._current)
         p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(16, 40, self.width() - 32, 44), Qt.AlignLeft, num_text)
+        p.drawText(QRectF(20, 20, 140, 50), Qt.AlignLeft | Qt.AlignVCenter, num_text)
 
-        # Label
-        label_font = QFont("Inter", 10)
+        # ── Label ──
+        label_font = QFont("Segoe UI", 10)
         p.setFont(label_font)
         p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-        p.drawText(QRectF(16, 82, self.width() - 32, 20), Qt.AlignLeft, self._label)
+        p.drawText(QRectF(20, 75, 160, 24), Qt.AlignLeft | Qt.AlignVCenter, self._label)
 
         p.end()
 
@@ -122,37 +298,43 @@ class _AnimatedCounter(QWidget):
 # ──────────────────────────── Event Row ──────────────────────────────────
 
 class _EventRow(QWidget):
-    """A single upcoming event row with color indicator."""
+    """A single upcoming event row with color indicator and Persian layout."""
 
     def __init__(self, title: str, time_str: str, color: str, parent=None) -> None:
         super().__init__(parent)
         self._title = title
         self._time = time_str
         self._color = color
-        self.setFixedHeight(40)
+        self.setFixedHeight(44)
 
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
 
+        w, h = self.width(), self.height()
+
         # Color dot
         p.setPen(Qt.NoPen)
         p.setBrush(QBrush(QColor(self._color)))
-        p.drawEllipse(QPointF(14, self.height() / 2), 5, 5)
+        p.drawEllipse(QPointF(w - 14, h / 2), 5, 5)
 
-        # Title
-        title_font = QFont("Inter", 12)
+        # Title (right-aligned for RTL)
+        title_font = QFont("Segoe UI", 12)
         p.setFont(title_font)
         p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(30, 0, self.width() - 140, self.height()),
-                    Qt.AlignVCenter, self._title)
+        p.drawText(QRectF(0, 0, w - 30, h),
+                    Qt.AlignRight | Qt.AlignVCenter, self._title)
 
-        # Time
-        time_font = QFont("Inter", 11)
+        # Time (left side)
+        time_font = QFont("Segoe UI", 11)
         p.setFont(time_font)
         p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(self.width() - 120, 0, 110, self.height()),
-                    Qt.AlignRight | Qt.AlignVCenter, self._time)
+        p.drawText(QRectF(10, 0, 120, h),
+                    Qt.AlignLeft | Qt.AlignVCenter, self._time)
+
+        # Subtle bottom line
+        p.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1))
+        p.drawLine(QPointF(10, h - 0.5), QPointF(w - 10, h - 0.5))
 
         p.end()
 
@@ -160,7 +342,7 @@ class _EventRow(QWidget):
 # ──────────────────────────── Progress Ring ──────────────────────────────
 
 class _ProgressRing(QWidget):
-    """Circular progress indicator with percentage text."""
+    """Circular progress indicator with thicker ring and Persian label."""
 
     def __init__(self, value: int, maximum: int, color: str, label: str,
                  parent=None) -> None:
@@ -169,15 +351,15 @@ class _ProgressRing(QWidget):
         self._max = max(maximum, 1)
         self._color = color
         self._label = label
-        self.setFixedSize(80, 90)
+        self.setFixedSize(90, 100)
 
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
 
-        cx, cy = 40, 38
-        radius = 30
-        pen_w = 5
+        cx, cy = 45, 42
+        radius = 32
+        pen_w = 8
 
         # Background ring
         p.setPen(QPen(QColor(Palette.BORDER_NORMAL), pen_w, Qt.SolidLine, Qt.RoundCap))
@@ -193,16 +375,74 @@ class _ProgressRing(QWidget):
                          int(radius * 2), int(radius * 2))
         p.drawArc(arc_rect, 90 * 16, -span)
 
-        # Percentage text — use Latin digits since labels are English
-        pct = str(pct_val) + "%"
-        p.setFont(QFont("Inter", 12, QFont.Bold))
+        # Percentage text — Persian digits
+        pct = to_persian_digits(str(pct_val)) + "٪"
+        p.setFont(QFont("Segoe UI", 12, QFont.Bold))
         p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-        p.drawText(QRectF(0, 18, 80, 40), Qt.AlignCenter, pct)
+        p.drawText(QRectF(0, 18, 90, 44), Qt.AlignCenter, pct)
 
         # Label below
-        p.setFont(QFont("Inter", 8))
+        p.setFont(QFont("Segoe UI", 9))
         p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(0, 70, 80, 20), Qt.AlignCenter, self._label)
+        p.drawText(QRectF(0, 78, 90, 20), Qt.AlignCenter, self._label)
+
+        p.end()
+
+
+# ──────────────────────────── Section Header ────────────────────────────
+
+class _SectionHeader(QWidget):
+    """A section header with Persian title and optional badge."""
+
+    def __init__(self, title: str, badge_text: str = "", parent=None) -> None:
+        super().__init__(parent)
+        self._title = title
+        self._badge = badge_text
+        self.setFixedHeight(36)
+
+    def paintEvent(self, event) -> None:
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing, True)
+
+        w = self.width()
+
+        # Title
+        title_font = QFont("Segoe UI", 12, QFont.Bold)
+        p.setFont(title_font)
+        p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
+        title_rect = QRectF(0, 4, w - 60, 28)
+        p.drawText(title_rect, Qt.AlignRight | Qt.AlignVCenter, self._title)
+
+        # Badge
+        if self._badge:
+            badge_font = QFont("Segoe UI", 9, QFont.Bold)
+            p.setFont(badge_font)
+            fm = QFontMetrics(badge_font)
+            bw = max(fm.horizontalAdvance(self._badge) + 14, 24)
+            bh = 20
+            bx = 0
+            by = 8
+
+            badge_path = QPainterPath()
+            badge_path.addRoundedRect(QRectF(bx, by, bw, bh), 10, 10)
+            p.setPen(Qt.NoPen)
+            badge_fill = QColor(Palette.GOLD_PRIMARY)
+            badge_fill.setAlpha(30)
+            p.setBrush(QBrush(badge_fill))
+            p.drawPath(badge_path)
+
+            p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
+            p.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, self._badge)
+
+        # Subtle underline
+        line_grad = QLinearGradient(0, 0, w, 0)
+        line_grad.setColorAt(0, QColor(Palette.GOLD_PRIMARY, 0))
+        line_grad.setColorAt(0.3, QColor(Palette.GOLD_PRIMARY, 40))
+        line_grad.setColorAt(0.7, QColor(Palette.GOLD_PRIMARY, 40))
+        line_grad.setColorAt(1, QColor(Palette.GOLD_PRIMARY, 0))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(line_grad))
+        p.drawRect(QRectF(0, 34, w, 1))
 
         p.end()
 
@@ -214,11 +454,12 @@ class DashboardView(QWidget):
     Premium dashboard — the stunning home view of RASK!
 
     Serves as the default tab, showing:
-      - Today's Shamsi date in heroic gold typography
-      - Animated stat cards
+      - Today's Shamsi date in heroic centered Persian typography
+      - Stat cards in 2x2 grid
+      - Quick action buttons in Persian
       - Upcoming events
-      - Quick actions
-      - Particle background
+      - Productivity section
+      - Gold particle background
     """
 
     calendarTabRequested = Signal()
@@ -249,7 +490,7 @@ class DashboardView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Scroll area for the dashboard content
+        # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -272,12 +513,30 @@ class DashboardView(QWidget):
             }}
         """)
 
-        # Content widget
+        # Content widget — centered, max-width 900px
         content = QWidget()
         content.setStyleSheet(f"background: {Palette.BG_DEEPEST};")
-        self._content_layout = QVBoxLayout(content)
+
+        # Outer layout to center the inner content
+        outer_layout = QHBoxLayout(content)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        # Left stretch
+        outer_layout.addStretch()
+
+        # Inner content container (max 900px)
+        inner = QWidget()
+        inner.setMaximumWidth(900)
+        inner.setStyleSheet(f"background: transparent;")
+        self._content_layout = QVBoxLayout(inner)
         self._content_layout.setContentsMargins(40, 30, 40, 30)
-        self._content_layout.setSpacing(24)
+        self._content_layout.setSpacing(32)
+
+        outer_layout.addWidget(inner)
+
+        # Right stretch
+        outer_layout.addStretch()
 
         # Particle background
         self._particles = GoldParticleBackground(self, particle_count=40)
@@ -285,7 +544,7 @@ class DashboardView(QWidget):
         # ── Hero Section ──
         self._build_hero()
 
-        # ── Stat Cards ──
+        # ── Stat Cards (2x2 grid) ──
         self._build_stat_cards()
 
         # ── Quick Actions ──
@@ -294,8 +553,8 @@ class DashboardView(QWidget):
         # ── Upcoming Events ──
         self._build_upcoming_events()
 
-        # ── AI Insights ──
-        self._build_ai_insights()
+        # ── Productivity Section ──
+        self._build_productivity()
 
         self._content_layout.addStretch()
 
@@ -303,40 +562,45 @@ class DashboardView(QWidget):
         layout.addWidget(scroll)
 
     def _build_hero(self) -> None:
-        """Build the hero section with Shamsi date."""
-        hero = QWidget()
-        hero.setFixedHeight(160)
-        hero.setStyleSheet(f"background: transparent;")
-
-        # We paint this in paintEvent of a custom widget
+        """Build the hero section with centered Shamsi date."""
         self._hero_widget = _HeroWidget(self._today, self)
         self._content_layout.addWidget(self._hero_widget)
 
     def _build_stat_cards(self) -> None:
-        """Build animated stat cards."""
-        row = QWidget()
-        row.setStyleSheet("background: transparent;")
-        row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(16)
+        """Build stat cards in a 2x2 grid."""
+        grid_widget = QWidget()
+        grid_widget.setStyleSheet("background: transparent;")
+        grid = QGridLayout(grid_widget)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(16)
 
         event_count = self._store.event_count
         task_count = self._project.task_count
         journal_count = len(self._journal)
 
-        cards = [
-            _AnimatedCounter(event_count, "Events", "E", Palette.GOLD_PRIMARY, row),
-            _AnimatedCounter(task_count, "Tasks", "T", "#5A7FA8", row),
-            _AnimatedCounter(journal_count, "AI Routes", "A", "#8A6AAA", row),
-            _AnimatedCounter(0, "Streak Days", "S", "#C07060", row),
+        cards_data = [
+            (event_count, "رویدادها", "calendar", Palette.GOLD_PRIMARY),
+            (task_count, "وظایف", "checkmark", "#5A7FA8"),
+            (0, "مسیرهای AI", "star", "#8A6AAA"),  # AI routes placeholder
+            (journal_count, "یادداشت‌ها", "book", Palette.STATUS_DONE),
         ]
-        for card in cards:
-            row_layout.addWidget(card)
 
-        self._content_layout.addWidget(row)
+        for idx, (target, label, icon_type, color) in enumerate(cards_data):
+            card = _StatCard(target, label, icon_type, color, grid_widget)
+            row, col = divmod(idx, 2)
+            # Right-align for RTL: col 0 = right, col 1 = left
+            if col == 0:
+                grid.addWidget(card, row, 1)  # right side
+            else:
+                grid.addWidget(card, row, 0)  # left side
+
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+
+        self._content_layout.addWidget(grid_widget)
 
     def _build_quick_actions(self) -> None:
-        """Build quick action buttons."""
+        """Build quick action buttons in Persian."""
         row = QWidget()
         row.setStyleSheet("background: transparent;")
         row_layout = QHBoxLayout(row)
@@ -344,25 +608,26 @@ class DashboardView(QWidget):
         row_layout.setSpacing(12)
 
         actions = [
-            ("+  New Event", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
-            ("✦  AI Planner", self.plannerTabRequested.emit, "#8A6AAA"),
-            ("◈  Calendar", self.calendarTabRequested.emit, "#5A7FA8"),
+            ("رویداد جدید", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
+            ("برنامه‌ریز هوشمند", self.plannerTabRequested.emit, "#8A6AAA"),
+            ("تقویم", self.calendarTabRequested.emit, "#5A7FA8"),
         ]
 
         for label, callback, color in actions:
             btn = QPushButton(label)
-            btn.setFont(QFont("Inter", 12, QFont.Bold))
+            btn.setFont(QFont("Segoe UI", 12, QFont.Bold))
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(44)
+            btn.setFixedHeight(48)
+            btn.setMinimumWidth(140)
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: {Palette.BG_TERTIARY};
                     color: {Palette.TEXT_PRIMARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
-                    border-left: 3px solid {color};
-                    border-radius: 8px;
-                    padding: 8px 20px;
-                    text-align: left;
+                    border-right: 3px solid {color};
+                    border-radius: 10px;
+                    padding: 10px 24px;
+                    text-align: center;
                 }}
                 QPushButton:hover {{
                     background: {Palette.BG_ELEVATED};
@@ -379,42 +644,47 @@ class DashboardView(QWidget):
         self._content_layout.addWidget(row)
 
     def _build_upcoming_events(self) -> None:
-        """Build upcoming events section."""
-        header = QLabel("UPCOMING EVENTS")
-        header.setFont(QFont("Inter", 11, QFont.Bold))
-        header.setStyleSheet(f"""
-            color: {Palette.GOLD_PRIMARY};
-            background: transparent;
-            letter-spacing: 2px;
-            padding: 8px 0 4px 0;
-        """)
-        self._content_layout.addWidget(header)
-
+        """Build upcoming events section with Persian header."""
         # Get upcoming events
         events = self._store.upcoming_events(7) if hasattr(self._store, 'upcoming_events') else []
+        event_count = len(events)
+
+        badge = to_persian_digits(str(event_count)) if event_count else ""
+        header = _SectionHeader("رویدادهای آینده", badge, self)
+        self._content_layout.addWidget(header)
+
+        # Card container
+        card = QWidget()
+        card.setStyleSheet(
+            f"background: {Palette.BG_TERTIARY};"
+            f" border: 1px solid {Palette.BORDER_NORMAL};"
+            f" border-radius: 12px;"
+        )
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(20, 16, 20, 16)
+        card_layout.setSpacing(0)
 
         if events:
             for evt in events[:5]:
                 time_str = format_shamsi(evt.start, include_time=True) if hasattr(evt, 'start') and evt.start else ""
                 color = evt.color if hasattr(evt, 'color') and evt.color else Palette.GOLD_PRIMARY
-                row = _EventRow(evt.title, time_str, color)
-                self._content_layout.addWidget(row)
+                row = _EventRow(evt.title, time_str, color, card)
+                card_layout.addWidget(row)
         else:
-            empty = QLabel("No upcoming events this week")
-            empty.setFont(QFont("Inter", 11))
-            empty.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; background: transparent; padding: 8px 0;")
-            self._content_layout.addWidget(empty)
+            # Empty state
+            empty = QLabel("هیچ رویدادی در هفته آینده ندارید")
+            empty.setFont(QFont("Segoe UI", 11))
+            empty.setAlignment(Qt.AlignCenter)
+            empty.setStyleSheet(
+                f"color: {Palette.TEXT_TERTIARY}; background: transparent; padding: 16px 0;"
+            )
+            card_layout.addWidget(empty)
 
-    def _build_ai_insights(self) -> None:
+        self._content_layout.addWidget(card)
+
+    def _build_productivity(self) -> None:
         """Build productivity insights section with progress rings."""
-        header = QLabel("PRODUCTIVITY")
-        header.setFont(QFont("Inter", 11, QFont.Bold))
-        header.setStyleSheet(f"""
-            color: {Palette.GOLD_PRIMARY};
-            background: transparent;
-            letter-spacing: 2px;
-            padding: 8px 0 4px 0;
-        """)
+        header = _SectionHeader("بهره‌وری", "", self)
         self._content_layout.addWidget(header)
 
         # Card container
@@ -434,35 +704,37 @@ class DashboardView(QWidget):
                          if t.status.value == "done")
                      if task_count > 0 else 0)
 
-        # Progress rings
+        # Progress rings with Persian labels
         rings_data = [
-            (done_count, task_count, Palette.GOLD_PRIMARY, "Tasks"),
-            (len(self._journal), max(len(self._journal), 1), "#8A6AAA", "Journals"),
+            (done_count, task_count, Palette.GOLD_PRIMARY, "وظایف"),
+            (len(self._journal), max(len(self._journal), 1), "#8A6AAA", "یادداشت‌ها"),
         ]
         for val, mx, color, label in rings_data:
             ring = _ProgressRing(val, mx, color, label, card)
             card_layout.addWidget(ring)
 
-        # Tip text on the right
+        # Tip text
         tip_container = QWidget()
         tip_container.setStyleSheet("background: transparent;")
         tip_layout = QVBoxLayout(tip_container)
         tip_layout.setContentsMargins(0, 0, 0, 0)
         tip_layout.setSpacing(6)
 
-        tip_title = QLabel("Daily Tip")
-        tip_title.setFont(QFont("Inter", 12, QFont.Bold))
+        tip_title = QLabel("نکته روز")
+        tip_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
         tip_title.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; background: transparent;"
         )
+        tip_title.setAlignment(Qt.AlignRight)
         tip_layout.addWidget(tip_title)
 
         tip_text = QLabel(
-            "Plan your day in 30 seconds with AI \u2014 "
-            "break down goals into actionable steps."
+            "برنامه‌ریزی روزانه خود را با هوش مصنوعی در ۳۰ ثانیه انجام دهید "
+            "— اهداف را به گام‌های عملی تقسیم کنید."
         )
-        tip_text.setFont(QFont("Inter", 11))
+        tip_text.setFont(QFont("Segoe UI", 11))
         tip_text.setWordWrap(True)
+        tip_text.setAlignment(Qt.AlignRight)
         tip_text.setStyleSheet(
             f"color: {Palette.TEXT_SECONDARY}; background: transparent;"
         )
@@ -478,77 +750,4 @@ class DashboardView(QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        # Keep particles covering the full widget
         self._particles.setGeometry(self.rect())
-
-
-class _HeroWidget(QWidget):
-    """Custom-painted hero section with Shamsi date."""
-
-    def __init__(self, today: ShamsiDate, parent=None) -> None:
-        super().__init__(parent)
-        self._today = today
-        self.setFixedHeight(200)
-        self._tick = 0
-        self._timer = QTimer(self)
-        self._timer.setInterval(50)
-        self._timer.timeout.connect(self._on_tick)
-        self._timer.start()
-
-    def _on_tick(self) -> None:
-        self._tick += 1
-        self.update()
-
-    def paintEvent(self, event) -> None:
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing, True)
-
-        w, h = self.width(), self.height()
-
-        # ── Date display ──
-        day_text = str(self._today.day)
-        month_text = SHAMSI_MONTHS_FA[self._today.month - 1]
-        year_text = str(self._today.year)
-        weekday_text = self._today.weekday_fa
-
-        # Big day number — hero gold gradient
-        day_font = QFont("Segoe UI", 96, QFont.Bold)
-        p.setFont(day_font)
-
-        day_grad = QLinearGradient(0, 10, 0, 130)
-        day_grad.setColorAt(0, QColor(245, 200, 66))
-        day_grad.setColorAt(0.6, QColor(212, 175, 55))
-        day_grad.setColorAt(1, QColor(140, 112, 18))
-        p.setPen(QPen(QBrush(day_grad), 1))
-        p.drawText(QRectF(0, 5, 200, 130), Qt.AlignCenter, day_text)
-
-        # Month name
-        month_font = QFont("Segoe UI", 36, QFont.Bold)
-        p.setFont(month_font)
-        p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-        p.drawText(QRectF(200, 20, w - 220, 50), Qt.AlignLeft, month_text)
-
-        # Year
-        year_font = QFont("Inter", 18)
-        p.setFont(year_font)
-        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(200, 70, w - 220, 30), Qt.AlignLeft, year_text)
-
-        # Weekday
-        wd_font = QFont("Inter", 16)
-        p.setFont(wd_font)
-        p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-        p.drawText(QRectF(200, 100, w - 220, 30), Qt.AlignLeft, weekday_text)
-
-        # ── Subtle divider ──
-        div_grad = QLinearGradient(0, 0, w, 0)
-        div_grad.setColorAt(0, QColor(212, 175, 55, 0))
-        div_grad.setColorAt(0.2, QColor(212, 175, 55, 60))
-        div_grad.setColorAt(0.5, QColor(212, 175, 55, 80))
-        div_grad.setColorAt(0.8, QColor(212, 175, 55, 60))
-        div_grad.setColorAt(1, QColor(212, 175, 55, 0))
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(div_grad))
-        p.drawRect(QRectF(0, h - 1, w, 1))
-
-        p.end()
