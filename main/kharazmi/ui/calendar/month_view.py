@@ -168,7 +168,7 @@ class MonthView(QWidget):
 
     def sizeHint(self) -> QSize:  # noqa: N802
         """Preferred size based on cell metrics."""
-        w = _COLS * 110
+        w = _COLS * 130
         h = self._header_height + _ROWS * Metrics.MONTH_CELL_MIN_HEIGHT
         return QSize(w, h)
 

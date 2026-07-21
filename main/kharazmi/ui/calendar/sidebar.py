@@ -78,14 +78,14 @@ class MiniMonthWidget(QWidget):
     # ── Geometry ──
 
     def _cell_size(self) -> int:
-        w = self.width() - 8  # 4px margin each side
+        w = self.width() - 12  # 6px margin each side
         return w // 7
 
     def _cell_rect(self, row: int, col: int) -> QRectF:
         cs = self._cell_size()
-        x = 4 + col * cs
-        header_h = 20
-        month_h = 18
+        x = 6 + col * cs
+        header_h = 22
+        month_h = 22
         y = month_h + header_h + row * cs
         return QRectF(x, y, cs, cs)
 
@@ -102,14 +102,14 @@ class MiniMonthWidget(QWidget):
         month_name = ShamsiDate(self._year, self._month, 1).month_name_fa
         p.setFont(font_header())
         p.setPen(qcolor(Text.PRIMARY))
-        p.drawText(QRectF(left, 0, self.width() - 8, 18), Qt.AlignCenter, month_name)
+        p.drawText(QRectF(left, 0, self.width() - 12, 22), Qt.AlignCenter, month_name)
 
         # Weekday headers
         p.setFont(font_mini_day())
         p.setPen(qcolor(Text.TERTIARY))
-        header_y = 18
+        header_y = 22
         for i, name in enumerate(SHAMSI_WEEKDAYS_SHORT_EN):
-            p.drawText(QRectF(left + i * cs, header_y, cs, 20),
+            p.drawText(QRectF(left + i * cs, header_y, cs, 22),
                        Qt.AlignCenter, name[:2])
 
         # Day cells
@@ -157,7 +157,7 @@ class MiniMonthWidget(QWidget):
     def _cell_at(self, pos: QPoint) -> Optional[tuple[int, int]]:
         cs = self._cell_size()
         col = (pos.x() - 4) // cs
-        header_h = 38
+        header_h = 44
         row = (pos.y() - header_h) // cs
         if 0 <= row < 6 and 0 <= col < 7:
             return (row, col)
@@ -202,7 +202,7 @@ class CalendarListWidget(QWidget):
         # Header
         header = QLabel("Calendars")
         header.setFont(font_header())
-        header.setStyleSheet(f"color: {Text.SECONDARY}; padding: 4px 0;")
+        header.setStyleSheet(f"color: {Text.SECONDARY}; padding: 6px 0; font-size: 12px;")
         layout.addWidget(header)
 
         # Calendar rows
@@ -320,8 +320,9 @@ class QuickAddInput(QLineEdit):
                 background: {Surface.CARD};
                 color: {Text.PRIMARY};
                 border: 1px solid {Border.NORMAL};
-                border-radius: 6px;
-                padding: 8px 12px;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-size: 12px;
             }}
             QLineEdit:focus {{
                 border-color: {Gold.PRIMARY};
@@ -356,7 +357,7 @@ class CalendarSidebar(QWidget):
         self.setStyleSheet(f"background: {Surface.PANEL};")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 12, 8, 8)
+        layout.setContentsMargins(12, 16, 12, 12)
         layout.setSpacing(Spacing.LG)
 
         # Mini month

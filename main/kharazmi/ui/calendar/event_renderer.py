@@ -13,6 +13,8 @@ Renders calendar events as rounded cards with:
   - Location pin
   - Hover highlight
   - Selection ring
+
+v2 — Bigger, rounder, better readability.
 """
 from __future__ import annotations
 
@@ -122,14 +124,14 @@ class EventRenderer:
 
         # ── Selection ring ──
         if options.selected:
-            painter.setPen(QPen(qcolor(Gold.PRIMARY), 1.5))
+            painter.setPen(QPen(qcolor(Gold.PRIMARY), 2))
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), r, r)
 
         # ── Hover glow ──
         if options.hovered and not options.selected:
-            glow = with_alpha(Gold.PRIMARY, 25)
-            painter.setPen(QPen(glow, 1))
+            glow = with_alpha(Gold.PRIMARY, 30)
+            painter.setPen(QPen(glow, 1.5))
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), r, r)
 
@@ -151,13 +153,13 @@ class EventRenderer:
 
         # ── Completion checkbox ──
         if options.show_completion and event.is_task:
-            check_size = 12 if not options.compact else 10
+            check_size = 14 if not options.compact else 12
             check_rect = QRectF(content_left, y, check_size, check_size)
             painter.setPen(QPen(qcolor(Border.STRONG), 1))
             painter.setBrush(QBrush(qcolor(Surface.ELEVATED)))
-            painter.drawRoundedRect(check_rect, 2, 2)
+            painter.drawRoundedRect(check_rect, 3, 3)
             if event.completed:
-                painter.setPen(QPen(qcolor("#5A8A5A"), 1.5))
+                painter.setPen(QPen(qcolor("#5A8A5A"), 2))
                 painter.setBrush(Qt.NoBrush)
                 # Draw checkmark
                 cx, cy = check_rect.center().x(), check_rect.center().y()
@@ -169,7 +171,6 @@ class EventRenderer:
         if options.show_priority and not options.compact:
             pri_color = PRIORITY_COLORS.get(0, "#5C5749")
             # No priority field on Event directly; skip for now
-            # Could be derived from event_type or custom field
 
         # ── Title ──
         title_font = font_body() if not options.compact else font_small()
@@ -193,23 +194,24 @@ class EventRenderer:
             Qt.AlignLeft | Qt.AlignVCenter,
             elided,
         )
-        y += fm.height() + 1
+        y += fm.height() + 2
 
         # ── Time ──
         if options.show_time and not event.all_day:
             time_font = font_small()
             painter.setFont(time_font)
-            painter.setPen(QPen(qcolor(Text.TERTIARY)))
+            painter.setPen(QPen(qcolor(Text.SECONDARY)))
 
             time_text = f"{format_shamsi(event.start, 'HH:mm')} – {format_shamsi(event.end, 'HH:mm')}"
             if event.is_recurring:
                 time_text += "  ↻"
+            fm_time = QFontMetrics(time_font)
             painter.drawText(
-                QRectF(content_left, y, content_width, fm.height()),
+                QRectF(content_left, y, content_width, fm_time.height()),
                 Qt.AlignLeft | Qt.AlignVCenter,
                 time_text,
             )
-            y += fm.height() + 1
+            y += fm_time.height() + 2
 
         # ── Location ──
         if options.show_location and event.location and not options.compact:
@@ -246,12 +248,12 @@ class EventRenderer:
         hovered: bool = False,
         selected: bool = False,
     ) -> None:
-        """Paint a compact event chip for the month view."""
+        """Paint a compact event chip for the month view — bigger and rounder."""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         c = qcolor(color)
-        r = 3  # small corner radius for chips
+        r = 6  # rounder chip (was 3)
 
         # Background
         bg = with_alpha(color, 35)
@@ -264,9 +266,9 @@ class EventRenderer:
         painter.setBrush(QBrush(bg))
         painter.drawRoundedRect(rect, r, r)
 
-        # Left dot
-        dot_r = 3
-        dot_rect = QRectF(rect.left() + 4, rect.center().y() - dot_r, dot_r * 2, dot_r * 2)
+        # Left dot — bigger
+        dot_r = 4
+        dot_rect = QRectF(rect.left() + 6, rect.center().y() - dot_r, dot_r * 2, dot_r * 2)
         painter.setBrush(QBrush(c))
         painter.drawEllipse(dot_rect)
 
@@ -277,8 +279,8 @@ class EventRenderer:
         painter.setFont(font)
         painter.setPen(QPen(qcolor(Text.PRIMARY)))
 
-        text_left = dot_rect.right() + 3
-        text_width = rect.right() - text_left - 2
+        text_left = dot_rect.right() + 5
+        text_width = rect.right() - text_left - 4
         if text_width > 0:
             fm = QFontMetrics(font)
             title = event.title
@@ -293,7 +295,7 @@ class EventRenderer:
 
         # Selection ring
         if selected:
-            painter.setPen(QPen(qcolor(Gold.PRIMARY), 1))
+            painter.setPen(QPen(qcolor(Gold.PRIMARY), 1.5))
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), r, r)
 
@@ -308,12 +310,12 @@ class EventRenderer:
         hovered: bool = False,
         selected: bool = False,
     ) -> None:
-        """Paint an all-day event chip (used in week/day view header)."""
+        """Paint an all-day event chip (used in week/day view header) — rounder."""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         c = qcolor(color)
-        r = 4
+        r = 6  # rounder (was 4)
 
         # Filled background with event color
         bg = with_alpha(color, 45)
@@ -324,18 +326,18 @@ class EventRenderer:
         painter.setBrush(QBrush(bg))
         painter.drawRoundedRect(rect, r, r)
 
-        # Left bar
-        bar = QRectF(rect.left(), rect.top(), 3, rect.height())
+        # Left bar — thicker
+        bar = QRectF(rect.left(), rect.top(), 4, rect.height())
         painter.setBrush(QBrush(c))
-        painter.drawRoundedRect(bar, 1, 1)
+        painter.drawRoundedRect(bar, 2, 2)
 
         # Title
         font = font_small()
         painter.setFont(font)
         painter.setPen(QPen(qcolor(Text.PRIMARY)))
 
-        text_left = rect.left() + 5
-        text_width = rect.right() - text_left - 2
+        text_left = rect.left() + 7
+        text_width = rect.right() - text_left - 3
         if text_width > 0:
             fm = QFontMetrics(font)
             elided = fm.elidedText(event.title, Qt.ElideRight, int(text_width))
@@ -346,7 +348,7 @@ class EventRenderer:
             )
 
         if selected:
-            painter.setPen(QPen(qcolor(Gold.PRIMARY), 1))
+            painter.setPen(QPen(qcolor(Gold.PRIMARY), 1.5))
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), r, r)
 

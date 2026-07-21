@@ -4,6 +4,8 @@ CalendarTheme — Centralized visual constants for the RASK! calendar.
 Luxury dark theme with gold accents. Every color, font, spacing, and
 metric used by the calendar is defined here so there is a single source
 of truth. Views should NEVER hardcode visual values.
+
+v2 — Bigger, rounder, better space management.
 """
 from __future__ import annotations
 
@@ -140,27 +142,32 @@ def font_month_title() -> QFont:
     return f
 
 def font_header() -> QFont:
-    f = QFont("Segoe UI", 11, QFont.Bold)
+    """Used for section headers, weekday names, mini month headers."""
+    f = QFont("Segoe UI", 12, QFont.Bold)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 def font_body() -> QFont:
-    f = QFont("Inter", 10)
+    """Primary body text — event titles, buttons, labels."""
+    f = QFont("Inter", 12)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 def font_small() -> QFont:
-    f = QFont("Inter", 9)
+    """Secondary text — times, hints, chips."""
+    f = QFont("Inter", 11)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 def font_time_label() -> QFont:
-    f = QFont("Inter", 9)
+    """Time ruler labels."""
+    f = QFont("Inter", 11)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 def font_mini_day() -> QFont:
-    f = QFont("Inter", 8)
+    """Small day numbers in mini-month and year view."""
+    f = QFont("Inter", 10)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
@@ -181,37 +188,37 @@ class Spacing:
 
 class Metrics:
     # Month view
-    MONTH_ROW_HEIGHT       = 32       # weekday header row
-    MONTH_CELL_MIN_HEIGHT  = 90
-    MONTH_CELL_PAD         = 4
-    MONTH_DAY_NUMBER_H     = 22
-    MONTH_EVENT_CHIP_H     = 20
-    MONTH_EVENT_GAP        = 2
-    MONTH_OVERFLOW_H       = 18
-    MONTH_CORNER_RADIUS    = 6
+    MONTH_ROW_HEIGHT       = 38       # weekday header row (was 32)
+    MONTH_CELL_MIN_HEIGHT  = 120      # minimum cell height (was 90)
+    MONTH_CELL_PAD         = 6        # cell internal padding (was 4)
+    MONTH_DAY_NUMBER_H     = 26       # day number area height (was 22)
+    MONTH_EVENT_CHIP_H     = 24       # event chip height (was 20)
+    MONTH_EVENT_GAP        = 3        # gap between chips (was 2)
+    MONTH_OVERFLOW_H       = 22       # "+N more" row height (was 18)
+    MONTH_CORNER_RADIUS    = 10       # cell corner radius (was 6)
 
     # Time views (Day / Week)
-    TIME_RULER_WIDTH       = 52
-    HOUR_HEIGHT            = 60       # pixels per hour
+    TIME_RULER_WIDTH       = 60       # time label column width (was 52)
+    HOUR_HEIGHT            = 72       # pixels per hour (was 60)
     SNAP_MINUTES           = 15
-    MIN_EVENT_HEIGHT       = 22
-    EVENT_CORNER_RADIUS    = 5
-    EVENT_LEFT_BORDER      = 3
-    EVENT_PAD              = 4
-    ALL_DAY_ROW_HEIGHT     = 28
+    MIN_EVENT_HEIGHT       = 28       # min event card height (was 22)
+    EVENT_CORNER_RADIUS    = 8        # event card corner radius (was 5)
+    EVENT_LEFT_BORDER      = 4        # colored left bar width (was 3)
+    EVENT_PAD              = 6        # event internal padding (was 4)
+    ALL_DAY_ROW_HEIGHT     = 34       # all-day row height (was 28)
     ALL_DAY_MAX_ROWS       = 3
 
     # Year view
-    YEAR_CELL_SIZE         = 18
-    YEAR_MONTH_PAD         = 12
-    YEAR_HEADER_H          = 24
+    YEAR_CELL_SIZE         = 24       # day cell in year view (was 18)
+    YEAR_MONTH_PAD         = 16       # padding around mini-months (was 12)
+    YEAR_HEADER_H          = 32       # year header height (was 24)
 
     # Sidebar
-    SIDEBAR_WIDTH          = 220
-    SIDEBAR_MINI_MONTH_H   = 200
+    SIDEBAR_WIDTH          = 260      # wider sidebar (was 220)
+    SIDEBAR_MINI_MONTH_H   = 240      # taller mini month (was 200)
 
     # Toolbar
-    TOOLBAR_HEIGHT         = 48
+    TOOLBAR_HEIGHT         = 56       # taller toolbar (was 48)
 
     # Animation
     ANIM_DURATION_MS       = 250

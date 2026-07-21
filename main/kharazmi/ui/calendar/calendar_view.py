@@ -88,9 +88,10 @@ class _ViewButton(QPushButton):
                     background: {Gold.MUTED};
                     color: {Gold.BRIGHT};
                     border: 1px solid {Gold.DEEP};
-                    border-radius: 4px;
-                    padding: 5px 14px;
+                    border-radius: 6px;
+                    padding: 6px 16px;
                     font-weight: 600;
+                    font-size: 12px;
                 }}
             """)
         else:
@@ -99,8 +100,9 @@ class _ViewButton(QPushButton):
                     background: transparent;
                     color: {Text.SECONDARY};
                     border: 1px solid transparent;
-                    border-radius: 4px;
-                    padding: 5px 14px;
+                    border-radius: 6px;
+                    padding: 6px 16px;
+                    font-size: 12px;
                 }}
                 QPushButton:hover {{
                     background: {Surface.CARD};
@@ -135,8 +137,8 @@ class _CalendarToolbar(QWidget):
         self.setStyleSheet(f"background: {Surface.PANEL};")
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
-        layout.setSpacing(6)
+        layout.setContentsMargins(12, 6, 12, 6)
+        layout.setSpacing(8)
 
         # New event button
         new_btn = QPushButton("+ رویداد جدید")
@@ -147,9 +149,10 @@ class _CalendarToolbar(QWidget):
                 background: {Gold.PRIMARY};
                 color: {Text.ON_GOLD};
                 border: 1px solid {Gold.DEEP};
-                border-radius: 6px;
-                padding: 6px 16px;
+                border-radius: 8px;
+                padding: 8px 20px;
                 font-weight: 600;
+                font-size: 13px;
             }}
             QPushButton:hover {{
                 background: {Gold.BRIGHT};
@@ -170,8 +173,9 @@ class _CalendarToolbar(QWidget):
                 background: {Surface.CARD};
                 color: {Text.PRIMARY};
                 border: 1px solid {Border.NORMAL};
-                border-radius: 4px;
-                padding: 5px 14px;
+                border-radius: 6px;
+                padding: 7px 18px;
+                font-size: 13px;
             }}
             QPushButton:hover {{
                 border-color: {Gold.DEEP};
@@ -183,15 +187,15 @@ class _CalendarToolbar(QWidget):
 
         # Prev button
         prev_btn = QPushButton("‹")
-        prev_btn.setFixedSize(28, 28)
+        prev_btn.setFixedSize(34, 34)
         prev_btn.setCursor(Qt.PointingHandCursor)
         prev_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 color: {Text.SECONDARY};
                 border: 1px solid {Border.NORMAL};
-                border-radius: 4px;
-                font-size: 16px;
+                border-radius: 6px;
+                font-size: 18px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -204,15 +208,15 @@ class _CalendarToolbar(QWidget):
 
         # Next button
         next_btn = QPushButton("›")
-        next_btn.setFixedSize(28, 28)
+        next_btn.setFixedSize(34, 34)
         next_btn.setCursor(Qt.PointingHandCursor)
         next_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 color: {Text.SECONDARY};
                 border: 1px solid {Border.NORMAL};
-                border-radius: 4px;
-                font-size: 16px;
+                border-radius: 6px;
+                font-size: 18px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -225,7 +229,7 @@ class _CalendarToolbar(QWidget):
 
         # Title
         self._title_label = QLabel("")
-        self._title_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        self._title_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
         self._title_label.setStyleSheet(f"color: {Text.PRIMARY};")
         layout.addWidget(self._title_label)
         layout.addStretch()
