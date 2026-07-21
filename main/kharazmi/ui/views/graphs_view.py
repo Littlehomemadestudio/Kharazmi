@@ -838,7 +838,7 @@ class _GraphsLanding(QFrame):
                 w.deleteLater()
 
         # Add workflow cards from journal
-        entries = self.journal_store.entries
+        entries = self.journal_store.all()
         for entry in entries:
             if entry.route is None:
                 continue
