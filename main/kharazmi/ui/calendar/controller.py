@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QWidget
 
 from ...calendar.store import CalendarStore, CalendarEvent, EventAdded, EventUpdated, EventRemoved
 from ...calendar.event import Event
-from ...calendar.enums import CalendarViewKind, EventType
+from ...calendar.enums import CalendarViewKind, EventType, EventStatus
 from ...calendar.natural_language import parse as nl_parse
 from ...core.shamsi import ShamsiDate, days_in_month
 from .model import CalendarModel
@@ -207,15 +207,20 @@ class CalendarController(QObject):
 
     def toggle_event_completed(self, event_id: str) -> None:
         """Toggle the completed state of an event. Uses store.update_event
-        so the change is properly emitted and persisted."""
+        so the change is properly emitted and persisted.
+
+        When marking a non-task event complete, its event_type is changed
+        to TASK so it gets the checkbox rendering."""
         evt = self._model.store.get_event(event_id)
         if evt:
             new_completed = not evt.completed
-            self._model.store.update_event(
-                event_id,
-                completed=new_completed,
-                status=EventStatus.CONFIRMED if new_completed else EventStatus.CONFIRMED,
-            )
+            updates: dict = {
+                "completed": new_completed,
+            }
+            # When marking complete, promote to TASK type if not already
+            if new_completed and evt.event_type != EventType.TASK:
+                updates["event_type"] = EventType.TASK
+            self._model.store.update_event(event_id, **updates)
             # events_changed will be emitted via the store subscription
 
     # ── Store Events ──

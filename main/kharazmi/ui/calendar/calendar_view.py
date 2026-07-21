@@ -130,6 +130,7 @@ class _CalendarToolbar(QWidget):
     next_clicked = Signal()
     view_change_requested = Signal(str)
     new_event_clicked = Signal()
+    ai_schedule_clicked = Signal()
 
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
@@ -164,6 +165,34 @@ class _CalendarToolbar(QWidget):
         """)
         new_btn.clicked.connect(self.new_event_clicked.emit)
         layout.addWidget(new_btn)
+
+        # AI Schedule button
+        ai_btn = QPushButton("✦ AI Schedule")
+        ai_btn.setFont(font_body())
+        ai_btn.setCursor(Qt.PointingHandCursor)
+        ai_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #2A2520, stop:1 #1E1A16);
+                color: {Gold.BRIGHT};
+                border: 1px solid {Gold.DEEP};
+                border-radius: 8px;
+                padding: 8px 18px;
+                font-weight: 600;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #3A3025, stop:1 #2E2820);
+                border: 1px solid {Gold.PRIMARY};
+                color: {Palette.GOLD_BRIGHT};
+            }}
+            QPushButton:pressed {{
+                background: {Gold.MUTED};
+            }}
+        """)
+        ai_btn.clicked.connect(self.ai_schedule_clicked.emit)
+        layout.addWidget(ai_btn)
 
         # Today button
         today_btn = QPushButton("امروز")
@@ -388,6 +417,7 @@ class CalendarView(QWidget):
         self._toolbar.next_clicked.connect(self._ctrl.go_next)
         self._toolbar.new_event_clicked.connect(self._on_new_event)
         self._toolbar.view_change_requested.connect(self._ctrl.set_view_value)
+        self._toolbar.ai_schedule_clicked.connect(self._on_ai_schedule)
 
         # Controller → toolbar/sidebar refresh
         self._ctrl.view_changed.connect(lambda _: self._on_view_changed())
@@ -483,6 +513,15 @@ class CalendarView(QWidget):
         dlg = EventEditorDialog(None, self._store, self)
         if dlg.exec():
             self._on_events_changed()
+
+    def _on_ai_schedule(self) -> None:
+        """Open the AI Schedule dialog for interactive AI scheduling."""
+        if self._ai_service is None:
+            return
+        from ..dialogs import AIScheduleDialog
+        dlg = AIScheduleDialog(self._store, self._ai_service, self)
+        dlg.exec()
+        self._on_events_changed()
 
     def _on_create_event_at(self, start_dt) -> None:
         """User double-clicked to create an event at a time."""

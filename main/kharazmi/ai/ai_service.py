@@ -1213,6 +1213,228 @@ class AIService:
 
         self._run_async(_do, callback)
 
+    # ---- AI Calendar Scheduling (streaming, interactive) ----
+    def ai_schedule_streaming(
+        self, user_request: str, context: dict,
+        conversation_history: list[dict],
+        on_chunk: Callable[[str], None],
+        on_status: Callable[[str], None],
+        callback: Callable[[bool, Any], None],
+        request_id: Optional[str] = None,
+    ) -> None:
+        """
+        AI-powered calendar scheduling.
+
+        The AI has a conversation with the user to understand their scheduling
+        needs, then creates events directly in their calendar. It asks
+        clarifying questions when necessary.
+
+        context contains:
+          - current_date: str (Shamsi formatted)
+          - today_events: list[dict]
+          - upcoming_events: list[dict]
+          - working_hours: str (e.g. "08:00-22:00")
+          - calendars: list[dict] (available calendars with id, name, color)
+
+        conversation_history: previous messages in this scheduling session
+
+        The AI responds in one of two modes:
+          1. "ask" mode: needs more info → returns { "mode": "ask", "message": "..." }
+          2. "schedule" mode: ready to create events → returns {
+               "mode": "schedule",
+               "message": "...",
+               "events": [
+                 {
+                   "title": "...",
+                   "start_iso": "2025-01-15T09:00:00",
+                   "end_iso": "2025-01-15T10:00:00",
+                   "calendar_id": "cal-default",
+                   "description": "...",
+                   "all_day": false,
+                   "event_type": "task"
+                 },
+                 ...
+               ]
+             }
+
+        The callback receives the parsed response dict.
+        """
+        try:
+            on_status("Planning your schedule…")
+        except Exception:
+            pass
+
+        system_prompt = (
+            "You are Rask, an AI scheduling assistant. You help users organize their "
+            "calendar by having a natural conversation and then creating events.\n\n"
+            "PROCESS:\n"
+            "1. Understand what the user wants to schedule (study plan, work blocks, "
+            "meetings, habits, etc.)\n"
+            "2. Ask clarifying questions if needed (preferred times, durations, "
+            "breaks, priorities, conflicts)\n"
+            "3. When you have enough information, create a schedule by outputting "
+            "events in the specified JSON format.\n\n"
+            "RULES:\n"
+            "1. Be concise and practical. Don't over-explain.\n"
+            "2. If the user writes in Persian/Farsi, respond ENTIRELY in Persian "
+            "including event titles and descriptions.\n"
+            "3. Respect the user's existing events — don't schedule over them.\n"
+            "4. Include reasonable breaks between blocks.\n"
+            "5. Start from the current date/time when scheduling.\n"
+            "6. Use 24-hour format for times.\n"
+            "7. All dates must be in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).\n"
+            "8. The calendar uses Shamsi/Jalali dates internally but events are "
+            "stored in Gregorian datetime — always use Gregorian ISO dates in output.\n\n"
+            "OUTPUT FORMAT — respond with STRICT JSON only (no markdown):\n"
+            "If you need more information:\n"
+            '{\n'
+            '  "mode": "ask",\n'
+            '  "message": "Your clarifying question here..."\n'
+            '}\n\n'
+            "If you're ready to schedule:\n"
+            '{\n'
+            '  "mode": "schedule",\n'
+            '  "message": "Brief summary of what you\'re scheduling...",\n'
+            '  "events": [\n'
+            '    {\n'
+            '      "title": "Event title",\n'
+            '      "start_iso": "2025-01-15T09:00:00",\n'
+            '      "end_iso": "2025-01-15T10:30:00",\n'
+            '      "calendar_id": "cal-default",\n'
+            '      "description": "Optional description",\n'
+            '      "all_day": false,\n'
+            '      "event_type": "task"\n'
+            '    }\n'
+            '  ]\n'
+            '}\n'
+        )
+
+        # Build context string
+        ctx_parts = []
+        current_date = context.get("current_date", "")
+        if current_date:
+            ctx_parts.append(f"Current date (Shamsi): {current_date}")
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ctx_parts.append(f"Current UTC time: {now_iso}")
+
+        # Local time
+        import time as _time
+        local_now = datetime.now()
+        ctx_parts.append(f"Local time: {local_now.strftime('%Y-%m-%d %H:%M (%A)')}")
+
+        working_hours = context.get("working_hours", "08:00-22:00")
+        ctx_parts.append(f"Preferred working hours: {working_hours}")
+
+        today_events = context.get("today_events", [])
+        if today_events:
+            ctx_parts.append("\nTODAY'S EVENTS:")
+            for ev in today_events:
+                ctx_parts.append(
+                    f"  • {ev.get('title', '?')}: "
+                    f"{ev.get('start_iso', ev.get('start', '?'))} → "
+                    f"{ev.get('end_iso', ev.get('end', '?'))}"
+                )
+        else:
+            ctx_parts.append("\nTODAY'S EVENTS: (none)")
+
+        upcoming_events = context.get("upcoming_events", [])
+        if upcoming_events:
+            ctx_parts.append("\nUPCOMING EVENTS (next 7 days):")
+            for ev in upcoming_events:
+                ctx_parts.append(
+                    f"  • {ev.get('title', '?')}: "
+                    f"{ev.get('start_iso', ev.get('start', '?'))} → "
+                    f"{ev.get('end_iso', ev.get('end', '?'))}"
+                )
+        else:
+            ctx_parts.append("\nUPCOMING EVENTS (next 7 days): (none)")
+
+        calendars = context.get("calendars", [])
+        if calendars:
+            ctx_parts.append("\nAVAILABLE CALENDARS:")
+            for cal in calendars:
+                ctx_parts.append(f"  • {cal.get('id', '?')}: {cal.get('name', '?')} ({cal.get('color', '#D4AF37')})")
+
+        context_str = "\n".join(ctx_parts)
+
+        # Build messages
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.append({"role": "user", "content": f"Calendar context:\n{context_str}"})
+
+        # Add conversation history
+        for msg in conversation_history:
+            messages.append(msg)
+
+        # Add the current user request
+        messages.append({"role": "user", "content": user_request})
+
+        def _do():
+            payload = {
+                "model": self.settings.get("model", DEFAULT_MODEL),
+                "messages": messages,
+                "thinking": {"type": "disabled"},
+                "temperature": 0.5,
+                "max_tokens": self.settings.get("max_tokens", 8192),
+                "stream": True,
+            }
+            body = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                self.settings.get("base_url", API_URL),
+                data=body,
+                headers={
+                    "Authorization": f"Bearer {self.settings.get('api_key', '')}",
+                    "Content-Type": "application/json",
+                    "Accept": "text/event-stream",
+                },
+                method="POST",
+            )
+            full_text = ""
+            try:
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    for raw_line in resp:
+                        line = raw_line.decode("utf-8", errors="replace").strip()
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        if request_id and self._cancel_flags.get(request_id):
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            full_text += content
+                            try:
+                                on_chunk(content)
+                            except Exception:
+                                pass
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+                raise RuntimeError(f"HTTP {e.code}: {error_body}") from e
+            except urllib.error.URLError as e:
+                raise RuntimeError(f"Network error: {e.reason}") from e
+
+            # Parse the response
+            full_text = _strip_markdown_fences(full_text)
+            try:
+                parsed = json.loads(full_text)
+            except json.JSONDecodeError:
+                # If AI didn't return valid JSON, treat it as an "ask" response
+                parsed = {
+                    "mode": "ask",
+                    "message": full_text,
+                }
+            return parsed
+
+        self._run_async(_do, callback)
+
     # ---- Free-form chat (streaming) ----
     def chat_streaming(
         self, messages: list[dict],

@@ -805,6 +805,7 @@ class DayView(QWidget):
                 w.resize_started.connect(self._on_event_resize_started)
                 w.resize_moved.connect(self._on_event_resize_moved)
                 w.resize_ended.connect(self._on_event_resize_ended)
+                w.toggle_complete_requested.connect(self._controller.toggle_event_completed)
                 self._event_widgets[evt.id] = w
                 w.show()
 

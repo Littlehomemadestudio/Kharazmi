@@ -148,15 +148,15 @@ class EventEditorDialog(QDialog):
                 self._calendar_combo.addItem(cal.name, cal.id)
         # If editing an event on a readonly calendar, add it to the combo
         # so the calendar_id doesn't drift to a different calendar on save
-        if event is not None and event.calendar_id:
-            self._original_calendar_id = event.calendar_id
+        if self.evt is not None and self.evt.calendar_id:
+            self._original_calendar_id = self.evt.calendar_id
             found = False
             for i in range(self._calendar_combo.count()):
-                if self._calendar_combo.itemData(i) == event.calendar_id:
+                if self._calendar_combo.itemData(i) == self.evt.calendar_id:
                     found = True
                     break
             if not found:
-                cal = self.store.get_calendar(event.calendar_id)
+                cal = self.store.get_calendar(self.evt.calendar_id)
                 if cal:
                     self._calendar_combo.addItem(cal.name + " (read-only)", cal.id)
         form.addRow("Calendar", self._calendar_combo)
@@ -501,6 +501,12 @@ class EventEditorDialog(QDialog):
         if cal_id is None:
             QMessageBox.warning(self, "Required", "Calendar is required.")
             return
+
+        # Prevent calendar_id drift if the original calendar isn't in the combo
+        if self._original_calendar_id and cal_id != self._original_calendar_id:
+            # Check if the original calendar still exists
+            if self.store.get_calendar(self._original_calendar_id):
+                cal_id = self._original_calendar_id
 
         start = self._start_dt.dateTime().toPython()
         end = self._end_dt.dateTime().toPython()

@@ -152,7 +152,7 @@ class EventRenderer:
         y = content_top
 
         # ── Completion checkbox ──
-        if options.show_completion and event.is_task:
+        if options.show_completion:
             check_size = 14 if not options.compact else 12
             check_rect = QRectF(content_left, y, check_size, check_size)
             painter.setPen(QPen(qcolor(Border.STRONG), 1))
@@ -288,8 +288,8 @@ class EventRenderer:
         if text_width > 0:
             fm = QFontMetrics(font)
             title = event.title
-            if event.is_task:
-                title = ("☑ " if event.completed else "☐ ") + title
+            # Show checkbox prefix for all events (not just tasks)
+            title = ("☑ " if event.completed else "☐ ") + title
             elided = fm.elidedText(title, Qt.ElideRight, int(text_width))
             painter.drawText(
                 QRectF(text_left, rect.top(), text_width, rect.height()),

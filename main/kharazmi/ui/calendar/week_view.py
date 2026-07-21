@@ -259,6 +259,7 @@ class WeekView(QWidget):
                 w.resize_started.connect(self._on_evt_resize_started)
                 w.resize_moved.connect(self._on_evt_resize_moved)
                 w.resize_ended.connect(self._on_evt_resize_ended)
+                w.toggle_complete_requested.connect(self._ctrl.toggle_event_completed)
 
                 w.show()
 

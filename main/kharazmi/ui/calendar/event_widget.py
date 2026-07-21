@@ -56,6 +56,7 @@ class EventWidget(QWidget):
     resize_started = Signal(str)             # event_id
     resize_moved = Signal(str, int)          # event_id, delta_minutes
     resize_ended = Signal(str)               # event_id
+    toggle_complete_requested = Signal(str)  # event_id
 
     # ── Construction ──
 
@@ -341,13 +342,12 @@ class EventWidget(QWidget):
         menu.addSeparator()
         action_delete = menu.addAction("🗑  Delete")
 
-        # Toggle complete — label depends on current state
-        if self._event.is_task:
-            menu.addSeparator()
-            if self._event.completed:
-                action_toggle = menu.addAction("☐  Mark Incomplete")
-            else:
-                action_toggle = menu.addAction("☑  Mark Complete")
+        # Toggle complete — always available for any event type
+        menu.addSeparator()
+        if self._event.completed:
+            action_toggle = menu.addAction("☐  Mark Incomplete")
+        else:
+            action_toggle = menu.addAction("☑  Mark Complete")
 
         # Change color submenu
         menu.addSeparator()
@@ -369,9 +369,8 @@ class EventWidget(QWidget):
             self._context_action = "delete"
             self.clicked.emit(self._event.id)
 
-        elif self._event.is_task and chosen == action_toggle:
-            self._context_action = "toggle_complete"
-            self.clicked.emit(self._event.id)
+        elif chosen == action_toggle:
+            self.toggle_complete_requested.emit(self._event.id)
 
         elif chosen.data() is not None:
             # Color change

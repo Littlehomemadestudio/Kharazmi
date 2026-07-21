@@ -777,12 +777,11 @@ class MonthView(QWidget):
                 menu.addSeparator()
                 action_delete = menu.addAction("🗑  Delete")
 
-                if evt.is_task:
-                    menu.addSeparator()
-                    if evt.completed:
-                        action_toggle = menu.addAction("☐  Mark Incomplete")
-                    else:
-                        action_toggle = menu.addAction("☑  Mark Complete")
+                menu.addSeparator()
+                if evt.completed:
+                    action_toggle = menu.addAction("☐  Mark Incomplete")
+                else:
+                    action_toggle = menu.addAction("☑  Mark Complete")
 
                 chosen = menu.exec(event.globalPos())
                 if chosen is None:
@@ -792,7 +791,7 @@ class MonthView(QWidget):
                     self.event_activated.emit(event_id)
                 elif chosen == action_delete:
                     self._controller.delete_event(event_id)
-                elif evt.is_task and chosen == action_toggle:
+                elif chosen == action_toggle:
                     self._controller.toggle_event_completed(event_id)
                 else:
                     self.event_context_menu.emit(event_id, event.globalPos())
