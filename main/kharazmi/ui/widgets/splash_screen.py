@@ -1,5 +1,6 @@
 """
-RaskSplashScreen — Animated branded splash screen with gold particles.
+RaskSplashScreen — Animated branded splash screen with gold particles
+and a live compilation-log console.
 
 Shows when the app launches:
   - Dark background with animated gold particle field
@@ -7,6 +8,7 @@ Shows when the app launches:
   - "Kharazmi" subtitle with fade-in
   - Loading progress bar with gold shimmer
   - Status text ("Loading calendar...", "Initializing AI...", etc.)
+  - Live log console showing the last 4 initialization messages
   - Smooth fade-out transition when loading completes
 
 This creates a powerful first impression — referees see a premium
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import math
 import random
+import time
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRectF, QPointF
@@ -47,16 +50,19 @@ class _SplashParticle:
 
 class RaskSplashScreen(QWidget):
     """
-    Full-screen animated splash screen.
+    Full-screen animated splash screen with a live log console.
 
     Usage:
         splash = RaskSplashScreen()
         splash.show()
         splash.set_progress(30, "Loading calendar...")
+        splash.add_log("[OK] Persian calendar engine initialized")
         # ... later ...
         splash.set_progress(100, "Ready!")
         splash.finish()  # fades out and closes
     """
+
+    _MAX_LOG_LINES = 4
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -66,7 +72,7 @@ class RaskSplashScreen(QWidget):
             Qt.SplashScreen
         )
         self.setAttribute(Qt.WA_TranslucentBackground, False)
-        self.setFixedSize(680, 420)
+        self.setFixedSize(680, 500)
 
         self._progress = 0
         self._status_text = "Initializing..."
@@ -74,6 +80,11 @@ class RaskSplashScreen(QWidget):
         self._tick = 0
         self._fade_opacity = 1.0
         self._finishing = False
+
+        # Log console state
+        self._log_lines: list[str] = []
+        self._log_timestamps: list[float] = []  # monotonic seconds when added
+        self._log_start = time.monotonic()
 
         # Spawn initial particles
         for _ in range(80):
@@ -88,11 +99,28 @@ class RaskSplashScreen(QWidget):
         self._timer.timeout.connect(self._on_tick)
         self._timer.start()
 
+    # ── Public API ──
+
     def set_progress(self, value: int, status: str = "") -> None:
         """Update the progress bar (0-100) and optional status text."""
         self._progress = max(0, min(100, value))
         if status:
             self._status_text = status
+        self.update()
+
+    def add_log(self, line: str) -> None:
+        """
+        Push a log line into the console area.
+
+        Keeps at most `_MAX_LOG_LINES` lines.  Each line is timestamped
+        internally so older lines fade to a dimmer gold.
+        """
+        self._log_lines.append(line)
+        self._log_timestamps.append(time.monotonic())
+        # Trim to max
+        while len(self._log_lines) > self._MAX_LOG_LINES:
+            self._log_lines.pop(0)
+            self._log_timestamps.pop(0)
         self.update()
 
     def finish(self) -> None:
@@ -105,6 +133,8 @@ class RaskSplashScreen(QWidget):
         self._fade_anim.setEasingCurve(QEasingCurve.OutCubic)
         self._fade_anim.finished.connect(self.close)
         self._fade_anim.start()
+
+    # ── Tick ──
 
     def _on_tick(self) -> None:
         self._tick += 1
@@ -140,7 +170,7 @@ class RaskSplashScreen(QWidget):
         p.fillRect(self.rect(), QBrush(bg_grad))
 
         # ── Subtle radial glow behind logo ──
-        center_glow = QRadialGradient(QPointF(w / 2, h / 2 - 20), 200)
+        center_glow = QRadialGradient(QPointF(w / 2, h / 2 - 60), 200)
         center_glow.setColorAt(0, QColor(212, 175, 55, 25))
         center_glow.setColorAt(1, QColor(212, 175, 55, 0))
         p.setPen(Qt.NoPen)
@@ -177,14 +207,14 @@ class RaskSplashScreen(QWidget):
         p.setFont(logo_font)
 
         # Gold gradient on text
-        text_grad = QLinearGradient(0, h / 2 - 80, 0, h / 2 - 10)
+        text_grad = QLinearGradient(0, h / 2 - 100, 0, h / 2 - 30)
         text_grad.setColorAt(0, QColor(245, 200, 66))
         text_grad.setColorAt(0.5, QColor(212, 175, 55))
         text_grad.setColorAt(1, QColor(140, 112, 18))
         p.setPen(QPen(QBrush(text_grad), 1))
         p.setBrush(Qt.NoBrush)
 
-        logo_rect = QRectF(0, h / 2 - 80, w, 80)
+        logo_rect = QRectF(0, h / 2 - 100, w, 80)
         p.drawText(logo_rect, Qt.AlignCenter, "RASK!")
 
         # ── Subtitle: KHARAZMI ──
@@ -194,11 +224,11 @@ class RaskSplashScreen(QWidget):
         # Fade-in based on tick
         sub_alpha = min(255, int(self._tick * 3))
         p.setPen(QPen(QColor(168, 162, 148, sub_alpha)))
-        sub_rect = QRectF(0, h / 2 + 5, w, 30)
+        sub_rect = QRectF(0, h / 2 - 15, w, 30)
         p.drawText(sub_rect, Qt.AlignCenter, "K H A R A Z M I")
 
         # ── Progress bar ──
-        bar_y = h - 70
+        bar_y = h - 130
         bar_h = 6
         bar_left = 80
         bar_right = w - 80
@@ -240,6 +270,70 @@ class RaskSplashScreen(QWidget):
         p.setPen(QPen(QColor(168, 162, 148, 180)))
         p.drawText(QRectF(bar_left, bar_y + 16, bar_w, 20),
                     Qt.AlignCenter, self._status_text)
+
+        # ── Log console area ──
+        console_top = bar_y + 44
+        console_left = 80
+        console_right = w - 80
+        console_w = console_right - console_left
+        console_h = 72
+
+        # Console background — subtle dark panel
+        console_bg = QColor(6, 6, 8, 200)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(console_bg))
+        console_rect = QRectF(console_left, console_top, console_w, console_h)
+        p.drawRoundedRect(console_rect, 6, 6)
+
+        # Subtle border
+        p.setPen(QPen(QColor(40, 38, 28, 100), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(console_rect, 6, 6)
+
+        # Draw log lines
+        if self._log_lines:
+            log_font = QFont("JetBrains Mono", 9)
+            if not log_font.exactMatch():
+                log_font = QFont("Consolas", 9)
+                if not log_font.exactMatch():
+                    log_font = QFont("DejaVu Sans Mono", 9)
+            p.setFont(log_font)
+
+            now = time.monotonic()
+            line_height = 16
+            y_start = console_top + 14
+
+            for i, (line, ts) in enumerate(zip(self._log_lines, self._log_timestamps)):
+                age = now - ts  # seconds since this line was added
+                # Fade: newest line = bright gold, older lines fade toward dim
+                # Brightness from 255 (newest) to 90 (oldest visible)
+                if len(self._log_lines) <= 1:
+                    brightness = 1.0
+                else:
+                    brightness = 0.35 + 0.65 * (i / (len(self._log_lines) - 1))
+
+                # Also fade lines that are very old (>3s)
+                if age > 3.0:
+                    brightness *= max(0.3, 1.0 - (age - 3.0) * 0.1)
+
+                # Gold color with brightness
+                alpha = int(255 * brightness)
+                line_color = QColor(212, 175, 55, alpha)
+                p.setPen(QPen(line_color))
+
+                # Prefix with animated checkmark
+                prefix = "✓ " if "[OK]" in line else "◉ "
+
+                # Compute ms timestamp
+                ms_offset = int((ts - self._log_start) * 1000)
+                timestamp_str = f"{ms_offset:>5d}ms "
+
+                y_pos = y_start + i * line_height
+                if y_pos + line_height > console_top + console_h - 4:
+                    break  # Don't draw past console area
+
+                p.drawText(QPointF(console_left + 12, y_pos),
+                           timestamp_str + prefix + line)
 
         # ── Version ──
         ver_font = QFont("Inter", 9)

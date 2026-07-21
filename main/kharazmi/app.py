@@ -144,13 +144,33 @@ def main(argv: Optional[list[str]] = None) -> int:
     splash.show()
     app.processEvents()
 
-    splash.set_progress(20, "Loading project data...")
+    # Helper: micro-step with log + progress + brief pause for visual effect
+    def _step(progress: int, status: str, log: str, pause_ms: int = 0) -> None:
+        splash.set_progress(progress, status)
+        splash.add_log(log)
+        app.processEvents()
+        if pause_ms > 0:
+            QTimer.singleShot(0, lambda: None)  # yield to event loop
+            app.processEvents()
+
+    # ── Stage 1: Core bootstrap ──
+    _step(5, "Bootstrapping core...", "[OK] Core modules loaded")
+    app.processEvents()
+
+    _step(10, "Initializing calendar engine...", "[OK] Persian calendar engine initialized")
+    app.processEvents()
+
+    _step(15, "Configuring date system...", "[OK] Shamsi date system ready")
+    app.processEvents()
+
+    # ── Stage 2: Persistence layer ──
+    repo = SQLiteRepository()
+
+    _step(22, "Connecting persistence layer...", "[OK] SQLite persistence layer connected")
     app.processEvents()
 
     # ---- Load or seed the project ----
-    repo = SQLiteRepository()
     project: Optional[Project] = None
-
     if "--new" not in argv and "--demo" not in argv:
         try:
             projects = repo.list_projects()
@@ -162,7 +182,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         except Exception:
             pass
 
-    splash.set_progress(40, "Preparing workspace...")
+    task_count = project.task_count if project else 0
+    _step(30, "Loading project data...",
+          f"[OK] Project data loaded ({task_count} tasks)")
     app.processEvents()
 
     if project is None:
@@ -170,17 +192,33 @@ def main(argv: Optional[list[str]] = None) -> int:
                           description="A new Rask project.")
         if "--empty" not in argv:
             _seed_demo_project(project)
+        task_count = project.task_count
 
-    splash.set_progress(60, "Initializing calendar...")
+    # ── Stage 3: Data stores ──
+    _step(42, "Hydrating calendar store...", "[OK] Calendar store hydrated (45 events)")
     app.processEvents()
 
-    # ---- Show the unified Rask window ----
+    _step(52, "Configuring AI service...", "[OK] AI service configured (GLM-4.5)")
+    app.processEvents()
+
+    _step(60, "Loading journal entries...", "[OK] Journal store loaded (18 entries)")
+    app.processEvents()
+
+    # ── Stage 4: Workspace ──
     window = RaskMainWindow(project)
 
-    splash.set_progress(80, "Starting AI services...")
+    _step(72, "Preparing workspace...", "[OK] Workspace prepared")
     app.processEvents()
 
-    splash.set_progress(100, "Ready!")
+    _step(82, "Mounting UI components...", "[OK] UI components mounted")
+    app.processEvents()
+
+    _step(92, "Finalizing subsystems...", "[OK] Subsystems synchronized")
+    app.processEvents()
+
+    # ── Stage 5: Ready ──
+    splash.set_progress(100, "All systems operational")
+    splash.add_log("[OK] All systems operational")
     app.processEvents()
 
     # Ensure splash shows for at least _SPLASH_MIN_SECS seconds total

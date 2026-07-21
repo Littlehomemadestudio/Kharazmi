@@ -2,10 +2,15 @@
 PlannerLanding — the first screen users see when opening the AI Planner.
 
 A sleek, centered landing page inspired by modern AI assistants:
-  - Bold headline at center
+  - Bold headline at center with animated gold underline
   - Subtitle tagline
   - Large centered text input with send button
-  - Function category tabs at the bottom
+  - Keyboard shortcut hints
+  - Suggestion chips (6 total)
+  - Power badges row (capability pills)
+  - Recent activity section (last 2 journal entries)
+  - Release notes / changelog card
+  - Category tabs at the bottom
 
 When the user types a goal and submits, the `goalSubmitted` signal fires,
 and the parent view transitions to the workspace (canvas + chat).
@@ -14,8 +19,11 @@ Uses the Kharazmi gold-on-dark theme throughout.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QFont, QColor, QPainter, QPen, QBrush
+import math
+from typing import Optional, TYPE_CHECKING
+
+from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve, QRectF, QPointF
+from PySide6.QtGui import QFont, QColor, QPainter, QPen, QBrush, QLinearGradient
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFrame, QSizePolicy, QGraphicsOpacityEffect,
@@ -92,11 +100,19 @@ class PlannerLanding(QWidget):
 
     goalSubmitted = Signal(str)  # Emits the goal text
 
-    def __init__(self, parent: QWidget = None) -> None:
+    def __init__(self, journal_store=None, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._selected_category = "plan"
         self._particles: list[dict] = []
         self._tick = 0
+        self._journal_store = journal_store
+
+        # Brand pulse animation state
+        self._brand_opacity = 1.0
+        self._brand_pulse_dir = -1  # -1 = fading down, +1 = fading up
+
+        # Animated gold underline state
+        self._underline_width = 0.0  # 0..1 fraction expanding from center
 
         # Initialize particles
         import random
@@ -114,13 +130,14 @@ class PlannerLanding(QWidget):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
         self._build_ui()
 
-        # Particle animation timer
+        # Particle + animation timer
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._advance_particles)
         self._timer.start(33)  # ~30fps
 
     def _advance_particles(self) -> None:
         self._tick += 1
+
         for p in self._particles:
             p["y"] -= p["speed"]
             p["x"] += p["drift"]
@@ -129,10 +146,24 @@ class PlannerLanding(QWidget):
                 p["x"] += 0.1
                 if p["x"] > 1:
                     p["x"] -= 1
+
+        # Brand label pulse animation
+        self._brand_opacity += self._brand_pulse_dir * 0.012
+        if self._brand_opacity <= 0.55:
+            self._brand_opacity = 0.55
+            self._brand_pulse_dir = 1
+        elif self._brand_opacity >= 1.0:
+            self._brand_opacity = 1.0
+            self._brand_pulse_dir = -1
+
+        # Gold underline expanding from center
+        if self._underline_width < 1.0:
+            self._underline_width = min(1.0, self._underline_width + 0.025)
+
         self.update()
 
     def paintEvent(self, event) -> None:
-        """Draw floating gold particles behind all content."""
+        """Draw floating gold particles + animated gold underline behind all content."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
         w, h = self.width(), self.height()
@@ -145,6 +176,29 @@ class PlannerLanding(QWidget):
                 int(p["x"] * w), int(p["y"] * h),
                 int(p["size"] * 2), int(p["size"] * 2),
             )
+
+        # ── Animated gold underline below headline ──
+        if self._underline_width > 0 and hasattr(self, '_headline_geom'):
+            hx, hy, hw = self._headline_geom
+            line_w = hw * self._underline_width
+            line_x = hx + (hw - line_w) / 2
+            line_y = hy + 4  # just below headline bottom
+            grad = QLinearGradient(line_x, line_y, line_x + line_w, line_y)
+            grad.setColorAt(0.0, QColor(Palette.GOLD_PRIMARY, 0))
+            grad.setColorAt(0.15, QColor(Palette.GOLD_BRIGHT, 200))
+            grad.setColorAt(0.5, QColor(Palette.GOLD_BRIGHT, 255))
+            grad.setColorAt(0.85, QColor(Palette.GOLD_BRIGHT, 200))
+            grad.setColorAt(1.0, QColor(Palette.GOLD_PRIMARY, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(grad))
+            painter.drawRoundedRect(QRectF(line_x, line_y, line_w, 2), 1, 1)
+
+        # ── Brand label pulse opacity ──
+        if hasattr(self, '_brand_label'):
+            op = QGraphicsOpacityEffect(self._brand_label)
+            op.setOpacity(self._brand_opacity)
+            self._brand_label.setGraphicsEffect(op)
+
         painter.end()
 
     def _build_ui(self) -> None:
@@ -152,25 +206,25 @@ class PlannerLanding(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # Central content container — transparent so particles show through
+        # Scrollable content area
         content = QWidget(self)
         content.setStyleSheet("background-color: transparent;")
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(60, 0, 60, 40)
+        layout.setContentsMargins(60, 0, 60, 30)
         layout.setSpacing(0)
         layout.addStretch(3)
 
-        # ---- Logo / brand ----
+        # ---- Logo / brand (with pulse animation) ----
         brand_row = QHBoxLayout()
         brand_row.addStretch()
-        brand_label = QLabel("✦ KHARAZMI")
-        brand_label.setStyleSheet(f"""
+        self._brand_label = QLabel("✦ KHARAZMI")
+        self._brand_label.setStyleSheet(f"""
             color: {Palette.GOLD_BRIGHT};
             font-size: 14px;
             font-weight: bold;
             letter-spacing: 6px;
         """)
-        brand_row.addWidget(brand_label)
+        brand_row.addWidget(self._brand_label)
         brand_row.addStretch()
         layout.addLayout(brand_row)
 
@@ -186,6 +240,8 @@ class PlannerLanding(QWidget):
             letter-spacing: -0.5px;
         """)
         layout.addWidget(headline)
+        # Store geometry for animated underline painting
+        self._headline_geom = (0, 0, 1)  # will be updated in resizeEvent
 
         layout.addSpacing(12)
 
@@ -290,9 +346,23 @@ class PlannerLanding(QWidget):
         input_row.addStretch()
         layout.addLayout(input_row)
 
-        layout.addSpacing(24)
+        # ---- Keyboard shortcut hints ----
+        shortcuts_row = QHBoxLayout()
+        shortcuts_row.addStretch()
+        ctrl_hint = QLabel("Ctrl+Enter برای شروع  ·  Esc برای بازگشت")
+        ctrl_hint.setAlignment(Qt.AlignCenter)
+        ctrl_hint.setStyleSheet(f"""
+            color: {Palette.TEXT_TERTIARY};
+            font-size: 11px;
+            background: transparent;
+        """)
+        shortcuts_row.addWidget(ctrl_hint)
+        shortcuts_row.addStretch()
+        layout.addLayout(shortcuts_row)
 
-        # ---- Suggestion chips ----
+        layout.addSpacing(20)
+
+        # ---- Suggestion chips (6 total) ----
         chips_row = QHBoxLayout()
         chips_row.setSpacing(10)
         chips_row.addStretch()
@@ -302,6 +372,8 @@ class PlannerLanding(QWidget):
             "یادگیری زبان جدید",
             "راه‌اندازی استارتاپ",
             "آمادگی کنکور",
+            "پخت کیک",
+            "تمرین روزانه",
         ]
         self._suggestion_chips: list[QPushButton] = []
         for text in suggestions:
@@ -333,7 +405,178 @@ class PlannerLanding(QWidget):
         chips_row.addStretch()
         layout.addLayout(chips_row)
 
-        layout.addSpacing(30)
+        layout.addSpacing(20)
+
+        # ---- Power badges row ----
+        badges_row = QHBoxLayout()
+        badges_row.setSpacing(10)
+        badges_row.addStretch()
+
+        badges = [
+            "GLM-4.5 Flash",
+            "شبیه‌سازی مونت‌کارلو",
+            "تحلیل مسیر بحرانی",
+            "تقویم شمسی",
+        ]
+        for badge_text in badges:
+            badge = QLabel(badge_text)
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setStyleSheet(f"""
+                color: {Palette.GOLD_PRIMARY};
+                font-size: 11px;
+                font-weight: bold;
+                background-color: {Palette.BG_TERTIARY};
+                border: 1px solid {Palette.GOLD_DEEP};
+                border-radius: 12px;
+                padding: 4px 14px;
+            """)
+            badges_row.addWidget(badge)
+
+        badges_row.addStretch()
+        layout.addLayout(badges_row)
+
+        layout.addSpacing(24)
+
+        # ---- Recent activity section ----
+        recent_title = QLabel("اخیراً")
+        recent_title.setAlignment(Qt.AlignCenter)
+        recent_title.setStyleSheet(f"""
+            color: {Palette.GOLD_PRIMARY};
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            background: transparent;
+        """)
+        layout.addWidget(recent_title)
+
+        layout.addSpacing(6)
+
+        # Build recent activity cards from journal store
+        recent_entries = self._get_recent_entries()
+        if recent_entries:
+            for entry_text in recent_entries:
+                card = QFrame()
+                card.setStyleSheet(f"""
+                    QFrame {{
+                        background-color: {Palette.BG_TERTIARY};
+                        border: 1px solid {Palette.BORDER_SUBTLE};
+                        border-radius: 8px;
+                        padding: 8px 16px;
+                    }}
+                """)
+                card_layout = QHBoxLayout(card)
+                card_layout.setContentsMargins(12, 6, 12, 6)
+                card_layout.setSpacing(8)
+
+                dot = QLabel("◉")
+                dot.setStyleSheet(f"""
+                    color: {Palette.GOLD_PRIMARY};
+                    font-size: 10px;
+                    background: transparent;
+                    border: none;
+                """)
+                card_layout.addWidget(dot)
+
+                goal_label = QLabel(entry_text)
+                goal_label.setWordWrap(True)
+                goal_label.setStyleSheet(f"""
+                    color: {Palette.TEXT_SECONDARY};
+                    font-size: 12px;
+                    background: transparent;
+                    border: none;
+                """)
+                card_layout.addWidget(goal_label, stretch=1)
+
+                card.setMaximumWidth(500)
+                card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+                center_row = QHBoxLayout()
+                center_row.addStretch()
+                center_row.addWidget(card)
+                center_row.addStretch()
+                layout.addLayout(center_row)
+
+                layout.addSpacing(4)
+        else:
+            empty_label = QLabel("هنوز فعالیتی ندارید")
+            empty_label.setAlignment(Qt.AlignCenter)
+            empty_label.setStyleSheet(f"""
+                color: {Palette.TEXT_TERTIARY};
+                font-size: 12px;
+                font-style: italic;
+                background: transparent;
+            """)
+            layout.addWidget(empty_label)
+
+        layout.addSpacing(20)
+
+        # ---- Release notes / changelog card ----
+        release_card = QFrame()
+        release_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {Palette.BG_SECONDARY};
+                border: none;
+                border-left: 3px solid {Palette.GOLD_PRIMARY};
+                border-radius: 0px;
+                padding: 16px 20px;
+            }}
+        """)
+        release_layout = QVBoxLayout(release_card)
+        release_layout.setContentsMargins(20, 12, 12, 12)
+        release_layout.setSpacing(8)
+
+        release_title = QLabel("✦ ویژگی‌های جدید")
+        release_title.setStyleSheet(f"""
+            color: {Palette.GOLD_BRIGHT};
+            font-size: 14px;
+            font-weight: bold;
+            background: transparent;
+            border: none;
+        """)
+        release_layout.addWidget(release_title)
+
+        features = [
+            "برنامه‌ریزی هوشمند با هوش مصنوعی GLM-4.5",
+            "تقویم شمسی با رویدادهای تکرارشونده",
+            "شبیه‌سازی مونت‌کارلو برای تحلیل مسیرها",
+            "خروجی CSV، Excel و HTML از مسیرها",
+        ]
+        for feat in features:
+            feat_row = QHBoxLayout()
+            feat_row.setSpacing(8)
+
+            bullet = QLabel("◆")
+            bullet.setFixedWidth(14)
+            bullet.setStyleSheet(f"""
+                color: {Palette.GOLD_PRIMARY};
+                font-size: 8px;
+                background: transparent;
+                border: none;
+            """)
+            feat_row.addWidget(bullet)
+
+            feat_label = QLabel(feat)
+            feat_label.setWordWrap(True)
+            feat_label.setStyleSheet(f"""
+                color: {Palette.TEXT_SECONDARY};
+                font-size: 12px;
+                background: transparent;
+                border: none;
+            """)
+            feat_row.addWidget(feat_label, stretch=1)
+
+            release_layout.addLayout(feat_row)
+
+        release_card.setMaximumWidth(600)
+        release_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        release_center = QHBoxLayout()
+        release_center.addStretch()
+        release_center.addWidget(release_card)
+        release_center.addStretch()
+        layout.addLayout(release_center)
+
+        layout.addSpacing(20)
 
         # ---- Category tabs ----
         tabs_row = QHBoxLayout()
@@ -374,6 +617,26 @@ class PlannerLanding(QWidget):
 
         # IMPORTANT: Add content to the outer layout so it actually shows!
         outer.addWidget(content, stretch=1)
+
+    def _get_recent_entries(self) -> list[str]:
+        """Get the last 2 journal entry goal texts, or empty list."""
+        if self._journal_store is None:
+            return []
+        try:
+            entries = self._journal_store.list_entries()
+            if entries:
+                return [e.get("goal", e.get("title", ""))[:80] for e in entries[:2]]
+        except Exception:
+            pass
+        return []
+
+    def resizeEvent(self, event) -> None:
+        """Update headline geometry for animated underline."""
+        super().resizeEvent(event)
+        # Find the headline widget to position the underline
+        # We approximate: headline is centered, about 70% of content width
+        content_w = self.width() - 120  # margins
+        self._headline_geom = (60, 0, content_w)
 
     def _on_tab_clicked(self, key: str) -> None:
         self._selected_category = key
