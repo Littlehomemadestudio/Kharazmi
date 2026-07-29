@@ -33,7 +33,7 @@ from .core import (
 )
 from .persistence import SQLiteRepository
 from .ui import RaskMainWindow
-from .ui.theme import QSS, build_qpalette, default_font
+from .ui.theme import QSS, build_qpalette, default_font, set_theme, load_theme_preference
 from .ui.widgets import RaskSplashScreen
 
 
@@ -167,6 +167,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     app.setApplicationDisplayName("Rask")
     app.setApplicationVersion("3.0.0")
     app.setOrganizationName("Littlehomemadestudio")
+
+    # Apply saved theme preference (default: light)
+    saved_mode = load_theme_preference()
+    if saved_mode != "light":
+        set_theme(saved_mode)
 
     # Apply theme globally
     app.setStyleSheet(QSS)

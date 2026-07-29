@@ -266,6 +266,12 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._action_fullscreen.triggered.connect(self.toggle_fullscreen)
         view_menu.addAction(self._action_fullscreen)
 
+        view_menu.addSeparator()
+
+        self._action_toggle_theme = QAction("Toggle &Theme (Light/Dark)", self)
+        self._action_toggle_theme.triggered.connect(self._toggle_theme)
+        view_menu.addAction(self._action_toggle_theme)
+
         # Schedule menu (for Enterprise features)
         sched_menu = menubar.addMenu("&Schedule")
         self._action_recalc = QAction(get_icon("play"), "&Recalculate CPM", self)
@@ -633,6 +639,92 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             self.calendar_repository.save(self.calendar_store, kind="manual")
         except Exception:
             pass
+
+    # ---- Theme switching ----
+    def _toggle_theme(self) -> None:
+        """Switch between Light and Dark theme."""
+        from .theme import current_mode, set_theme, QSS, build_qpalette
+        new_mode = "dark" if current_mode() == "light" else "light"
+        set_theme(new_mode)
+        # Re-apply global stylesheet and palette
+        app = QApplication.instance()
+        if app:
+            app.setStyleSheet(QSS)
+            app.setPalette(build_qpalette())
+        self._reapply_theme()
+
+    def _reapply_theme(self) -> None:
+        """Rebuild all inline styles for the current theme."""
+        from .theme import Palette, QSS, build_qpalette
+        # Central widget background
+        central = self.centralWidget()
+        if central:
+            central.setStyleSheet(f"background: {Palette.BG_DEEPEST};")
+        # Tab widget
+        self._tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {Palette.BORDER_SUBTLE};
+                border-radius: 4px;
+                top: -1px;
+                background: {Palette.BG_PRIMARY};
+            }}
+            QTabBar::tab {{
+                background: {Palette.BG_SECONDARY};
+                color: {Palette.TEXT_SECONDARY};
+                padding: 10px 22px;
+                border: 1px solid {Palette.BORDER_SUBTLE};
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+                font-size: 12px;
+                font-weight: bold;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                min-width: 120px;
+            }}
+            QTabBar::tab:selected {{
+                background: {Palette.BG_PRIMARY};
+                color: {Palette.GOLD_BRIGHT};
+                border-color: {Palette.BORDER_GOLD};
+                border-bottom: 2px solid {Palette.GOLD_PRIMARY};
+            }}
+            QTabBar::tab:hover:!selected {{
+                background: {Palette.BG_TERTIARY};
+                color: {Palette.TEXT_PRIMARY};
+            }}
+        """)
+        # Main window base stylesheet
+        self.setStyleSheet(QSS)
+        self.setPalette(build_qpalette())
+        # Force all children to re-polish
+        for child in self.findChildren(QWidget):
+            try:
+                child.style().unpolish(child)
+                child.style().polish(child)
+            except Exception:
+                pass
+        # Update the window icon to match current theme gold
+        pm = QPixmap(32, 32)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing, True)
+        p.setBrush(QBrush(QColor(Palette.GOLD_PRIMARY)))
+        p.setPen(Qt.NoPen)
+        p.drawEllipse(4, 4, 24, 24)
+        p.setBrush(QBrush(QColor(Palette.GOLD_BRIGHT)))
+        p.drawEllipse(8, 8, 16, 16)
+        p.end()
+        self.setWindowIcon(QIcon(pm))
+        # Update status bar
+        self.update_statusbar()
+        # Update title bar
+        if hasattr(self, '_title_bar') and self._title_bar:
+            try:
+                self._title_bar._reapply_theme()
+            except Exception:
+                pass
+        self.update()
 
     # ---- Close ----
     def closeEvent(self, event) -> None:

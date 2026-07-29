@@ -135,6 +135,21 @@ class GlassTitleBar(QWidget):
         self._title = title
         self._title_label.setText(title)
 
+    def _reapply_theme(self) -> None:
+        """Update inline styles for the current theme."""
+        self._title_label.setStyleSheet(f"""
+            color: {Palette.GOLD_BRIGHT};
+            background: transparent;
+            letter-spacing: 2px;
+        """)
+        self._min_btn._color = Palette.TEXT_SECONDARY
+        self._min_btn._hover_color = Palette.GOLD_BRIGHT
+        self._min_btn._apply_style()
+        self._max_btn._color = Palette.TEXT_SECONDARY
+        self._max_btn._hover_color = Palette.GOLD_BRIGHT
+        self._max_btn._apply_style()
+        self.update()
+
     # ── Drag to move ──
 
     def mousePressEvent(self, event) -> None:
@@ -161,23 +176,31 @@ class GlassTitleBar(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
         try:
-            # Glass background — semi-transparent dark with subtle gradient
+            # Glass background — theme-aware gradient
+            bg = QColor(Palette.BG_SECONDARY)
+            bg_top = QColor(bg.red(), bg.green(), bg.blue(), 230)
+            bg_bot = QColor(Palette.BG_DEEPEST)
+            bg_bot.setAlpha(240)
             grad = QLinearGradient(0, 0, 0, self.height())
-            grad.setColorAt(0, QColor(17, 17, 20, 230))  # slightly lighter at top
-            grad.setColorAt(1, QColor(10, 10, 11, 240))   # darker at bottom
+            grad.setColorAt(0, bg_top)
+            grad.setColorAt(1, bg_bot)
             p.fillRect(self.rect(), QBrush(grad))
 
             # Gold accent line at the very top — 2px glowing
+            gold = QColor(Palette.GOLD_PRIMARY)
+            gold_bright = QColor(Palette.GOLD_BRIGHT)
             accent_grad = QLinearGradient(0, 0, self.width(), 0)
-            accent_grad.setColorAt(0.0, QColor(212, 175, 55, 0))
-            accent_grad.setColorAt(0.2, QColor(212, 175, 55, 180))
-            accent_grad.setColorAt(0.5, QColor(245, 200, 66, 220))
-            accent_grad.setColorAt(0.8, QColor(212, 175, 55, 180))
-            accent_grad.setColorAt(1.0, QColor(212, 175, 55, 0))
+            accent_grad.setColorAt(0.0, QColor(gold.red(), gold.green(), gold.blue(), 0))
+            accent_grad.setColorAt(0.2, QColor(gold.red(), gold.green(), gold.blue(), 180))
+            accent_grad.setColorAt(0.5, QColor(gold_bright.red(), gold_bright.green(), gold_bright.blue(), 220))
+            accent_grad.setColorAt(0.8, QColor(gold.red(), gold.green(), gold.blue(), 180))
+            accent_grad.setColorAt(1.0, QColor(gold.red(), gold.green(), gold.blue(), 0))
             p.fillRect(0, 0, self.width(), 2, QBrush(accent_grad))
 
             # Subtle bottom border
-            p.setPen(QPen(QColor(42, 42, 51, 100), 1))
+            border = QColor(Palette.BORDER_NORMAL)
+            border.setAlpha(100)
+            p.setPen(QPen(border, 1))
             p.drawLine(0, self.height() - 1, self.width(), self.height() - 1)
         finally:
             p.end()
