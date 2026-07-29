@@ -169,7 +169,7 @@ class EdgeItem(QGraphicsObject):
         try:
             mid = self._path.pointAtPercent(0.5)
             label = self.dependency.type.value
-            font = QFont("JetBrains Mono", 7, QFont.Bold)
+            font = QFont("JetBrains Mono", 10, QFont.Bold)
             painter.setFont(font)
             from PySide6.QtGui import QFontMetrics
             fm = QFontMetrics(font)

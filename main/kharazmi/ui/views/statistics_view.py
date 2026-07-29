@@ -45,7 +45,7 @@ class _Chart(QWidget):
             p.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 6, 6)
             # Title
             p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
-            f = QFont("Inter", 9, QFont.Bold)
+            f = QFont("Inter", 12, QFont.Bold)
             f.setLetterSpacing(QFont.AbsoluteSpacing, 1.2)
             p.setFont(f)
             p.drawText(12, 18, self._title.upper())
@@ -76,7 +76,7 @@ class DonutChart(_Chart):
             total = sum(c for c, _ in self._data.values())
             if total == 0:
                 p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-                p.setFont(QFont("Inter", 10))
+                p.setFont(QFont("Inter", 13))
                 p.drawText(self.rect().adjusted(0, 30, 0, 0), Qt.AlignCenter, "No data")
                 return
 
@@ -103,14 +103,14 @@ class DonutChart(_Chart):
             p.drawText(QRectF(cx - radius, cy - radius, radius * 2, radius * 2),
                        Qt.AlignCenter, str(total))
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("Inter", 8, QFont.Bold))
+            p.setFont(QFont("Inter", 11, QFont.Bold))
             p.drawText(QRectF(cx - radius, cy + 8, radius * 2, radius),
                        Qt.AlignCenter, "TOTAL")
 
             # Legend
             legend_y = 12
             legend_x = 12
-            p.setFont(QFont("Inter", 9))
+            p.setFont(QFont("Inter", 12))
             for label, (count, color) in self._data.items():
                 if count == 0:
                     continue
@@ -161,7 +161,7 @@ class BarChart(_Chart):
 
             # Y axis labels
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("JetBrains Mono", 7))
+            p.setFont(QFont("JetBrains Mono", 10))
             for i in range(5):
                 v = max_val * (4 - i) / 4
                 y = chart_y + chart_h * i / 4
@@ -186,12 +186,12 @@ class BarChart(_Chart):
                 p.drawRoundedRect(rect, 2, 2)
                 # Value label
                 p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-                p.setFont(QFont("JetBrains Mono", 8, QFont.Bold))
+                p.setFont(QFont("JetBrains Mono", 11, QFont.Bold))
                 p.drawText(QRectF(x, y - 14, bar_w, 12),
                            Qt.AlignCenter, str(val))
                 # X label
                 p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-                p.setFont(QFont("Inter", 8))
+                p.setFont(QFont("Inter", 11))
                 p.drawText(QRectF(x - 10, chart_y + chart_h + 4, bar_w + 20, 14),
                            Qt.AlignCenter, label[:10])
         finally:
@@ -256,13 +256,13 @@ class HistogramChart(_Chart):
                 p.setPen(QPen(QColor(color), 1.5, Qt.DashLine))
                 p.drawLine(x, chart_y, x, chart_y + chart_h)
                 p.setPen(QPen(QColor(color)))
-                p.setFont(QFont("Inter", 8, QFont.Bold))
+                p.setFont(QFont("Inter", 11, QFont.Bold))
                 p.drawText(QRectF(x - 20, chart_y - 14, 40, 12),
                            Qt.AlignCenter, label)
 
             # X axis labels (min/max)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.setFont(QFont("JetBrains Mono", 8))
+            p.setFont(QFont("JetBrains Mono", 11))
             p.drawText(QRectF(chart_x, chart_y + chart_h + 4, 100, 14),
                        Qt.AlignLeft, f"{self._min_val}m")
             p.drawText(QRectF(chart_x + chart_w - 100, chart_y + chart_h + 4, 100, 14),
@@ -293,7 +293,7 @@ class StatCard(QFrame):
 
         lbl = QLabel(label.upper())
         lbl.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; "
             f"font-weight: bold; letter-spacing: 1.5px;"
         )
         layout.addWidget(lbl)

@@ -165,7 +165,7 @@ class RouteEdgeItem(QGraphicsPathItem):
             if self._label_item is None:
                 self._label_item = QGraphicsTextItem(self.edge.label)
                 self._label_item.setDefaultTextColor(QColor(color))
-                label_font = QFont("JetBrains Mono", 8)
+                label_font = QFont("JetBrains Mono", 11)
                 self._label_item.setFont(label_font)
                 self._label_item.setParentItem(self)
             self._label_item.setPlainText(self.edge.label)

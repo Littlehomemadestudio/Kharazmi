@@ -42,12 +42,12 @@ class _HistogramWidget(QWidget):
         hist = self.result.histogram
         if not hist:
             p.setPen(QColor(Palette.TEXT_TERTIARY))
-            p.setFont(QFont("Inter", 11))
+            p.setFont(QFont("Inter", 14))
             p.drawText(self.rect(), Qt.AlignCenter, "No histogram data")
             p.end()
             return
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 16, "Completion Time Distribution")
@@ -86,7 +86,7 @@ class _HistogramWidget(QWidget):
 
             # Bin label (every few bins)
             if n_bins <= 20 or sorted_bins.index(bin_val) % max(1, n_bins // 10) == 0:
-                p.setFont(QFont("JetBrains Mono", 7))
+                p.setFont(QFont("JetBrains Mono", 10))
                 p.setPen(QColor(Palette.TEXT_TERTIARY))
                 p.drawText(QRectF(x - 10, bar_area_y + bar_area_h + 4, bar_w + 20, 14),
                            Qt.AlignCenter, f"{bin_val}m")
@@ -128,7 +128,7 @@ class _StepFailureWidget(QWidget):
             p.end()
             return
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 16, "Step Failure Analysis")
@@ -146,7 +146,7 @@ class _StepFailureWidget(QWidget):
             fail_rate = fail_count / max(1, self.result.n_simulations)
 
             # Label
-            p.setFont(QFont("Inter", 9))
+            p.setFont(QFont("Inter", 12))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             label = step.title[:20] + "…" if len(step.title) > 20 else step.title
             p.drawText(QRectF(4, y, label_w - 8, bar_h), Qt.AlignRight | Qt.AlignVCenter, label)
@@ -172,7 +172,7 @@ class _StepFailureWidget(QWidget):
             p.drawRoundedRect(QRectF(label_w, y + 2, bar_fill_w, bar_h - 4), 3, 3)
 
             # Value
-            p.setFont(QFont("JetBrains Mono", 9, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 12, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(label_w + bar_area + 4, y, 70, bar_h),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{fail_rate:.1%} ({fail_count})")
@@ -233,7 +233,7 @@ class _CircularGauge(QWidget):
         p.setPen(QColor(Palette.TEXT_PRIMARY))
         p.drawText(QRectF(cx - 50, cy - 18, 100, 36), Qt.AlignCenter, f"{self._score:.0f}")
 
-        p.setFont(QFont("Inter", 9))
+        p.setFont(QFont("Inter", 12))
         p.setPen(QColor(Palette.TEXT_TERTIARY))
         p.drawText(QRectF(cx - 60, cy + 20, 120, 18), Qt.AlignCenter, self._label)
 
@@ -550,12 +550,12 @@ class SimulationView(QWidget):
         cl.addWidget(t)
 
         s = QLabel(subtitle)
-        s.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; background: transparent;")
+        s.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; background: transparent;")
         cl.addWidget(s)
 
         for item in items[:8]:
             il = QLabel(f"  • {item}")
-            il.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 10px; background: transparent;")
+            il.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 13px; background: transparent;")
             il.setWordWrap(True)
             cl.addWidget(il)
 

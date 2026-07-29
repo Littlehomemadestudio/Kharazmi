@@ -17,8 +17,8 @@ from ...core import Task, TaskStatus
 from ..theme import Palette, status_color
 
 
-NODE_WIDTH = 220
-NODE_HEIGHT = 96
+NODE_WIDTH = 260
+NODE_HEIGHT = 110
 
 
 class TaskNodeItem(QGraphicsObject):
@@ -111,7 +111,7 @@ class TaskNodeItem(QGraphicsObject):
         painter.fillPath(path, QBrush(sc))
 
         # 5. Title
-        title_font = QFont("Inter", 10, QFont.DemiBold)
+        title_font = QFont("Inter", 13, QFont.DemiBold)
         painter.setFont(title_font)
         title_color = QColor(Palette.GOLD_BRIGHT) if self.task.is_critical else QColor(Palette.TEXT_PRIMARY)
         painter.setPen(QPen(title_color))
@@ -120,7 +120,7 @@ class TaskNodeItem(QGraphicsObject):
 
         # 6. Status pill (top right)
         status_text = self.task.status.value.upper()
-        pill_font = QFont("Inter", 7, QFont.Bold)
+        pill_font = QFont("Inter", 10, QFont.Bold)
         painter.setFont(pill_font)
         fm = QFontMetrics(pill_font)
         pill_w = fm.horizontalAdvance(status_text) + 12
@@ -135,7 +135,7 @@ class TaskNodeItem(QGraphicsObject):
                          Qt.AlignCenter, status_text)
 
         # 7. Duration line
-        meta_font = QFont("JetBrains Mono", 8)
+        meta_font = QFont("JetBrains Mono", 11)
         painter.setFont(meta_font)
         painter.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
         dur_text = self.task.duration.humanize()

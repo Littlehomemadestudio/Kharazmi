@@ -18,8 +18,8 @@ from ...ai import RouteStep
 from ..theme import Palette
 
 
-MIN_NODE_WIDTH = 240
-MAX_NODE_WIDTH = 580
+MIN_NODE_WIDTH = 280
+MAX_NODE_WIDTH = 640
 PADDING = 14
 TITLE_HEIGHT = 22
 META_HEIGHT = 16
@@ -129,9 +129,9 @@ class RouteNodeItem(QGraphicsObject):
     def _compute_size(self) -> None:
         """Compute width/height to fit ALL content (no truncation)."""
         title_font = QFont("Inter", 11, QFont.DemiBold)
-        body_font = QFont("Inter", 9)
-        meta_font = QFont("Inter", 9)
-        small_font = QFont("Inter", 8)
+        body_font = QFont("Inter", 12)
+        meta_font = QFont("Inter", 12)
+        small_font = QFont("Inter", 11)
 
         fm_title = QFontMetrics(title_font)
         fm_body = QFontMetrics(body_font)
@@ -276,7 +276,7 @@ class RouteNodeItem(QGraphicsObject):
         painter.fillPath(path, QBrush(accent_color))
 
         # 5. Step ID badge + kind icon (top-left)
-        id_font = QFont("JetBrains Mono", 8, QFont.Bold)
+        id_font = QFont("JetBrains Mono", 11, QFont.Bold)
         painter.setFont(id_font)
         painter.setBrush(QBrush(accent_color))
         painter.setPen(Qt.NoPen)
@@ -286,7 +286,7 @@ class RouteNodeItem(QGraphicsObject):
                          f"{kind_icon} {self.step.id.upper()}")
 
         # 6. Branch label
-        branch_font = QFont("Inter", 7, QFont.Bold)
+        branch_font = QFont("Inter", 10, QFont.Bold)
         painter.setFont(branch_font)
         painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
         painter.drawText(QRectF(10, 30, 80, 12), Qt.AlignLeft,
@@ -306,7 +306,7 @@ class RouteNodeItem(QGraphicsObject):
         y_cursor += 4
 
         # 8. Meta row: duration · success · risk
-        meta_font = QFont("Inter", 9)
+        meta_font = QFont("Inter", 12)
         painter.setFont(meta_font)
         painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
         dur_text = f"⏱ {self.step.duration_minutes}m"
@@ -319,7 +319,7 @@ class RouteNodeItem(QGraphicsObject):
 
         # 9. Location
         if self._loc_lines:
-            loc_font = QFont("Inter", 9)
+            loc_font = QFont("Inter", 12)
             painter.setFont(loc_font)
             painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
             for ll in self._loc_lines:
@@ -330,7 +330,7 @@ class RouteNodeItem(QGraphicsObject):
 
         # 10. Description (if any)
         if self._desc_lines:
-            body_font = QFont("Inter", 9)
+            body_font = QFont("Inter", 12)
             painter.setFont(body_font)
             painter.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
             for dl in self._desc_lines:
@@ -341,7 +341,7 @@ class RouteNodeItem(QGraphicsObject):
 
         # 11. Sub-goals
         if self._sub_goal_lines:
-            sg_font = QFont("Inter", 8)
+            sg_font = QFont("Inter", 11)
             painter.setFont(sg_font)
             painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
             for sgl in self._sub_goal_lines:
@@ -352,7 +352,7 @@ class RouteNodeItem(QGraphicsObject):
 
         # 12. Fallback
         if self._fb_lines:
-            fb_font = QFont("Inter", 8)
+            fb_font = QFont("Inter", 11)
             painter.setFont(fb_font)
             painter.setPen(QPen(QColor("#A85A5A")))
             for fbl in self._fb_lines:
@@ -361,7 +361,7 @@ class RouteNodeItem(QGraphicsObject):
                 y_cursor += 14
 
         # 13. Edit hint at bottom
-        hint_font = QFont("Inter", 7)
+        hint_font = QFont("Inter", 10)
         painter.setFont(hint_font)
         painter.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
         painter.drawText(

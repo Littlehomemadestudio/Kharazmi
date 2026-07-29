@@ -269,50 +269,50 @@ def font_mini_day() -> QFont:
 # ──────────────────────────────── Spacing ─────────────────────────────────
 
 class Spacing:
-    XS  = 2
-    SM  = 4
-    MD  = 8
-    LG  = 12
-    XL  = 16
-    XXL = 24
-    XXXL = 32
+    XS  = 3
+    SM  = 6
+    MD  = 10
+    LG  = 14
+    XL  = 20
+    XXL = 28
+    XXXL = 36
 
 
 # ──────────────────────────────── Metrics ─────────────────────────────────
 
 class Metrics:
     # Month view
-    MONTH_ROW_HEIGHT       = 38
-    MONTH_CELL_MIN_HEIGHT  = 120
-    MONTH_CELL_PAD         = 10
-    MONTH_DAY_NUMBER_H     = 26
-    MONTH_EVENT_CHIP_H     = 24
-    MONTH_EVENT_GAP        = 3
-    MONTH_OVERFLOW_H       = 22
+    MONTH_ROW_HEIGHT       = 48
+    MONTH_CELL_MIN_HEIGHT  = 140
+    MONTH_CELL_PAD         = 12
+    MONTH_DAY_NUMBER_H     = 32
+    MONTH_EVENT_CHIP_H     = 30
+    MONTH_EVENT_GAP        = 4
+    MONTH_OVERFLOW_H       = 26
     MONTH_CORNER_RADIUS    = 10
 
     # Time views (Day / Week)
-    TIME_RULER_WIDTH       = 60
-    HOUR_HEIGHT            = 72
+    TIME_RULER_WIDTH       = 72
+    HOUR_HEIGHT            = 80
     SNAP_MINUTES           = 15
-    MIN_EVENT_HEIGHT       = 28
+    MIN_EVENT_HEIGHT       = 34
     EVENT_CORNER_RADIUS    = 8
-    EVENT_LEFT_BORDER      = 4
-    EVENT_PAD              = 6
-    ALL_DAY_ROW_HEIGHT     = 34
+    EVENT_LEFT_BORDER      = 5
+    EVENT_PAD              = 8
+    ALL_DAY_ROW_HEIGHT     = 40
     ALL_DAY_MAX_ROWS       = 3
 
     # Year view
-    YEAR_CELL_SIZE         = 24
-    YEAR_MONTH_PAD         = 16
-    YEAR_HEADER_H          = 32
+    YEAR_CELL_SIZE         = 28
+    YEAR_MONTH_PAD         = 20
+    YEAR_HEADER_H          = 38
 
     # Sidebar
-    SIDEBAR_WIDTH          = 260
-    SIDEBAR_MINI_MONTH_H   = 240
+    SIDEBAR_WIDTH          = 280
+    SIDEBAR_MINI_MONTH_H   = 280
 
     # Toolbar
-    TOOLBAR_HEIGHT         = 56
+    TOOLBAR_HEIGHT         = 64
 
     # Animation
     ANIM_DURATION_MS       = 250

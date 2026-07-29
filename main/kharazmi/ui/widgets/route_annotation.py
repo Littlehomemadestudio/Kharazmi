@@ -139,7 +139,7 @@ class BreakthroughFlash(QGraphicsObject):
                          int(cx - inner_r - 4), int(cy + 2))
 
         # --- "BREAKTHROUGH" label below ---
-        label_font = QFont("Inter", 7, QFont.Bold)
+        label_font = QFont("Inter", 10, QFont.Bold)
         painter.setFont(label_font)
         painter.setPen(QPen(QColor(80, 170, 255, 220)))
         fm = QFontMetrics(label_font)
@@ -304,7 +304,7 @@ class SkipWhirl(QGraphicsObject):
         painter.drawEllipse(QRectF(cx - 22, cy - 22, 44, 44))
 
         # "SKIP" text
-        skip_font = QFont("Inter", 9, QFont.Bold)
+        skip_font = QFont("Inter", 12, QFont.Bold)
         painter.setFont(skip_font)
         painter.setPen(QPen(QColor(255, 200, 100)))
         fm = QFontMetrics(skip_font)
@@ -313,7 +313,7 @@ class SkipWhirl(QGraphicsObject):
         painter.drawText(int(cx - sw / 2), int(cy + 4), skip_text)
 
         # --- Label below ---
-        label_font = QFont("Inter", 7, QFont.Bold)
+        label_font = QFont("Inter", 10, QFont.Bold)
         painter.setFont(label_font)
         painter.setPen(QPen(QColor(255, 160, 40, 220)))
         fm2 = QFontMetrics(label_font)
@@ -494,7 +494,7 @@ class LoopCurl(QGraphicsObject):
         painter.drawEllipse(QRectF(cx - 18, cy - 18, 36, 36))
 
         # "×2" text (implies loop/repeat)
-        loop_font = QFont("Inter", 10, QFont.Bold)
+        loop_font = QFont("Inter", 13, QFont.Bold)
         painter.setFont(loop_font)
         painter.setPen(QPen(QColor(140, 255, 180)))
         fm = QFontMetrics(loop_font)
@@ -503,7 +503,7 @@ class LoopCurl(QGraphicsObject):
         painter.drawText(int(cx - lw / 2), int(cy + 5), loop_text)
 
         # --- Label below ---
-        label_font = QFont("Inter", 7, QFont.Bold)
+        label_font = QFont("Inter", 10, QFont.Bold)
         painter.setFont(label_font)
         painter.setPen(QPen(QColor(60, 220, 120, 220)))
         fm2 = QFontMetrics(label_font)

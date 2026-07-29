@@ -88,7 +88,7 @@ class KanbanCard(QFrame):
         # Tags
         if task.tags:
             tags_label = QLabel(" ".join(f"#{t}" for t in sorted(str(x) for x in task.tags)))
-            tags_label.setStyleSheet(f"color: {Palette.GOLD_PRIMARY}; font-size: 10px; font-family: 'JetBrains Mono', monospace;")
+            tags_label.setStyleSheet(f"color: {Palette.GOLD_PRIMARY}; font-size: 13px; font-family: 'JetBrains Mono', monospace;")
             tags_label.setWordWrap(True)
             layout.addWidget(tags_label)
 
@@ -107,7 +107,7 @@ class KanbanCard(QFrame):
             crit = QLabel("CRITICAL")
             crit.setStyleSheet(
                 f"background-color: {Palette.GOLD_PRIMARY}; color: {Palette.TEXT_ON_GOLD}; "
-                f"font-size: 9px; font-weight: bold; padding: 1px 6px; border-radius: 3px; "
+                f"font-size: 12px; font-weight: bold; padding: 1px 6px; border-radius: 3px; "
                 f"letter-spacing: 0.8px;"
             )
             prio_row.addWidget(crit)

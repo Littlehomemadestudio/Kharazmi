@@ -372,7 +372,7 @@ class _BarChartWidget(QWidget):
         steps = self.route.steps
         if not steps:
             p.setPen(QColor(Palette.TEXT_TERTIARY))
-            p.setFont(QFont("Inter", 12))
+            p.setFont(QFont("Inter", 14))
             p.drawText(self.rect(), Qt.AlignCenter, "No steps to display")
             p.end()
             return
@@ -382,14 +382,14 @@ class _BarChartWidget(QWidget):
         bar_area = w - label_w - 80
         y = 10
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, y + 12, "Success Probability by Step")
         y += 28
 
-        bar_font = QFont("Inter", 9)
-        val_font = QFont("JetBrains Mono", 9, QFont.Bold)
+        bar_font = QFont("Inter", 12)
+        val_font = QFont("JetBrains Mono", 12, QFont.Bold)
 
         for step in steps:
             # Label
@@ -452,7 +452,7 @@ class _RiskHeatmapWidget(QWidget):
             p.end()
             return
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 18, "Risk Level Distribution")
@@ -476,7 +476,7 @@ class _RiskHeatmapWidget(QWidget):
         for risk, count in risk_counts.items():
             pct = count / total
             # Label
-            p.setFont(QFont("Inter", 9))
+            p.setFont(QFont("Inter", 12))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(10, y, 80, 28), Qt.AlignRight | Qt.AlignVCenter, risk.upper())
 
@@ -487,7 +487,7 @@ class _RiskHeatmapWidget(QWidget):
             p.drawRoundedRect(QRectF(96, y + 4, bar_w, 20), 3, 3)
 
             # Count
-            p.setFont(QFont("JetBrains Mono", 9, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 12, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(96 + bar_area_w + 6, y, 60, 28),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{count} ({pct:.0%})")
@@ -524,7 +524,7 @@ class _DurationTimelineWidget(QWidget):
         bar_h = min(22, max(14, (h - 50) // len(steps) - 4))
         y = 10
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, y + 12, "Duration Timeline (minutes)")
@@ -540,7 +540,7 @@ class _DurationTimelineWidget(QWidget):
 
         for step in steps:
             # Label
-            p.setFont(QFont("Inter", 8))
+            p.setFont(QFont("Inter", 11))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             label = step.title[:18] + "…" if len(step.title) > 18 else step.title
             p.drawText(QRectF(4, y, label_w - 8, bar_h), Qt.AlignRight | Qt.AlignVCenter, label)
@@ -558,7 +558,7 @@ class _DurationTimelineWidget(QWidget):
             p.drawRoundedRect(QRectF(label_w, y + 2, bar_w, bar_h - 4), 3, 3)
 
             # Duration text
-            p.setFont(QFont("JetBrains Mono", 8))
+            p.setFont(QFont("JetBrains Mono", 11))
             p.setPen(QColor(Palette.TEXT_TERTIARY))
             p.drawText(QRectF(label_w + bar_w + 4, y, 50, bar_h),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{step.duration_minutes}m")
@@ -617,7 +617,7 @@ class _KindDonutWidget(QWidget):
         p.setFont(QFont("Inter", 18, QFont.Bold))
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(QRectF(cx - 50, cy - 18, 100, 24), Qt.AlignCenter, str(total))
-        p.setFont(QFont("Inter", 8))
+        p.setFont(QFont("Inter", 11))
         p.setPen(QColor(Palette.TEXT_TERTIARY))
         p.drawText(QRectF(cx - 50, cy + 6, 100, 18), Qt.AlignCenter, "steps")
 
@@ -628,7 +628,7 @@ class _KindDonutWidget(QWidget):
             p.setPen(Qt.NoPen)
             p.setBrush(color)
             p.drawRoundedRect(QRectF(210, y, 10, 10), 2, 2)
-            p.setFont(QFont("Inter", 8))
+            p.setFont(QFont("Inter", 11))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(224, y - 2, 40, 14), Qt.AlignLeft | Qt.AlignVCenter,
                        f"{kind[:4]} {count}")
@@ -664,7 +664,7 @@ class _BranchFlowWidget(QWidget):
         for s in steps:
             branch_counts[s.branch] = branch_counts.get(s.branch, 0) + 1
 
-        title_font = QFont("Inter", 10, QFont.Bold)
+        title_font = QFont("Inter", 13, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 18, "Branch Distribution")
@@ -702,13 +702,13 @@ class _BranchFlowWidget(QWidget):
             p.drawRoundedRect(QRectF(x, y_base - bar_h, col_w - 10, bar_h), 4, 4)
 
             # Count on top
-            p.setFont(QFont("JetBrains Mono", 10, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 13, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(x, y_base - bar_h - 18, col_w - 10, 16),
                        Qt.AlignCenter, str(count))
 
             # Label below
-            p.setFont(QFont("Inter", 8))
+            p.setFont(QFont("Inter", 11))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(x, y_base + 4, col_w - 10, 16),
                        Qt.AlignCenter, branch[:10])
@@ -781,7 +781,7 @@ class _GraphsLanding(QFrame):
         # Workflow list header
         list_header = QLabel("SAVED WORKFLOWS")
         list_header.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; "
             f"font-weight: bold; letter-spacing: 2px; background: transparent;"
         )
         outer.addWidget(list_header)
@@ -869,7 +869,7 @@ class _GraphsLanding(QFrame):
                 f"{entry.route.overall_success_probability:.0%} success · "
                 f"{entry.timestamp[:10]}"
             )
-            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 10px;")
+            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 13px;")
             cl.addWidget(meta)
 
             # Export buttons
@@ -884,7 +884,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 9px;
+                    font-size: 12px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -903,7 +903,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 9px;
+                    font-size: 12px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -1030,7 +1030,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 10px;
+                padding: 4px 10px; font-size: 13px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1045,7 +1045,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 10px;
+                padding: 4px 10px; font-size: 13px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1129,7 +1129,7 @@ class _GraphsWorkspace(QFrame):
             v.setAlignment(Qt.AlignCenter)
             sl.addWidget(v)
             l = QLabel(label)
-            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 9px; background: transparent; letter-spacing: 1px;")
+            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 12px; background: transparent; letter-spacing: 1px;")
             l.setAlignment(Qt.AlignCenter)
             sl.addWidget(l)
             stats_row.addWidget(stat)

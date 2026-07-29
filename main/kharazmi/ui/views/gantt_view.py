@@ -115,7 +115,7 @@ class GanttView(QGraphicsView):
         # "Task" label on left
         label = QGraphicsTextItem("TASK")
         label.setDefaultTextColor(QColor(Palette.TEXT_TERTIARY))
-        f = QFont("Inter", 9, QFont.Bold)
+        f = QFont("Inter", 12, QFont.Bold)
         f.setLetterSpacing(QFont.AbsoluteSpacing, 1.2)
         label.setFont(f)
         label.setPos(10, 12)
@@ -137,13 +137,13 @@ class GanttView(QGraphicsView):
             sd = ShamsiDate.from_gregorian(d)
             date_label = QGraphicsTextItem(f"{sd.month_name_en[:3]} {sd.day}")
             date_label.setDefaultTextColor(QColor(Palette.TEXT_SECONDARY))
-            date_label.setFont(QFont("JetBrains Mono", 8))
+            date_label.setFont(QFont("JetBrains Mono", 11))
             date_label.setPos(x + 4, 4)
             self._scene.addItem(date_label)
             # Day-of-week (Persian)
             dow = QGraphicsTextItem(sd.weekday_short_en[0])
             dow.setDefaultTextColor(QColor(Palette.TEXT_TERTIARY))
-            dow.setFont(QFont("Inter", 7))
+            dow.setFont(QFont("Inter", 10))
             dow.setPos(x + 4, 22)
             self._scene.addItem(dow)
             # Vertical line
@@ -168,7 +168,7 @@ class GanttView(QGraphicsView):
             title.setDefaultTextColor(
                 QColor(Palette.GOLD_BRIGHT if task.is_critical else Palette.TEXT_PRIMARY)
             )
-            title.setFont(QFont("Inter", 9, QFont.DemiBold if task.is_critical else QFont.Normal))
+            title.setFont(QFont("Inter", 12, QFont.DemiBold if task.is_critical else QFont.Normal))
             title.setPos(8, y + 8)
             title.setTextWidth(LEFT_PANEL_WIDTH - 16)
             title.setToolTip(f"{task.title}\nID: {task.id}\nStatus: {task.status.value}")
@@ -274,7 +274,7 @@ class GanttBar(QGraphicsRectItem):
         if r.width() > 60:
             painter.setPen(QPen(QColor(Palette.TEXT_ON_GOLD) if self.task.is_critical
                                 else QColor(Palette.TEXT_PRIMARY)))
-            painter.setFont(QFont("Inter", 8, QFont.DemiBold))
+            painter.setFont(QFont("Inter", 11, QFont.DemiBold))
             painter.drawText(r.adjusted(6, 0, -4, 0),
                              Qt.AlignLeft | Qt.AlignVCenter,
                              self._elide(self.task.title, r.width() - 12))
@@ -287,7 +287,7 @@ class GanttBar(QGraphicsRectItem):
     # کوتاه کردن متن با سه‌نقطه
     def _elide(self, text: str, max_w: float) -> str:
         from PySide6.QtGui import QFontMetrics
-        fm = QFontMetrics(QFont("Inter", 8, QFont.DemiBold))
+        fm = QFontMetrics(QFont("Inter", 11, QFont.DemiBold))
         if fm.horizontalAdvance(text) <= max_w:
             return text
         while text and fm.horizontalAdvance(text + "…") > max_w:

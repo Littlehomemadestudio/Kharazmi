@@ -206,7 +206,7 @@ class InspectorPanel(QScrollArea):
         self._transitions_label = QLabel("")
         self._transitions_label.setWordWrap(True)
         self._transitions_label.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; padding-top: 4px;"
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; padding-top: 4px;"
         )
         layout.addWidget(self._transitions_label)
 

@@ -270,7 +270,7 @@ class BreakthroughEdge(QGraphicsPathItem):
         # 6. "BREAKTHROUGH" label
         label_y = mid.y() - 22
         label_center = QPointF(mid.x(), label_y)
-        label_font = QFont("Inter", 8, QFont.Bold)
+        label_font = QFont("Inter", 11, QFont.Bold)
         _draw_label_pill(
             painter, label_center, "⚡ BREAKTHROUGH",
             self.LABEL_COLOR, QColor(60, 140, 255, 120),
@@ -490,7 +490,7 @@ class SkipEdge(QGraphicsPathItem):
         label_center = QPointF(label_pos.x(), label_pos.y() - 18)
 
         desc_text = self.edge.label or "bypass section"
-        label_font = QFont("Inter", 8, QFont.Bold)
+        label_font = QFont("Inter", 11, QFont.Bold)
         _draw_label_pill(
             painter, label_center, f"↻ SKIP — {desc_text}",
             self.LABEL_COLOR, QColor(255, 140, 30, 120),
@@ -749,7 +749,7 @@ class LoopEdge(QGraphicsPathItem):
         if hasattr(self, '_loop_center'):
             label_center = QPointF(self._loop_center.x(),
                                    self._loop_center.y() - self._loop_radius - 16)
-            label_font = QFont("Inter", 8, QFont.Bold)
+            label_font = QFont("Inter", 11, QFont.Bold)
             _draw_label_pill(
                 painter, label_center, "⟳ LOOP",
                 self.LABEL_COLOR, QColor(60, 220, 120, 120),

@@ -213,7 +213,7 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         # 4. Draw edge label if present
         if self._label:
             mid = path.pointAtPercent(0.5)
-            label_font = QFont("Inter", 8)
+            label_font = QFont("Inter", 11)
             painter.setFont(label_font)
             # Background pill
             fm = painter.fontMetrics()
@@ -362,7 +362,7 @@ class UnifiedGraphView(QGraphicsView):
         layout_label = QLabel("Layout:")
         layout_label.setStyleSheet(f"""
             color: {Palette.TEXT_TERTIARY};
-            font-size: 10px;
+            font-size: 13px;
             font-weight: bold;
             background: transparent;
             border: none;
@@ -562,7 +562,7 @@ class UnifiedGraphView(QGraphicsView):
         self._sel_count_label = QLabel("")
         self._sel_count_label.setStyleSheet(f"""
             color: {Palette.TEXT_TERTIARY};
-            font-size: 10px;
+            font-size: 13px;
             background: transparent;
             border: none;
         """)

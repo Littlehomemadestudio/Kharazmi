@@ -121,7 +121,7 @@ class _CircularGauge(QWidget):
             p.drawText(QRectF(cx - gw / 2 - 4, cy + 22, gw + 8, 30), Qt.AlignCenter, grade_text)
 
             # ── "HEALTH SCORE" subtitle ──
-            sub_font = QFont("Inter", 8, QFont.Bold)
+            sub_font = QFont("Inter", 11, QFont.Bold)
             p.setFont(sub_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
             sub_text = "HEALTH SCORE"
@@ -178,7 +178,7 @@ class _MiniHistogram(QWidget):
 
             if not self._bins:
                 p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-                p.setFont(QFont("Inter", 9))
+                p.setFont(QFont("Inter", 12))
                 p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "No simulation data")
                 return
 
@@ -212,7 +212,7 @@ class _MiniHistogram(QWidget):
                 p.drawRoundedRect(QRectF(x, y, bar_w, bar_h), 2, 2)
 
             # X-axis labels (first, mid, last)
-            label_font = QFont("Inter", 7)
+            label_font = QFont("Inter", 10)
             p.setFont(label_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
 
@@ -682,7 +682,7 @@ class RouteHealthDashboard(QFrame):
         # Sim runs info
         self._sim_info_lbl = QLabel("No simulation has been run yet.")
         self._sim_info_lbl.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; background: transparent;"
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; background: transparent;"
         )
         slay.addWidget(self._sim_info_lbl)
 
@@ -694,7 +694,7 @@ class RouteHealthDashboard(QFrame):
         t = QLabel(title)
         t.setAlignment(Qt.AlignCenter)
         t.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 9px; font-weight: 700; "
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 12px; font-weight: 700; "
             f"letter-spacing: 0.8px; background: transparent;"
         )
         v = QLabel(value)

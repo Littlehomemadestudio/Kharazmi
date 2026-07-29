@@ -49,7 +49,7 @@ class _HeroWidget(QWidget):
     def __init__(self, today: ShamsiDate, parent=None) -> None:
         super().__init__(parent)
         self._today = today
-        self.setFixedHeight(280)
+        self.setFixedHeight(340)
         self._tick = 0
         self._timer = QTimer(self)
         self._timer.setInterval(50)
@@ -82,13 +82,13 @@ class _HeroWidget(QWidget):
 
             # ── "امروز" badge ──
             badge_text = "امروز"
-            badge_font = QFont("Segoe UI", 13)
+            badge_font = QFont("Segoe UI", 14)
             p.setFont(badge_font)
             fm = QFontMetrics(badge_font)
-            badge_w = fm.horizontalAdvance(badge_text) + 20
-            badge_h = 24
+            badge_w = fm.horizontalAdvance(badge_text) + 24
+            badge_h = 28
             badge_x = (w - badge_w) / 2
-            badge_y = 16
+            badge_y = 18
 
             badge_path = QPainterPath()
             badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 12, 12)
@@ -118,32 +118,32 @@ class _HeroWidget(QWidget):
             day_font = QFont("Segoe UI", 90, QFont.Bold)
             p.setFont(day_font)
 
-            day_grad = QLinearGradient(0, 44, 0, 154)
+            day_grad = QLinearGradient(0, 50, 0, 180)
             day_grad.setColorAt(0, QColor(245, 200, 66))
             day_grad.setColorAt(0.5, QColor(212, 175, 55))
             day_grad.setColorAt(1, QColor(140, 112, 18))
             p.setPen(QPen(QBrush(day_grad), 1))
-            p.drawText(QRectF(0, 44, w, 110), Qt.AlignHCenter | Qt.AlignTop, day_text)
+            p.drawText(QRectF(0, 50, w, 130), Qt.AlignHCenter | Qt.AlignTop, day_text)
 
             # Month name centered below day
             month_font = QFont("Segoe UI", 34, QFont.Bold)
             p.setFont(month_font)
             p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-            p.drawText(QRectF(0, 148, w, 42), Qt.AlignHCenter, month_text)
+            p.drawText(QRectF(0, 180, w, 48), Qt.AlignHCenter, month_text)
 
             # Year + Weekday on one line
             year_week_font = QFont("Segoe UI", 16)
             p.setFont(year_week_font)
             year_weekday = f"{year_text}  ·  {weekday_text}"
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            p.drawText(QRectF(0, 192, w, 24), Qt.AlignHCenter, year_weekday)
+            p.drawText(QRectF(0, 230, w, 28), Qt.AlignHCenter, year_weekday)
 
             # ── Greeting ──
             greeting = _greeting_fa()
             greet_font = QFont("Segoe UI", 15)
             p.setFont(greet_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(QRectF(0, 220, w, 28), Qt.AlignHCenter, greeting)
+            p.drawText(QRectF(0, 260, w, 28), Qt.AlignHCenter, greeting)
 
             # ── Subtle divider ──
             div_grad = QLinearGradient(0, 0, w, 0)
