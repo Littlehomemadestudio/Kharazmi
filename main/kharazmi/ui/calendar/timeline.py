@@ -1,11 +1,4 @@
-"""
-TimelineWidget — 24-hour vertical time ruler for the RASK! calendar.
-
-Renders hour labels (00:00–23:00) with Shamsi/Persian digit formatting,
-15-minute sub-tick marks, hour separator lines, and a current-time red
-indicator line with dot.  Designed to sit inside a scroll area alongside
-DayView and WeekView.
-"""
+# خط زمانی — نمایش زمانی رویدادها
 from __future__ import annotations
 
 from datetime import datetime
@@ -53,6 +46,7 @@ class TimelineWidget(QWidget):
     * Emits no signals — pure rendering widget.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
@@ -98,31 +92,38 @@ class TimelineWidget(QWidget):
 
     # ── Timer ───────────────────────────────────────────────────────────────
 
+    # پاسخ به tick
     def _on_tick(self) -> None:
         """Repaint to advance the current-time indicator."""
         self.update()
 
     # ── Helpers ─────────────────────────────────────────────────────────────
 
+    # now y
     @staticmethod
+    # محاسبه موقعیت Y خط زمان فعلی
     def _now_y() -> float:
         """Y-pixel offset for the current wall-clock time."""
         now = datetime.now()
         minutes = now.hour * 60 + now.minute
         return minutes * (_HOUR_HEIGHT / 60.0)
 
+    # fmt ساعت
     @staticmethod
     def _fmt_hour(hour: int) -> str:
         """``HH:۰۰`` with Persian digits in the hour part."""
         return to_persian_digits(f"{hour:02d}:۰۰")
 
+    # fmt half
     @staticmethod
+    # فرمت‌بندی نیم ساعت
     def _fmt_half(hour: int) -> str:
         """``HH:۳۰`` with Persian digits in the hour part."""
         return to_persian_digits(f"{hour:02d}:۳۰")
 
     # ── Painting ────────────────────────────────────────────────────────────
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)

@@ -1,21 +1,4 @@
-"""
-Critical Path Method (CPM).
-
-Implements the classical forward/backward pass used in project
-management since the 1950s. The result is injected back into each
-Task as early_start, early_finish, late_start, late_finish, and slack.
-
-Assumptions:
-  * The project graph is a DAG (cycles are rejected before this runs).
-  * Working calendar is simplified to 8-hour days, 5-day weeks,
-    starting from project.start_anchor (default: now).
-  * Lag on FS dependencies extends the successor's earliest start.
-  * For FF/SS/SF we apply the standard precedence arithmetic.
-
-The "critical path" is the longest chain through the graph — any
-delay on it delays the whole project. Rask paints these nodes
-in gold.
-"""
+# مسیر بحرانی — محاسبه مسیر بحرانی پروژه
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -42,11 +25,13 @@ class CPMResult:
     critical_path: list[TaskId]
     cycle_error: Optional[CycleError] = None
 
+    # بررسی موفقیت عملیات
     @property
     def ok(self) -> bool:
         return self.cycle_error is None
 
 
+# افزودن دقیقه کاری
 def _add_minutes(start: datetime, minutes: int) -> datetime:
     """Add (or subtract) working minutes from a datetime.
 
@@ -63,6 +48,7 @@ def _add_minutes(start: datetime, minutes: int) -> datetime:
         return _add_working_minutes_backward(start, -minutes)
 
 
+# افزودن دقیقه کاری رو به جلو
 def _add_working_minutes_forward(start: datetime, minutes: int) -> datetime:
     cur = _snap_to_work_hours(start)
     remaining = minutes
@@ -81,6 +67,7 @@ def _add_working_minutes_forward(start: datetime, minutes: int) -> datetime:
     return cur
 
 
+# افزودن دقیقه کاری رو به عقب
 def _add_working_minutes_backward(start: datetime, minutes: int) -> datetime:
     """Subtract `minutes` working minutes from `start`."""
     cur = _snap_to_work_hours_backward(start)
@@ -100,6 +87,7 @@ def _add_working_minutes_backward(start: datetime, minutes: int) -> datetime:
     return cur
 
 
+# تنظیم به ساعات کاری رو به عقب
 def _snap_to_work_hours_backward(dt: datetime) -> datetime:
     """Snap backward: if outside work hours, snap to end of previous work window."""
     if dt.weekday() >= 5:  # Sat or Sun → go back to Friday 17:00
@@ -117,6 +105,7 @@ def _snap_to_work_hours_backward(dt: datetime) -> datetime:
     return dt
 
 
+# پنجره کاری قبلی
 def _prev_work_window(dt: datetime) -> datetime:
     """Return the start of the previous work window strictly before dt."""
     prev_day = dt - timedelta(days=1)
@@ -126,6 +115,7 @@ def _prev_work_window(dt: datetime) -> datetime:
     return prev_day.replace(hour=17, minute=0, second=0, microsecond=0)
 
 
+# تنظیم به ساعات کاری
 def _snap_to_work_hours(dt: datetime) -> datetime:
     """If dt is outside Mon-Fri 09-17, snap forward to next work window."""
     if dt.weekday() >= 5:  # Sat or Sun
@@ -143,6 +133,7 @@ def _snap_to_work_hours(dt: datetime) -> datetime:
     return dt
 
 
+# پنجره کاری بعدی
 def _next_work_window(dt: datetime) -> datetime:
     """Return the start of the next work window strictly after dt."""
     next_day = dt + timedelta(days=1)
@@ -151,6 +142,7 @@ def _next_work_window(dt: datetime) -> datetime:
     return next_day.replace(hour=9, minute=0, second=0, microsecond=0)
 
 
+# اجرای الگوریتم مسیر بحرانی
 def run_cpm(project: Project, start_anchor: Optional[datetime] = None) -> CPMResult:
     """
     Execute the CPM forward + backward pass on the project.

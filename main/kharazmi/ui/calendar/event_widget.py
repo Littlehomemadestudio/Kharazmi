@@ -1,17 +1,4 @@
-"""
-EventWidget — Interactive event card for the RASK! calendar Day/Week view.
-
-A custom-painted QWidget representing a single timed event. Supports:
-  - Hover highlight (tracked via enterEvent/leaveEvent)
-  - Selection state (gold ring)
-  - Drag-to-move (click and drag the card body)
-  - Drag-to-resize (drag the bottom 6px handle)
-  - 15-minute snap increments during drag/resize
-  - Right-click context menu (Edit, Delete, Toggle Complete, Change Color)
-  - Signals for all interactions
-
-Rendering is delegated to EventRenderer so visual style stays centralised.
-"""
+# ویجت رویداد — عنصر تعاملی رویداد با کشیدن و رها کردن
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -60,6 +47,7 @@ class EventWidget(QWidget):
 
     # ── Construction ──
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, event: Event, color: str, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
 
@@ -91,51 +79,61 @@ class EventWidget(QWidget):
 
     # ── Public API ──
 
+    # رویداد شناسه
     @property
     def event_id(self) -> str:
         """The unique identifier of the displayed event."""
         return self._event.id
 
+    # پردازش رویداد عمومی
     @property
     def event(self) -> Event:
         """Current event data."""
         return self._event
 
+    # تنظیم رویداد
     def set_event(self, event: Event) -> None:
         """Update the event data and repaint."""
         self._event = event
         self.update()
 
+    # دریافت رنگ
     @property
     def color(self) -> str:
         """The calendar color for the left border."""
         return self._color
 
+    # دریافت رنگ
     @color.setter
     def color(self, value: str) -> None:
         self._color = value
         self.update()
 
+    # شناور
     @property
     def hovered(self) -> bool:
         return self._hovered
 
+    # انتخاب‌شده
     @property
     def selected(self) -> bool:
         return self._selected
 
+    # مجموعه انتخاب‌شده
     def set_selected(self, selected: bool) -> None:
         """Set the visual selection state and repaint."""
         if self._selected != selected:
             self._selected = selected
             self.update()
 
+    # بررسی dragging
     def is_dragging(self) -> bool:
         """Whether a drag or resize operation is in progress."""
         return self._mouse_state in (_MouseState.DRAG_MOVE, _MouseState.DRAG_RESIZE)
 
     # ── Rendering ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802 — Qt naming
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -164,6 +162,7 @@ class EventWidget(QWidget):
         finally:
             painter.end()
 
+    # رسم تغییر اندازه مدیریت
     def _paint_resize_handle(self, painter: QPainter, rect: QRectF) -> None:
         """Paint the resize grip indicator at the bottom edge."""
         handle_h = Metrics.RESIZE_HANDLE_H
@@ -187,18 +186,22 @@ class EventWidget(QWidget):
 
     # ── Hit Testing ──
 
+    # بررسی در تغییر اندازه zone
     def _is_in_resize_zone(self, pos: QPoint) -> bool:
         """Return True if `pos` is within the bottom resize handle zone."""
         return pos.y() >= self.height() - Metrics.RESIZE_HANDLE_H
 
     # ── Snap ──
 
+    # snap minutes
     @staticmethod
+    # چسباندن به دقیقه
     def _snap_minutes(minutes: int) -> int:
         """Snap to the nearest 15-minute increment."""
         snap = Metrics.SNAP_MINUTES
         return round(minutes / snap) * snap
 
+    # pixels تبدیل به minutes
     @staticmethod
     def _pixels_to_minutes(pixels: int) -> int:
         """Convert a vertical pixel delta to minutes (based on HOUR_HEIGHT)."""
@@ -206,6 +209,7 @@ class EventWidget(QWidget):
 
     # ── Mouse Events ──
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             self._press_pos = event.globalPosition().toPoint()
@@ -225,6 +229,7 @@ class EventWidget(QWidget):
         else:
             event.ignore()
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         # ── Cursor shape ──
         if self._mouse_state == _MouseState.NONE:
@@ -277,6 +282,7 @@ class EventWidget(QWidget):
 
         event.ignore()
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             state = self._mouse_state
@@ -311,6 +317,7 @@ class EventWidget(QWidget):
 
         event.ignore()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             self.double_clicked.emit(self._event.id)
@@ -320,12 +327,14 @@ class EventWidget(QWidget):
 
     # ── Hover ──
 
+    # پردازش ورود ماوس به ویجت
     def enterEvent(self, event) -> None:  # noqa: N802
         self._hovered = True
         self._glow.enter()
         self.update()
         super().enterEvent(event)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:  # noqa: N802
         self._hovered = False
         self._glow.leave()
@@ -334,6 +343,7 @@ class EventWidget(QWidget):
 
     # ── Context Menu ──
 
+    # پردازش رویداد منوی زمینه
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:  # noqa: N802
         menu = QMenu(self)
         menu.setStyleSheet(self._context_menu_stylesheet())
@@ -379,12 +389,14 @@ class EventWidget(QWidget):
                 self._color = new_color
                 self.update()
 
+    # زمینه عملکرد مقدار
     def _context_action_value(self) -> Optional[str]:
         """Return and clear the last context-menu action intent."""
         val = getattr(self, "_context_action", None)
         self._context_action = None
         return val
 
+    # رنگ swatch متن
     @staticmethod
     def _color_swatch_text(hex_color: str) -> str:
         """Produce a menu label for a color swatch."""
@@ -403,6 +415,7 @@ class EventWidget(QWidget):
         name = name_map.get(hex_color, hex_color)
         return f"  ●  {name}"
 
+    # زمینه منو stylesheet
     @staticmethod
     def _context_menu_stylesheet() -> str:
         """Dark-themed stylesheet for the context menu."""
@@ -430,6 +443,7 @@ class EventWidget(QWidget):
 
     # ── Keyboard ──
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event) -> None:  # noqa: N802
         """Handle keyboard interaction when the widget has focus."""
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):

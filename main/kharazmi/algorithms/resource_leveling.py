@@ -1,13 +1,4 @@
-"""
-Resource leveling heuristic.
-
-When two tasks would run concurrently and both need the same resource
-beyond its daily capacity, one must be delayed. This module performs
-a greedy leveling pass that respects dependencies.
-
-This is a simplified heuristic — production-grade leveling is NP-hard;
-we use a priority-rule based serial schedule generation scheme.
-"""
+# هموارسازی منابع — بهینه‌سازی تخصیص منابع پروژه
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,6 +17,7 @@ class LevelingResult:
     cpm: CPMResult
 
 
+# اجرای resource leveling
 def run_resource_leveling(project: Project, start_anchor: Optional[datetime] = None) -> LevelingResult:
     """
     Greedy resource leveling.
@@ -115,6 +107,7 @@ def run_resource_leveling(project: Project, start_anchor: Optional[datetime] = N
             break
 
         # Look up priorities
+        # اولویت از
         def priority_of(tid: TaskId) -> int:
             t = project.get_task(tid)
             return int(t.priority) if t else 0

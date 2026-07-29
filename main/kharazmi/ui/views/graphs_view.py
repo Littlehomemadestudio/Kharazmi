@@ -1,13 +1,4 @@
-"""
-GraphsView — full-page visual analytics for RASK! routes/workflows.
-
-Features:
-  - Landing page: select a workflow (from current route or journal history)
-  - CSV / Excel import/export for workflows
-  - Multiple chart types: success probability bar chart, risk heatmap,
-    duration timeline, branch flow diagram, step kind distribution
-  - Beautiful gold-on-dark theme with animated transitions
-"""
+# نمای نمودارها — نمایش گرافیکی داده‌ها و روابط
 from __future__ import annotations
 
 import csv
@@ -36,6 +27,7 @@ from ..theme import Palette
 #  Workflow CSV/Excel I/O
 # ──────────────────────────────────────────────────────────────────────
 
+# خروجی مسیر csv
 def export_route_csv(route: Route, path: str) -> str:
     """Export a Route to CSV (steps + edges in one file)."""
     p = Path(path)
@@ -81,6 +73,7 @@ def export_route_csv(route: Route, path: str) -> str:
     return str(p)
 
 
+# خروجی مسیر excel
 def export_route_excel(route: Route, path: str) -> str:
     """Export a Route to Excel (.xlsx) with multiple sheets."""
     import xlsxwriter
@@ -161,6 +154,7 @@ def export_route_excel(route: Route, path: str) -> str:
     return str(p)
 
 
+# وارد کردن مسیر csv
 def import_route_csv(path: str) -> Route:
     """Import a Route from CSV file."""
     p = Path(path)
@@ -275,6 +269,7 @@ def import_route_csv(path: str) -> Route:
     )
 
 
+# وارد کردن مسیر excel
 def import_route_excel(path: str) -> Route:
     """Import a Route from Excel (.xlsx) file."""
     import openpyxl
@@ -360,12 +355,14 @@ def import_route_excel(path: str) -> Route:
 class _BarChartWidget(QWidget):
     """Horizontal bar chart showing step success probabilities."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
         self.setMinimumHeight(max(300, len(route.steps) * 38 + 60))
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -437,12 +434,14 @@ class _BarChartWidget(QWidget):
 class _RiskHeatmapWidget(QWidget):
     """Grid-based heatmap of step risk levels."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
         self.setFixedHeight(220)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -500,12 +499,14 @@ class _RiskHeatmapWidget(QWidget):
 class _DurationTimelineWidget(QWidget):
     """Gantt-like timeline showing step durations."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
         self.setMinimumHeight(max(250, len(route.steps) * 28 + 60))
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -570,11 +571,13 @@ class _DurationTimelineWidget(QWidget):
 class _KindDonutWidget(QWidget):
     """Donut chart showing step kind distribution."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
         self.setFixedSize(260, 260)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -637,12 +640,14 @@ class _KindDonutWidget(QWidget):
 class _BranchFlowWidget(QWidget):
     """Visual diagram showing branch flow with node counts per branch."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
         self.setFixedHeight(200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -722,11 +727,13 @@ class _GraphsLanding(QFrame):
 
     workflowSelected = Signal(object)  # Route
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, journal_store: JournalStore, parent=None):
         super().__init__(parent)
         self.journal_store = journal_store
         self._build_ui()
 
+    # ساخت رابط کاربری
     def _build_ui(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -797,6 +804,7 @@ class _GraphsLanding(QFrame):
 
         self.refresh_workflows()
 
+    # btn سبک
     def _btn_style(self) -> str:
         return f"""
             QPushButton {{
@@ -814,6 +822,7 @@ class _GraphsLanding(QFrame):
             }}
         """
 
+    # workflow card سبک
     def _workflow_card_style(self) -> str:
         return f"""
             QFrame {{
@@ -829,6 +838,7 @@ class _GraphsLanding(QFrame):
             }}
         """
 
+    # بازخوانی workflows
     def refresh_workflows(self):
         # Clear existing cards
         while self._workflow_layout.count() > 1:
@@ -909,6 +919,7 @@ class _GraphsLanding(QFrame):
             card.mousePressEvent = lambda e, r=entry.route: self.workflowSelected.emit(r)
             self._workflow_layout.insertWidget(self._workflow_layout.count() - 1, card)
 
+    # پاسخ به وارد کردن csv
     def _on_import_csv(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Import Workflow from CSV", "",
@@ -921,6 +932,7 @@ class _GraphsLanding(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "Import Failed", str(e))
 
+    # پاسخ به وارد کردن excel
     def _on_import_excel(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Import Workflow from Excel", "",
@@ -933,6 +945,7 @@ class _GraphsLanding(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "Import Failed", str(e))
 
+    # خروجی csv
     def _export_csv(self, route: Route):
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Workflow as CSV", "workflow.csv",
@@ -945,6 +958,7 @@ class _GraphsLanding(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "Export Failed", str(e))
 
+    # خروجی excel
     def _export_excel(self, route: Route):
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Workflow as Excel", "workflow.xlsx",
@@ -967,11 +981,13 @@ class _GraphsWorkspace(QFrame):
 
     backRequested = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None):
         super().__init__(parent)
         self._route: Optional[Route] = None
         self._build_ui()
 
+    # ساخت رابط کاربری
     def _build_ui(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -1057,6 +1073,7 @@ class _GraphsWorkspace(QFrame):
         scroll.setWidget(self._charts_container)
         outer.addWidget(scroll, stretch=1)
 
+    # تنظیم مسیر
     def set_route(self, route: Route):
         self._route = route
         self._route_title.setText(
@@ -1064,6 +1081,12 @@ class _GraphsWorkspace(QFrame):
         )
         self._rebuild_charts()
 
+    # rebuild charts
+    # rebuild charts
+    # rebuild charts
+    # rebuild charts
+
+    # بازسازی نمودارها
     def _rebuild_charts(self):
         # Clear existing charts
         while self._charts_layout.count():
@@ -1141,6 +1164,12 @@ class _GraphsWorkspace(QFrame):
 
         self._charts_layout.addLayout(row3)
 
+    # chart card
+    # chart card
+    # chart card
+    # chart card
+
+    # ساخت کارت نمودار
     def _chart_card(self, title: str, chart_widget: QWidget) -> QFrame:
         card = QFrame()
         card.setStyleSheet(f"""
@@ -1156,6 +1185,7 @@ class _GraphsWorkspace(QFrame):
         cl.addWidget(chart_widget)
         return card
 
+    # پاسخ به خروجی csv
     def _on_export_csv(self):
         if not self._route:
             return
@@ -1170,6 +1200,7 @@ class _GraphsWorkspace(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "Export Failed", str(e))
 
+    # پاسخ به خروجی excel
     def _on_export_excel(self):
         if not self._route:
             return
@@ -1199,11 +1230,13 @@ class GraphsView(QWidget):
 
     routeSelected = Signal(object)  # Route — emitted when user picks a route
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, journal_store: JournalStore, parent=None):
         super().__init__(parent)
         self.journal_store = journal_store
         self._build_ui()
 
+    # ساخت رابط کاربری
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1223,20 +1256,24 @@ class GraphsView(QWidget):
 
         layout.addWidget(self._stack)
 
+    # پاسخ به workflow انتخاب‌شده
     def _on_workflow_selected(self, route: Route):
         self._workspace.set_route(route)
         self._stack.setCurrentIndex(1)
         self.routeSelected.emit(route)
 
+    # نمایش landing
     def _show_landing(self):
         self._landing.refresh_workflows()
         self._stack.setCurrentIndex(0)
 
+    # تنظیم مسیر
     def set_route(self, route: Route):
         """Programmatically set a route and show charts."""
         self._workspace.set_route(route)
         self._stack.setCurrentIndex(1)
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self):
         """Refresh the landing page workflow list."""
         self._landing.refresh_workflows()

@@ -1,28 +1,4 @@
-"""
-SpecialEdgeItem — visually distinctive edges for Breakthrough / Skip / Loop.
-
-Three edge types that CONNECT TWO NODES with instantly recognizable visuals:
-
-  BreakthroughEdge — BLUE electric flash alternative path.
-    Jagged/zigzag (lightning-bolt) path, pulsing blue glow,
-    ⚡ icon at midpoint, "BREAKTHROUGH" label.
-
-  SkipEdge — ORANGE whirly arrow skipping section.
-    Curved path arcing ABOVE the nodes (jumping over),
-    spiral decorations, "SKIP" label.
-
-  LoopEdge — GREEN circling arrow showing repetition.
-    Path that curves DOWN then loops back UP with a visible
-    loop/circle in the middle, ⟳ icon, "LOOP" label.
-
-All three:
-  - Accept source and target RouteNodeItem references
-  - Follow nodes via `_update_path()`
-  - Use animated elements (QTimer)
-  - Support hover effects
-  - Use the Palette theme
-  - ZValue above regular edges, below nodes
-"""
+# آیتم یال ویژه — نمایش یال اتصال ویژه
 from __future__ import annotations
 
 import math
@@ -45,6 +21,7 @@ from ..theme import Palette
 # Shared helpers
 # ────────────────────────────────────────────────────────────────────
 
+# رسم arrowhead
 def _draw_arrowhead(painter: QPainter, tip: QPointF, angle: float,
                     size: float, color: QColor) -> None:
     """Draw a filled triangular arrowhead at *tip* pointing along *angle*."""
@@ -62,6 +39,7 @@ def _draw_arrowhead(painter: QPainter, tip: QPointF, angle: float,
     painter.drawPolygon(arrow)
 
 
+# رسم برچسب pill
 def _draw_label_pill(painter: QPainter, center: QPointF, text: str,
                      text_color: QColor, border_color: QColor,
                      font: QFont) -> None:
@@ -80,6 +58,7 @@ def _draw_label_pill(painter: QPainter, center: QPointF, text: str,
     painter.drawText(rect, Qt.AlignCenter, text)
 
 
+# محاسبه anchors
 def _compute_anchors(source, target):
     """Return (src_anchor, tgt_anchor) in scene coordinates, following
     the same anchor-selection logic as UnifiedEdgeItem."""
@@ -126,6 +105,7 @@ class BreakthroughEdge(QGraphicsPathItem):
     GLOW_COLOR = QColor(60, 140, 255, 50)
     LABEL_COLOR = QColor(100, 190, 255)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -151,6 +131,7 @@ class BreakthroughEdge(QGraphicsPathItem):
 
     # ── path computation ──────────────────────────────────────────
 
+    # بروزرسانی مسیر
     def _update_path(self) -> None:
         """Compute a jagged / zigzag lightning-bolt path from source
         anchor to target anchor."""
@@ -198,6 +179,8 @@ class BreakthroughEdge(QGraphicsPathItem):
 
     # ── animation ─────────────────────────────────────────────────
 
+    # tick pulse
+    # بروزرسانی تیک تپش
     def _tick_pulse(self) -> None:
         self._pulse_phase += 0.10
         if self._pulse_phase > 2 * math.pi:
@@ -206,6 +189,7 @@ class BreakthroughEdge(QGraphicsPathItem):
 
     # ── painting ──────────────────────────────────────────────────
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -295,6 +279,13 @@ class BreakthroughEdge(QGraphicsPathItem):
 
     # ── hover ─────────────────────────────────────────────────────
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event) -> None:
         self._hovered = True
         self.setZValue(8)
@@ -305,6 +296,12 @@ class BreakthroughEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event) -> None:
         self._hovered = False
         self.setZValue(5)
@@ -314,6 +311,13 @@ class BreakthroughEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverLeaveEvent(event)
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSceneHasChanged:
             self._update_path()
@@ -337,6 +341,7 @@ class SkipEdge(QGraphicsPathItem):
     GLOW_COLOR = QColor(255, 140, 30, 40)
     LABEL_COLOR = QColor(255, 200, 100)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -362,6 +367,7 @@ class SkipEdge(QGraphicsPathItem):
 
     # ── path computation ──────────────────────────────────────────
 
+    # بروزرسانی مسیر
     def _update_path(self) -> None:
         """Compute an upward-arching bezier path from source to target.
         The arc goes well ABOVE the nodes to show 'jumping over'."""
@@ -404,6 +410,8 @@ class SkipEdge(QGraphicsPathItem):
 
     # ── animation ─────────────────────────────────────────────────
 
+    # tick spin
+    # بروزرسانی تیک چرخش
     def _tick_spin(self) -> None:
         self._spin_phase += 0.08
         if self._spin_phase > 2 * math.pi:
@@ -412,6 +420,7 @@ class SkipEdge(QGraphicsPathItem):
 
     # ── painting ──────────────────────────────────────────────────
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -488,6 +497,7 @@ class SkipEdge(QGraphicsPathItem):
             label_font,
         )
 
+    # رسم spiral
     def _draw_spiral(self, painter: QPainter, center: QPointF,
                      tangent_angle: float, phase: float) -> None:
         """Draw a small spiral/whirl decoration at *center*."""
@@ -514,6 +524,13 @@ class SkipEdge(QGraphicsPathItem):
 
     # ── hover ─────────────────────────────────────────────────────
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event) -> None:
         self._hovered = True
         self.setZValue(8)
@@ -524,6 +541,12 @@ class SkipEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event) -> None:
         self._hovered = False
         self.setZValue(5)
@@ -533,6 +556,13 @@ class SkipEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverLeaveEvent(event)
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSceneHasChanged:
             self._update_path()
@@ -554,6 +584,7 @@ class LoopEdge(QGraphicsPathItem):
     GLOW_COLOR = QColor(60, 220, 120, 40)
     LABEL_COLOR = QColor(140, 255, 180)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -579,6 +610,7 @@ class LoopEdge(QGraphicsPathItem):
 
     # ── path computation ──────────────────────────────────────────
 
+    # بروزرسانی مسیر
     def _update_path(self) -> None:
         """Compute a path that curves DOWN then loops back UP with a
         visible loop/circle in the middle of the edge."""
@@ -642,6 +674,8 @@ class LoopEdge(QGraphicsPathItem):
 
     # ── animation ─────────────────────────────────────────────────
 
+    # tick spin
+    # بروزرسانی تیک چرخش
     def _tick_spin(self) -> None:
         self._spin_phase += 4.0
         if self._spin_phase >= 360:
@@ -650,6 +684,7 @@ class LoopEdge(QGraphicsPathItem):
 
     # ── painting ──────────────────────────────────────────────────
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -721,6 +756,7 @@ class LoopEdge(QGraphicsPathItem):
                 label_font,
             )
 
+    # رسم loop آیکون
     def _draw_loop_icon(self, painter: QPainter, center: QPointF,
                         radius: float) -> None:
         """Draw a spinning ⟳ icon at the loop center."""
@@ -761,6 +797,13 @@ class LoopEdge(QGraphicsPathItem):
 
     # ── hover ─────────────────────────────────────────────────────
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event) -> None:
         self._hovered = True
         self.setZValue(8)
@@ -771,6 +814,12 @@ class LoopEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event) -> None:
         self._hovered = False
         self.setZValue(5)
@@ -780,6 +829,13 @@ class LoopEdge(QGraphicsPathItem):
         self.setPen(pen)
         super().hoverLeaveEvent(event)
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSceneHasChanged:
             self._update_path()

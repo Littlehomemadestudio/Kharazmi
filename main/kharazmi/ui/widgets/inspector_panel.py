@@ -1,9 +1,4 @@
-"""
-InspectorPanel — properties editor for the currently-selected task.
-
-Shown on the right side of the main window. Reflects and edits the
-task that the user has selected in any view.
-"""
+# پنل بازرس — بررسی و ویرایش جزئیات عنصر انتخاب‌شده
 from __future__ import annotations
 
 from datetime import datetime
@@ -35,6 +30,7 @@ class InspectorPanel(QScrollArea):
 
     taskChanged = Signal(object)  # emits the Task being edited (or None)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -66,6 +62,7 @@ class InspectorPanel(QScrollArea):
 
         self._set_enabled(False)
 
+    # ساخت سربرگ
     def _build_header(self) -> None:
         title = QLabel("INSPECTOR")
         title.setStyleSheet(
@@ -82,6 +79,7 @@ class InspectorPanel(QScrollArea):
         )
         self._layout.addWidget(self._task_title_label)
 
+    # ساخت گروه اطلاعات پایه
     def _build_basic_group(self) -> None:
         group = QGroupBox("Basic")
         layout = QFormLayout(group)
@@ -134,6 +132,7 @@ class InspectorPanel(QScrollArea):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه زمان‌بندی
     def _build_schedule_group(self) -> None:
         group = QGroupBox("Schedule (computed)")
         layout = QFormLayout(group)
@@ -176,6 +175,7 @@ class InspectorPanel(QScrollArea):
 
         self._layout.addWidget(group)
 
+    # نسخه ساخت وضعیت گروه
     def _build_status_group(self) -> None:
         group = QGroupBox("Status & Progress")
         layout = QVBoxLayout(group)
@@ -212,6 +212,7 @@ class InspectorPanel(QScrollArea):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه برآورد PERT
     def _build_pert_group(self) -> None:
         group = QGroupBox("PERT 3-Point Estimate")
         layout = QFormLayout(group)
@@ -248,6 +249,7 @@ class InspectorPanel(QScrollArea):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه عملکردها
     def _build_actions_group(self) -> None:
         group = QGroupBox("Quick Actions")
         layout = QVBoxLayout(group)
@@ -262,6 +264,7 @@ class InspectorPanel(QScrollArea):
         self._layout.addWidget(group)
 
     # ---- Loading ----
+    # بارگذاری وظیفه
     def load_task(self, task: Optional[Task]) -> None:
         self._current_task = task
         self._suppress_updates = True
@@ -346,16 +349,19 @@ class InspectorPanel(QScrollArea):
         finally:
             self._suppress_updates = False
 
+    # مجموعه فعال
     def _set_enabled(self, enabled: bool) -> None:
         for w in self.findChildren(QWidget):
             w.setEnabled(enabled)
 
     # ---- Edit handlers ----
+    # پاسخ به عنوان changed
     def _on_title_changed(self, text: str) -> None:
         if self._suppress_updates or self._current_task is None:
             return
         self.task_service.update_task(self._current_task.id, title=text, recalc=False)
 
+    # پاسخ به desc changed
     def _on_desc_changed(self) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -363,6 +369,7 @@ class InspectorPanel(QScrollArea):
                                       description=self._desc_edit.toPlainText(),
                                       recalc=False)
 
+    # پاسخ به تغییر مدت
     def _on_duration_changed(self) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -371,6 +378,7 @@ class InspectorPanel(QScrollArea):
         self.task_service.update_task(self._current_task.id,
                                       duration=Duration.of(amount, unit))
 
+    # پاسخ به تغییر اولویت
     def _on_priority_changed(self, idx: int) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -378,6 +386,7 @@ class InspectorPanel(QScrollArea):
         if p is not None:
             self.task_service.update_task(self._current_task.id, priority=p, recalc=False)
 
+    # پاسخ به تغییر ریسک
     def _on_risk_changed(self, idx: int) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -385,6 +394,7 @@ class InspectorPanel(QScrollArea):
         if r is not None:
             self.task_service.update_task(self._current_task.id, risk=r, recalc=False)
 
+    # پاسخ به tags changed
     def _on_tags_changed(self) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -407,6 +417,7 @@ class InspectorPanel(QScrollArea):
             # Trigger update event by touching the task
             self._current_task.touch()
 
+    # پاسخ به وضعیت changed
     def _on_status_changed(self, idx: int) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -421,12 +432,14 @@ class InspectorPanel(QScrollArea):
             self._status_combo.setCurrentIndex(list(TaskStatus).index(self._current_task.status))
             self._suppress_updates = False
 
+    # پاسخ به پیشرفت changed
     def _on_progress_changed(self, val: int) -> None:
         if self._suppress_updates or self._current_task is None:
             return
         self._progress_label.setText(f"{val}%")
         self.task_service.update_task(self._current_task.id, progress=val, recalc=False)
 
+    # پاسخ به es constraint changed
     def _on_es_constraint_changed(self, dt) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -434,6 +447,7 @@ class InspectorPanel(QScrollArea):
         self._current_task.touch()
         self.task_service.scheduling.recalculate()
 
+    # پاسخ به lf constraint changed
     def _on_lf_constraint_changed(self, dt) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -441,6 +455,7 @@ class InspectorPanel(QScrollArea):
         self._current_task.touch()
         self.task_service.scheduling.recalculate()
 
+    # پاسخ به تغییر برآورد PERT
     def _on_pert_changed(self) -> None:
         if self._suppress_updates or self._current_task is None:
             return
@@ -461,6 +476,7 @@ class InspectorPanel(QScrollArea):
         except ValueError as e:
             self._pert_expected.setText(f"error: {e}")
 
+    # پاسخ به پاک کردن pert
     def _on_clear_pert(self) -> None:
         if self._current_task is None:
             return
@@ -472,6 +488,7 @@ class InspectorPanel(QScrollArea):
         self._pert_expected.setText("—")
         self.task_service.scheduling.recalculate()
 
+    # quick change وضعیت
     def _quick_change_status(self, new_status: TaskStatus) -> None:
         if self._current_task is None:
             return

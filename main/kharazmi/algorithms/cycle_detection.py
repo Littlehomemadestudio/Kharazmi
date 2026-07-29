@@ -1,4 +1,4 @@
-"""Standalone cycle detection (Tarjan's SCC)."""
+# تشخیص چرخه — شناسایی چرخه در گراف وابستگی
 from __future__ import annotations
 
 from typing import Optional
@@ -6,11 +6,14 @@ from typing import Optional
 from ..core import Project, TaskId
 
 
+# بررسی وجود چرخه در گراف
 def has_cycle(project: Project) -> bool:
     """True if the project graph contains any cycle."""
     WHITE, GRAY, BLACK = 0, 1, 2
     color = {t.id.value: WHITE for t in project.tasks()}
 
+    # dfs
+    # جستجوی عمق اول
     def dfs(u: str) -> bool:
         color[u] = GRAY
         for dep in project.dependencies():
@@ -30,6 +33,7 @@ def has_cycle(project: Project) -> bool:
     return False
 
 
+# یافتن یک چرخه در گراف
 def find_any_cycle(project: Project) -> Optional[list[TaskId]]:
     """Return one cycle as a list of TaskIds, or None if acyclic."""
     WHITE, GRAY, BLACK = 0, 1, 2
@@ -38,6 +42,8 @@ def find_any_cycle(project: Project) -> Optional[list[TaskId]]:
     cycle_start: Optional[str] = None
     cycle_end: Optional[str] = None
 
+    # dfs
+    # جستجوی عمق اول
     def dfs(u: str) -> bool:
         nonlocal cycle_start, cycle_end
         color[u] = GRAY

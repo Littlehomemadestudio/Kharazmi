@@ -1,35 +1,4 @@
-"""
-CalendarView — Main calendar container for the RASK! calendar.
-
-Layout (mirrors Google Calendar's desktop UI):
-
-  ┌──────────────────────────────────────────────────────────────────┐
-  │ Toolbar: ☰ | Today | ‹ › | [Month Title] | Day|Week|Month|Year │
-  ├──────────────┬───────────────────────────────────────────────────┤
-  │  Sidebar     │                                                   │
-  │  ┌─────────┐ │                                                   │
-  │  │ Mini    │ │           Main view area                          │
-  │  │ Month   │ │    (MonthView / WeekView / DayView / YearView)   │
-  │  └─────────┘ │                                                   │
-  │              │                                                   │
-  │  Calendars:  │                                                   │
-  │  ☑ Personal  │                                                   │
-  │  ☑ Work      │                                                   │
-  │  ☐ Holidays  │                                                   │
-  │              │                                                   │
-  │  ⚡Quick add │                                                   │
-  └──────────────┴───────────────────────────────────────────────────┘
-
-Keyboard shortcuts (Google Calendar style):
-  c / n    → create event
-  t        → today
-  d        → day view
-  w        → week view
-  m        → month view
-  y        → year view
-  + / -    → next/prev
-  /        → focus quick add
-"""
+# نمای تقویم — ظرف اصلی تقویم با نوارابزار، نوار کناری و نمای‌های ماه/هفته/روز/سال
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -70,6 +39,7 @@ from .animation import HoverGlow
 class _ViewButton(QPushButton):
     """Styled toggle button for view switching."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, label: str, parent=None) -> None:
         super().__init__(label, parent)
         self.setCheckable(True)
@@ -78,10 +48,12 @@ class _ViewButton(QPushButton):
         self._hover_glow = HoverGlow(self)
         self._apply_style(False)
 
+    # تنظیم حالت انتخاب دکمه
     def set_checked(self, checked: bool) -> None:
         self.setChecked(checked)
         self._apply_style(checked)
 
+    # اعمال سبک بصری
     def _apply_style(self, checked: bool) -> None:
         if checked:
             self.setStyleSheet(f"""
@@ -112,10 +84,12 @@ class _ViewButton(QPushButton):
                 }}
             """)
 
+    # پردازش ورود ماوس به ویجت
     def enterEvent(self, event) -> None:
         self._hover_glow.enter()
         super().enterEvent(event)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:
         self._hover_glow.leave()
         super().leaveEvent(event)
@@ -132,6 +106,7 @@ class _CalendarToolbar(QWidget):
     new_event_clicked = Signal()
     ai_schedule_clicked = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
         self._ctrl = controller
@@ -279,14 +254,17 @@ class _CalendarToolbar(QWidget):
 
         self._update_view_buttons()
 
+    # بروزرسانی حالت دکمه‌های نما
     def _update_view_buttons(self) -> None:
         current = self._ctrl.view_kind.value
         for val, btn in self._view_buttons.items():
             btn.set_checked(val == current)
 
+    # بروزرسانی عنوان
     def update_title(self) -> None:
         self._title_label.setText(self._ctrl.nav_title())
 
+    # بروزرسانی حالت دکمه‌های نما
     def update_view_buttons(self) -> None:
         self._update_view_buttons()
 
@@ -301,6 +279,7 @@ class CalendarView(QWidget):
     and an AI assistant panel.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, store: CalendarStore, ai_service=None, parent=None) -> None:
         super().__init__(parent)
         self._store = store
@@ -317,6 +296,7 @@ class CalendarView(QWidget):
 
     # ── UI Building ──
 
+    # ساخت رابط کاربری
     def _build_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -410,6 +390,7 @@ class CalendarView(QWidget):
 
     # ── Signal Wiring ──
 
+    # اتصال سیگنال‌ها
     def _wire_signals(self) -> None:
         # Toolbar → controller
         self._toolbar.today_clicked.connect(self._ctrl.go_today)
@@ -442,6 +423,7 @@ class CalendarView(QWidget):
 
     # ── Shortcuts ──
 
+    # تنظیم میانبرهای صفحه‌کلید
     def _setup_shortcuts(self) -> None:
         # Google Calendar style shortcuts
         QShortcut(QKeySequence("C"), self, self._on_new_event)
@@ -456,6 +438,7 @@ class CalendarView(QWidget):
 
     # ── View Switching ──
 
+    # نمایش نمای فعلی تقویم
     def _show_current_view(self) -> None:
         kind = self._ctrl.view_kind
         if kind == CalendarViewKind.MONTH:
@@ -477,43 +460,52 @@ class CalendarView(QWidget):
 
     # ── Slot Handlers ──
 
+    # پاسخ به تغییر نمای تقویم
     def _on_view_changed(self) -> None:
         self._toolbar.update_view_buttons()
         self._show_current_view()
 
+    # پاسخ به تغییر تاریخ ناوبری
     def _on_date_changed(self) -> None:
         self._toolbar.update_title()
         self._sidebar.update_mini_month()
         self._show_current_view()
 
+    # پاسخ به تغییر رویدادها
     def _on_events_changed(self) -> None:
         self._month_view.refresh()
         self._week_view.refresh()
         self._day_view.refresh()
         self._year_view.refresh()
 
+    # پاسخ به تغییر انتخاب
     def _on_selection_changed(self) -> None:
         self._month_view.update()
         self._sidebar.update_mini_month()
 
+    # پاسخ به کلیک تاریخ در نوار کناری
     def _on_sidebar_date_clicked(self, d: ShamsiDate) -> None:
         self._ctrl.go_to_date(d)
 
+    # پاسخ به تغییر وضعیت نمایش تقویم
     def _on_calendar_toggled(self, cal_id: str, visible: bool) -> None:
         self._store.set_calendar_visible(cal_id, visible)
         self._on_events_changed()
 
+    # پاسخ به درخواست افزودن تقویم
     def _on_add_calendar(self) -> None:
         dlg = CalendarSettingsDialog(self._store, self)
         dlg.exec()
         self._sidebar.refresh()
         self._on_events_changed()
 
+    # پاسخ به درخواست رویداد جدید
     def _on_new_event(self) -> None:
         dlg = EventEditorDialog(None, self._store, self)
         if dlg.exec():
             self._on_events_changed()
 
+    # پاسخ به درخواست برنامه‌ریزی هوشمند
     def _on_ai_schedule(self) -> None:
         """Open the AI Schedule dialog for interactive AI scheduling."""
         if self._ai_service is None:
@@ -523,6 +515,7 @@ class CalendarView(QWidget):
         dlg.exec()
         self._on_events_changed()
 
+    # پاسخ به ایجاد رویداد در زمان مشخص
     def _on_create_event_at(self, start_dt) -> None:
         """User double-clicked to create an event at a time."""
         evt = self._ctrl.create_event_at(start_dt)
@@ -531,6 +524,7 @@ class CalendarView(QWidget):
             if dlg.exec():
                 self._on_events_changed()
 
+    # پاسخ به فعال‌سازی رویداد با دابل‌کلیک
     def _on_event_activated(self, event_id: str) -> None:
         """User double-clicked an event to edit it."""
         evt = self._store.get_event(event_id)
@@ -539,10 +533,12 @@ class CalendarView(QWidget):
             if dlg.exec():
                 self._on_events_changed()
 
+    # پاسخ به فعال‌سازی ماه در نمای سال
     def _on_year_month_activated(self, year: int, month: int) -> None:
         self._ctrl.go_to_date(ShamsiDate(year, month, 1))
         self._ctrl.set_view(CalendarViewKind.MONTH)
 
+    # پاسخ به فعال‌سازی روز در نمای سال
     def _on_year_day_activated(self, d) -> None:
         if isinstance(d, ShamsiDate):
             self._ctrl.go_to_date(d)
@@ -550,16 +546,19 @@ class CalendarView(QWidget):
 
     # ── Public API ──
 
+    # دسترسی به کنترل‌کننده
     @property
     def controller(self) -> CalendarController:
         return self._ctrl
 
+    # تنظیم سرویس هوش مصنوعی
     def set_ai_service(self, ai_service) -> None:
         """Set the AI service for the calendar AI assistant panel."""
         self._ai_service = ai_service
         if self._ai_panel and self._ai_panel is not None:
             self._ai_panel.ai_service = ai_service
 
+    # تغییر وضعیت نمایش پنل هوش مصنوعی
     def _toggle_ai_panel(self) -> None:
         """Toggle the AI assistant panel visibility."""
         if self._ai_service is None:
@@ -586,6 +585,7 @@ class CalendarView(QWidget):
             self._ai_panel_visible = True
             self._ai_toggle_btn.setText("✕")
 
+    # بروزرسانی ai زمینه
     def _update_ai_context(self) -> None:
         """Update the AI panel with current calendar context."""
         if self._ai_panel is None or self._ai_service is None:
@@ -626,6 +626,7 @@ class CalendarView(QWidget):
         except Exception:
             pass
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         """Force refresh all views."""
         self._show_current_view()

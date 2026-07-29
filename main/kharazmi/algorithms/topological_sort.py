@@ -1,9 +1,4 @@
-"""
-Topological sort (Kahn's algorithm).
-
-Returns tasks in dependency order: every predecessor appears before
-any of its successors. Raises if the graph contains a cycle.
-"""
+# مرتب‌سازی توپولوژیک — ترتیب‌بندی خطی گره‌های گراف
 from __future__ import annotations
 
 from typing import Iterable
@@ -13,11 +8,13 @@ from ..core import Project, TaskId
 
 class CycleError(RuntimeError):
     """Raised when a topological sort is requested on a cyclic graph."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, cycle: list[str]):
         super().__init__(f"Cycle detected: {' -> '.join(cycle)}")
         self.cycle = cycle
 
 
+# مرتب‌سازی توپولوژیک گره‌ها
 def topological_sort(project: Project) -> list[TaskId]:
     """
     Kahn's algorithm. Returns TaskIds in dependency order.
@@ -57,12 +54,15 @@ def topological_sort(project: Project) -> list[TaskId]:
     return [TaskId(tid) for tid in order]
 
 
+# یافتن cycle
 def _find_cycle(project: Project, candidates: list[str]) -> list[str]:
     """DFS cycle finder — used only to produce a helpful error message."""
     WHITE, GRAY, BLACK = 0, 1, 2
     color: dict[str, int] = {t.id.value: WHITE for t in project.tasks()}
     stack: list[str] = []
 
+    # dfs
+    # جستجوی عمق اول
     def dfs(u: str) -> list[str]:
         color[u] = GRAY
         stack.append(u)

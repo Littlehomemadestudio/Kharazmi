@@ -1,16 +1,4 @@
-"""
-MultipleChoiceQuestionWidget — fully responsive question panel for the AI planner.
-
-Shows a question with option buttons that fully adapt to text length:
-  - Short options: horizontal row of compact buttons
-  - Long options: vertical stack of full-width clickable cards with word wrap
-  - Mixed: smart layout that adapts per-option
-  - Never breaks, never clips, always readable
-
-Also supports 4-6 options + custom "Other..." input.
-
-NO custom QPainter — uses QLabel for word-wrap which works perfectly natively.
-"""
+# سوال چندگزینه‌ای — نمایش سوال با گزینه‌های انتخابی
 from __future__ import annotations
 
 from typing import Optional
@@ -28,12 +16,14 @@ from ..theme import Palette
 
 # ──────────────────────────── Helper ──────────────────────────────────
 
+# estimate متن عرض
 def _estimate_text_width(text: str, font: QFont) -> int:
     """Estimate the pixel width needed to render text without wrapping."""
     fm = QFontMetrics(font)
     return fm.horizontalAdvance(text)
 
 
+# بررسی long option
 def _is_long_option(text: str, font: QFont, threshold: int = 80) -> bool:
     """Return True if the option text is long enough to need its own row."""
     return _estimate_text_width(text, font) > threshold
@@ -51,6 +41,7 @@ class _OptionCard(QFrame):
     """
     clicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, label: str, text: str, parent=None) -> None:
         super().__init__(parent)
         self._label = label
@@ -95,6 +86,7 @@ class _OptionCard(QFrame):
         layout.addWidget(self._text_label)
         self._apply_style()
 
+    # اعمال سبک بصری
     def _apply_style(self) -> None:
         if self._is_long:
             if self._pressed:
@@ -134,21 +126,25 @@ class _OptionCard(QFrame):
                 }}
             """)
 
+    # پردازش ورود ماوس به ویجت
     def enterEvent(self, event) -> None:
         self._hovered = True
         self._apply_style()
         super().enterEvent(event)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:
         self._hovered = False
         self._apply_style()
         super().leaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._pressed = True
             self._apply_style()
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self._pressed:
             self._pressed = False
@@ -159,6 +155,7 @@ class _OptionCard(QFrame):
             self._pressed = False
             self._apply_style()
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:
         fm = QFontMetrics(QFont("Inter", 12))
         if self._is_long:
@@ -168,6 +165,7 @@ class _OptionCard(QFrame):
             return QSize(max(200, rect.width()), rect.height() + 24)
         return QSize(160, 36)
 
+    # حداقل اندازه پیشنهادی ویجت
     def minimumSizeHint(self) -> QSize:
         if self._is_long:
             return QSize(120, 36)
@@ -182,6 +180,7 @@ class _CompactOptionButton(QPushButton):
     Text is set directly and QPushButton handles it natively.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, label: str, text: str, parent=None) -> None:
         super().__init__(parent)
         self._label = label
@@ -229,6 +228,7 @@ class MultipleChoiceQuestionWidget(QFrame):
 
     answered = Signal(str)  # the chosen answer (option text or custom)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, question: MultipleChoiceQuestion, index: int,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -360,10 +360,12 @@ class MultipleChoiceQuestionWidget(QFrame):
 
         layout.addLayout(custom_row)
 
+    # پاسخ به سفارشی submitted
     def _on_custom_submitted(self) -> None:
         text = self._custom_input.text().strip()
         if text:
             self.answered.emit(text)
 
+    # تمرکز input
     def focus_input(self) -> None:
         self._custom_input.setFocus()

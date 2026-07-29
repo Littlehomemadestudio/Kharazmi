@@ -1,18 +1,4 @@
-"""
-Plan selection dialog — shown at app startup.
-
-Asks the user to pick between:
-  - BASIC    (free):  A Google-Calendar-style month planner.
-                      Only that view is shown; the graph, gantt, kanban,
-                      stats, console, inspector, command palette are all
-                      hidden.
-  - ENTERPRISE (paid): Full node-graph task operating system with
-                      CPM / PERT / Monte Carlo / resource leveling /
-                      undo-redo / multi-view / etc.
-
-Once chosen, the selection is persisted in app settings so the user
-isn't asked again — but they can switch later via the menu.
-"""
+# دیالوگ انتخاب طرح — انتخاب طرح برنامه‌ریزی
 from __future__ import annotations
 
 import json
@@ -38,6 +24,7 @@ from ..theme import Palette
 SETTINGS_PATH = Path.home() / ".rask" / "plan.json"
 
 
+# بارگذاری saved طرح
 def load_saved_plan() -> Optional[str]:
     """Return 'basic' or 'enterprise' if previously chosen, else None."""
     try:
@@ -49,6 +36,7 @@ def load_saved_plan() -> Optional[str]:
     return None
 
 
+# ذخیره طرح
 def save_plan(plan: str) -> None:
     """Persist the chosen plan."""
     try:
@@ -66,6 +54,7 @@ def save_plan(plan: str) -> None:
 class PlanCard(QFrame):
     """A clickable plan card."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, plan: str, title: str, price: str,
                  features: list[str], accent: str,
                  featured: bool = False,
@@ -148,6 +137,7 @@ class PlanCard(QFrame):
         self._cta.setFixedHeight(40)
         layout.addWidget(self._cta)
 
+    # اعمال سبک بصری
     def _apply_style(self) -> None:
         border_color = self._accent if self._featured else Palette.BORDER_NORMAL
         border_width = "2px" if self._featured else "1px"
@@ -159,6 +149,7 @@ class PlanCard(QFrame):
             }}
         """)
 
+    # پردازش ورود ماوس به ویجت
     def enterEvent(self, event) -> None:
         self._hovered = True
         if not self._featured:
@@ -171,11 +162,13 @@ class PlanCard(QFrame):
             """)
         super().enterEvent(event)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:
         self._hovered = False
         self._apply_style()
         super().leaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._cta.click()
@@ -185,6 +178,7 @@ class PlanCard(QFrame):
 class PlanSelectionDialog(QDialog):
     """Modal dialog that asks the user to pick a plan."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.chosen_plan: Optional[str] = None
@@ -201,7 +195,7 @@ class PlanSelectionDialog(QDialog):
         header = QVBoxLayout()
         header.setSpacing(4)
 
-        title = QLabel("KHARAZMI")
+        title = QLabel("RASK")
         title.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; font-size: 32px; font-weight: bold; "
             f"letter-spacing: 4px;"
@@ -299,12 +293,25 @@ class PlanSelectionDialog(QDialog):
         hint.setAlignment(Qt.AlignCenter)
         layout.addWidget(hint)
 
+    # choose
+    # choose
+    # choose
+    # choose
+
+    # choose
+    # choose
     def _choose(self, plan: str) -> None:
         self.chosen_plan = plan
         save_plan(plan)
         self.accept()
 
+    # ask
     @classmethod
+    # ask
+    # ask
+    # ask
+    # ask
+    # ask
     def ask(cls, parent: QWidget = None) -> Optional[str]:
         """Show the dialog and return the chosen plan (or None if cancelled)."""
         dlg = cls(parent)

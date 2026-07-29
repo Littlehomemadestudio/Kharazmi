@@ -1,20 +1,4 @@
-"""
-RouteAnnotation — distinctive visual overlays for special route insights.
-
-Three eye-catching, animated annotations that appear near nodes:
-  - BreakthroughFlash: A BIG BLUE electric flash / lightning bolt that
-    represents a radical alternative way. Pulsing blue glow, electric arcs.
-  - SkipWhirl: A BIG WHIRLY ARROW showing you can skip a part.
-    Spiraling orange arrow with description.
-  - LoopCurl: A BIG CIRCLING ARROW animation showing a repeatable loop.
-    Spinning green circular arrow.
-
-All three are:
-  - Colorful and instantly recognizable (distinct from gold nodes)
-  - Anchored to specific nodes but float nearby
-  - Animated (pulsing, spinning, or flashing)
-  - Show description text on hover
-"""
+# حاشیه‌نویسی مسیر — نمایش توضیحات روی مسیر
 from __future__ import annotations
 
 import math
@@ -47,6 +31,7 @@ class BreakthroughFlash(QGraphicsObject):
     """
     annotationClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, insight: Insight, anchor_step_id: str,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -67,15 +52,25 @@ class BreakthroughFlash(QGraphicsObject):
         self._pulse_timer.timeout.connect(self._tick_pulse)
         self._pulse_timer.start(40)  # ~25fps
 
+    # tick pulse
+    # بروزرسانی تیک تپش
     def _tick_pulse(self) -> None:
         self._pulse_phase += 0.08
         if self._pulse_phase > 2 * math.pi:
             self._pulse_phase -= 2 * math.pi
         self.update()
 
+    # boundingRect
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         return QRectF(-20, -20, self._width + 40, self._height + 40)
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -152,6 +147,12 @@ class BreakthroughFlash(QGraphicsObject):
         lw = fm.horizontalAdvance(label)
         painter.drawText(int(center_x - lw / 2), int(self._height + 8), label)
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(45)
@@ -162,12 +163,19 @@ class BreakthroughFlash(QGraphicsObject):
         self.update()
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(35)
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.annotationClicked.emit(self.anchor_step_id)
         super().mousePressEvent(event)
@@ -185,6 +193,7 @@ class SkipWhirl(QGraphicsObject):
     """
     annotationClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, insight: Insight, anchor_step_id: str,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -205,15 +214,25 @@ class SkipWhirl(QGraphicsObject):
         self._spin_timer.timeout.connect(self._tick_spin)
         self._spin_timer.start(50)  # ~20fps
 
+    # tick spin
+    # بروزرسانی تیک چرخش
     def _tick_spin(self) -> None:
         self._spin_angle += 3.0
         if self._spin_angle >= 360:
             self._spin_angle -= 360
         self.update()
 
+    # boundingRect
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         return QRectF(-20, -20, self._width + 40, self._height + 40)
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -302,6 +321,12 @@ class SkipWhirl(QGraphicsObject):
         lw = fm2.horizontalAdvance(label)
         painter.drawText(int(cx - lw / 2), int(self._height + 8), label)
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(45)
@@ -312,12 +337,19 @@ class SkipWhirl(QGraphicsObject):
         self.update()
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(35)
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.annotationClicked.emit(self.anchor_step_id)
         super().mousePressEvent(event)
@@ -335,6 +367,7 @@ class LoopCurl(QGraphicsObject):
     """
     annotationClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, insight: Insight, anchor_step_id: str,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -355,15 +388,25 @@ class LoopCurl(QGraphicsObject):
         self._spin_timer.timeout.connect(self._tick_spin)
         self._spin_timer.start(35)  # ~28fps for smooth spin
 
+    # tick spin
+    # بروزرسانی تیک چرخش
     def _tick_spin(self) -> None:
         self._spin_angle += 4.0
         if self._spin_angle >= 360:
             self._spin_angle -= 360
         self.update()
 
+    # boundingRect
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         return QRectF(-20, -20, self._width + 40, self._height + 40)
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -468,6 +511,12 @@ class LoopCurl(QGraphicsObject):
         llw = fm2.horizontalAdvance(label)
         painter.drawText(int(cx - llw / 2), int(self._height + 8), label)
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(45)
@@ -478,12 +527,19 @@ class LoopCurl(QGraphicsObject):
         self.update()
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(35)
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         self.annotationClicked.emit(self.anchor_step_id)
         super().mousePressEvent(event)

@@ -1,4 +1,4 @@
-"""StatisticsView — analytics dashboard with charts."""
+# نمای آمار — نمایش آماری و تحلیلی پروژه
 from __future__ import annotations
 
 import math
@@ -24,12 +24,14 @@ from ..icons import get_icon
 
 class _Chart(QWidget):
     """Base class for tiny in-panel charts."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, title: str, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._title = title
         self.setMinimumHeight(180)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -53,12 +55,14 @@ class _Chart(QWidget):
 
 class DonutChart(_Chart):
     """Donut chart for status distribution."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, title: str, data: dict[str, tuple[int, str]],
                  parent: QWidget = None) -> None:
         # data: {"label": (count, color_hex)}
         super().__init__(title, parent)
         self._data = data
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         p = QPainter(self)
@@ -127,6 +131,7 @@ class DonutChart(_Chart):
 
 class BarChart(_Chart):
     """Vertical bar chart with gold bars."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, title: str, data: list[tuple[str, int]],
                  color: str = Palette.GOLD_PRIMARY,
                  parent: QWidget = None) -> None:
@@ -134,6 +139,7 @@ class BarChart(_Chart):
         self._data = data
         self._color = color
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         p = QPainter(self)
@@ -194,6 +200,7 @@ class BarChart(_Chart):
 
 class HistogramChart(_Chart):
     """For Monte Carlo output."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, title: str, histogram: list[int], bucket_size: int,
                  min_val: int, p50: int, p90: int,
                  parent: QWidget = None) -> None:
@@ -204,6 +211,7 @@ class HistogramChart(_Chart):
         self._p50 = p50
         self._p90 = p90
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         p = QPainter(self)
@@ -237,6 +245,7 @@ class HistogramChart(_Chart):
                 p.drawRect(QRectF(x, y, max(1, bar_w - 1), h))
 
             # P50 / P90 markers
+            # x برای مقدار
             def x_for_value(val: int) -> float:
                 offset = (val - self._min_val) / self._bucket_size
                 return chart_x + offset * bar_w
@@ -264,6 +273,7 @@ class HistogramChart(_Chart):
 
 class StatCard(QFrame):
     """A small KPI card."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, label: str, value: str, accent: str = Palette.GOLD_PRIMARY,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -299,6 +309,7 @@ class StatCard(QFrame):
 class StatisticsView(QScrollArea):
     """The analytics dashboard."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  scheduling: SchedulingService,
                  parent: QWidget = None) -> None:
@@ -324,6 +335,7 @@ class StatisticsView(QScrollArea):
 
         self.refresh()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         stats = self.task_service.statistics()
         # KPI cards
@@ -334,6 +346,7 @@ class StatisticsView(QScrollArea):
         self._rebuild_monte_carlo()
 
     # ---- KPI row ----
+    # ساخت kpi سطر
     def _build_kpi_row(self) -> None:
         self._kpi_container = QWidget()
         self._kpi_layout = QHBoxLayout(self._kpi_container)
@@ -342,6 +355,12 @@ class StatisticsView(QScrollArea):
         self._kpi_cards: list[StatCard] = []
         self._layout.addWidget(self._kpi_container)
 
+    # rebuild kpi
+    # rebuild kpi
+    # rebuild kpi
+    # rebuild kpi
+
+    # بازسازی شاخص‌های کلیدی عملکرد
     def _rebuild_kpi(self, stats: dict) -> None:
         # Clear
         while self._kpi_layout.count():
@@ -366,6 +385,7 @@ class StatisticsView(QScrollArea):
         self._kpi_layout.addStretch()
 
     # ---- Charts row ----
+    # ساخت charts سطر
     def _build_charts_row(self) -> None:
         self._charts_container = QWidget()
         self._charts_layout = QHBoxLayout(self._charts_container)
@@ -373,6 +393,12 @@ class StatisticsView(QScrollArea):
         self._charts_layout.setSpacing(10)
         self._layout.addWidget(self._charts_container)
 
+    # rebuild charts
+    # rebuild charts
+    # rebuild charts
+    # rebuild charts
+
+    # بازسازی نمودارها
     def _rebuild_charts(self, stats: dict) -> None:
         while self._charts_layout.count():
             item = self._charts_layout.takeAt(0)
@@ -404,6 +430,7 @@ class StatisticsView(QScrollArea):
         self._charts_layout.addWidget(bars2)
 
     # ---- Monte Carlo ----
+    # ساخت monte carlo بخش
     def _build_monte_carlo_section(self) -> None:
         group = QGroupBox("Risk Simulation — Monte Carlo")
         layout = QVBoxLayout(group)
@@ -445,15 +472,26 @@ class StatisticsView(QScrollArea):
 
         self._layout.addWidget(group)
 
+    # rebuild monte carlo
+    # rebuild monte carlo
+    # rebuild monte carlo
+    # rebuild monte carlo
+
+    # بازسازی بخش مونت‌کارلو
     def _rebuild_monte_carlo(self) -> None:
         # Nothing — we only update after button press
         pass
 
+    # اجرای monte carlo
     def _run_monte_carlo(self) -> None:
         self._mc_button.setEnabled(False)
         self._mc_status.setText("Running 1000 iterations...")
         from PySide6.QtCore import QTimer
         # Defer so UI can repaint
+        # do
+        # do
+        # do
+        # اجرای عملیات
         def _do():
             try:
                 result = self.scheduling.run_monte_carlo(iterations=1000, seed=42)

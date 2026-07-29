@@ -1,4 +1,4 @@
-"""The Task entity — the central object of the domain."""
+# موجودیت وظیفه — شیء مرکزی دامنه
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -70,6 +70,7 @@ class Task:
         self.status = new_status
         self.touch()
 
+    # تنظیم درصد پیشرفت وظیفه
     def set_progress(self, percent: int) -> None:
         self.progress = Progress(percent)
         if self.progress.is_complete and self.status != TaskStatus.DONE:
@@ -78,18 +79,22 @@ class Task:
                 self.status = TaskStatus.DONE
         self.touch()
 
+    # تنظیم مدت زمان وظیفه
     def set_duration(self, amount: float, unit: DurationUnit) -> None:
         self.duration = Duration.of(amount, unit)
         self.touch()
 
+    # افزودن برچسب به وظیفه
     def add_tag(self, tag: Tag) -> None:
         self.tags.add(tag)
         self.touch()
 
+    # حذف برچسب از وظیفه
     def remove_tag(self, tag: Tag) -> None:
         self.tags.discard(tag)
         self.touch()
 
+    # تخصیص منبع به وظیفه
     def assign_resource(self, alloc: ResourceAllocation) -> None:
         # Replace any existing allocation for the same resource name
         self.resources = [
@@ -98,26 +103,32 @@ class Task:
         self.resources.append(alloc)
         self.touch()
 
+    # حذف تخصیص منبع از وظیفه
     def unassign_resource(self, resource_name: str) -> None:
         self.resources = [r for r in self.resources if r.resource.name != resource_name]
         self.touch()
 
+    # بروزرسانی زمان تغییر
     def touch(self) -> None:
         self.updated_at = datetime.utcnow()
 
     # --- Derived properties ---
+    # آیا وظیفه روی مسیر بحرانی است
     @property
     def is_critical(self) -> bool:
         return self.slack is not None and self.slack.is_critical
 
+    # آیا وضعیت نهایی دارد
     @property
     def is_terminal(self) -> bool:
         return self.status in (TaskStatus.DONE, TaskStatus.CANCELLED)
 
+    # آیا وضعیت فعال دارد
     @property
     def is_active(self) -> bool:
         return self.status == TaskStatus.ACTIVE
 
+    # مدت موثر (PERT یا ساده)
     @property
     def effective_duration(self) -> Duration:
         """PERT expected duration if available, else plain duration."""
@@ -125,10 +136,12 @@ class Task:
             return self.pert.expected
         return self.duration
 
+    # مدت زمان باقیمانده
     @property
     def remaining_duration(self) -> Duration:
         return Duration(int(self.duration.minutes * self.progress.remaining_fraction))
 
+    # سریال‌سازی وظیفه به دیکشنری
     def to_dict(self) -> dict:
         """Serialise to a JSON-friendly dict."""
         return {
@@ -163,9 +176,11 @@ class Task:
             "updated_at": _dt(self.updated_at),
         }
 
+    # دقیقه بدبینانه PERT یا None
     def pessimistic_minutes_or_none(self) -> Optional[int]:
         return None if self.pert is None else self.pert.pessimistic.minutes
 
+    # بازسازی وظیفه از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Task":
         from .value_objects import Resource
@@ -204,10 +219,12 @@ class Task:
         )
 
 
+# تبدیل datetime به رشته ISO
 def _dt(value: Optional[datetime]) -> Optional[str]:
     return None if value is None else value.isoformat()
 
 
+# تجزیه رشته ISO به datetime
 def _parse_dt(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None

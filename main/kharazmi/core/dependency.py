@@ -1,4 +1,4 @@
-"""Dependency (edge) between two tasks."""
+# وابستگی (یال) بین دو وظیفه
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,15 +22,18 @@ class Dependency:
     type: DependencyType = DependencyType.FINISH_START
     lag: Duration = field(default_factory=lambda: Duration(0))
 
+    # بررسی عدم خودوابستگی
     def __post_init__(self) -> None:
         if self.predecessor_id == self.successor_id:
             raise ValueError("A task cannot depend on itself")
 
+    # کلید یکتای وابستگی
     @property
     def key(self) -> tuple:
         """Stable identity for set membership / dedup."""
         return (self.predecessor_id.value, self.successor_id.value, self.type.value)
 
+    # سریال‌سازی وابستگی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "predecessor": str(self.predecessor_id),
@@ -39,6 +42,7 @@ class Dependency:
             "lag_minutes": self.lag.minutes,
         }
 
+    # بازسازی وابستگی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Dependency":
         return cls(

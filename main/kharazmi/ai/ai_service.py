@@ -1,16 +1,4 @@
-"""
-Rask AI service — connects to z.ai GLM-4.5-flash for natural-language
-route planning with streaming responses.
-
-The AI generates COMPLEX, INTERCONNECTED route graphs:
-  - Multiple branches (parallel paths)
-  - Alternative steps connected with dashed "alternative" edges
-  - Fallback steps connected with dotted "fallback" edges
-  - Branch merge points
-  - No straight single-chain routes
-
-Streaming sends meaningful status text (not raw JSON) to the UI.
-"""
+# سرویس هوش مصنوعی — اتصال به z.ai GLM برای برنامه‌ریزی مسیر
 from __future__ import annotations
 
 import json
@@ -36,6 +24,7 @@ DEFAULT_API_KEY = "b795a49bd12348c8b9cc4a081c73374b.fmbP9oDfIWJ8zWiy"
 SETTINGS_PATH = Path.home() / ".rask" / "ai_settings.json"
 
 
+# بارگذاری تنظیمات هوش مصنوعی
 def load_ai_settings() -> dict:
     defaults = {
         "api_key": DEFAULT_API_KEY,
@@ -53,6 +42,7 @@ def load_ai_settings() -> dict:
     return defaults
 
 
+# ذخیره تنظیمات هوش مصنوعی
 def save_ai_settings(settings: dict) -> None:
     try:
         SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +79,7 @@ class RouteStep:
     # AI-suggested y position for creative layout
     y_hint: float = 0.0
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "id": self.id, "title": self.title,
@@ -102,13 +93,18 @@ class RouteStep:
             "x_hint": self.x_hint, "y_hint": self.y_hint,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "RouteStep":
         # Strip stray RTL/LTR control characters but preserve Persian text
         import re as _re
         _ctrl_pat = _re.compile(r'[\u200e\u200f\u202a-\u202e\u2066-\u2069]')
+
+        # حذف نویسه‌های کنترلی RTL/LTR
         def _clean(val: str) -> str:
             return _ctrl_pat.sub('', val)
+
+        # اطمینان از لیست بودن مقدار
         def _ensure_list(val):
             """Ensure a value is a list of strings.
             The AI sometimes returns a plain string instead of a list for
@@ -159,12 +155,14 @@ class RouteEdge:
     kind: str = "primary"  # primary | alternative | fallback | merge
     label: str = ""
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "source_id": self.source_id, "target_id": self.target_id,
             "kind": self.kind, "label": self.label,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "RouteEdge":
         return cls(
@@ -195,6 +193,7 @@ class Insight:
     x_hint: float = 0.5
     y_hint: float = 0.5
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "kind": self.kind, "title": self.title, "body": self.body,
@@ -202,6 +201,7 @@ class Insight:
             "x_hint": self.x_hint, "y_hint": self.y_hint,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Insight":
         return cls(
@@ -221,12 +221,14 @@ class MultipleChoiceQuestion:
     allow_custom: bool = True
     hint: str = ""
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "question": self.question, "options": list(self.options),
             "allow_custom": self.allow_custom, "hint": self.hint,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "MultipleChoiceQuestion":
         return cls(
@@ -259,6 +261,7 @@ class Route:
     # AI-chosen creative layout style: "organic", "spiral", "tree", "constellation", etc.
     layout_style: str = ""
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "goal": self.goal,
@@ -275,6 +278,7 @@ class Route:
             "layout_style": self.layout_style,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Route":
         return cls(
@@ -303,6 +307,7 @@ class JournalEntry:
     route: Optional[Route]
     notes: str = ""
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "id": self.id, "timestamp": self.timestamp,
@@ -313,6 +318,7 @@ class JournalEntry:
             "notes": self.notes,
         }
 
+    # بازسازی از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "JournalEntry":
         return cls(
@@ -360,14 +366,17 @@ class AIService:
     invisibly.
     """
 
+    # مقداردهی اولیه
     def __init__(self) -> None:
         self.settings = load_ai_settings()
         self._cancel_flags: dict[str, bool] = {}
 
+    # بروزرسانی تنظیمات
     def update_settings(self, **changes) -> None:
         self.settings.update(changes)
         save_ai_settings(self.settings)
 
+    # آیا API کیفت تنظیم شده
     @property
     def is_configured(self) -> bool:
         return bool(self.settings.get("api_key"))
@@ -486,12 +495,15 @@ class AIService:
             raise RuntimeError(f"Network error: {e.reason}") from e
         return full_text
 
+    # لغو درخواست جریانی
     def cancel_request(self, request_id: str) -> None:
         self._cancel_flags[request_id] = True
 
     # ---- Async wrappers ----
     def _run_async(self, fn: Callable[[], Any],
                    callback: Callable[[bool, Any], None]) -> None:
+
+        # تابع کارگر نخ
         def _worker():
             try:
                 result = fn()
@@ -560,6 +572,7 @@ class AIService:
             {"role": "user", "content": f"User goal: {user_goal}"},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -742,6 +755,7 @@ class AIService:
             {"role": "user", "content": user_content},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -843,6 +857,7 @@ class AIService:
             {"role": "user", "content": route_summary},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1049,6 +1064,7 @@ class AIService:
             {"role": "user", "content": user_message},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1156,6 +1172,7 @@ class AIService:
             {"role": "user", "content": f"Calendar context:\n{context_str}\n\nUser question: {user_message}"},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             # For calendar chat, we stream text chunks directly (like chat_streaming)
             payload = {
@@ -1368,6 +1385,7 @@ class AIService:
         # Add the current user request
         messages.append({"role": "user", "content": user_request})
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             payload = {
                 "model": self.settings.get("model", DEFAULT_MODEL),
@@ -1451,6 +1469,7 @@ class AIService:
             "Use Persian digits (۰-۹) in text where appropriate."}
         all_messages = [system] + messages
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             # For chat, we use the streaming API but the chunks ARE the
             # user-visible text (no JSON wrapping)
@@ -1582,6 +1601,7 @@ class AIService:
             {"role": "user", "content": route_summary},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1670,6 +1690,7 @@ class AIService:
             {"role": "user", "content": user_content},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1759,6 +1780,7 @@ class AIService:
             {"role": "user", "content": route_summary},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1840,6 +1862,7 @@ class AIService:
             {"role": "user", "content": user_content},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1951,6 +1974,7 @@ class AIService:
             {"role": "user", "content": route_summary},
         ]
 
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             full = self._call_api_streaming(
                 messages, on_status, request_id=request_id,
@@ -1984,6 +2008,8 @@ class AIService:
 
     # ---- Test the connection ----
     def test_connection(self, callback: Callable[[bool, Any], None]) -> None:
+
+        # عملیات اصلی در نخ پس‌زمینه
         def _do():
             data = self._call_api(
                 [{"role": "user", "content": "Reply with the single word OK."}],
@@ -2012,10 +2038,12 @@ class MonteCarloSimulator:
     Outputs: P50/P75/P90 completion times, failure rate, per-step failure count.
     """
 
+    # مقداردهی اولیه
     def __init__(self, route: Route, n_simulations: int = 5000) -> None:
         self.route = route
         self.n_simulations = n_simulations
 
+    # اجرای شبیه‌سازی مونت‌کارلو
     def run(self) -> 'SimulationResult':
         """Run the Monte Carlo simulation and return a SimulationResult."""
         steps_by_id = {s.id: s for s in self.route.steps}
@@ -2066,6 +2094,7 @@ class MonteCarloSimulator:
             visited: set[str] = set()
             failed = False
 
+            # محاسبه زودترین پایان
             def compute_ef(sid: str) -> int:
                 if sid in visited:
                     return earliest_finish.get(sid, 0)
@@ -2127,6 +2156,7 @@ class MonteCarloSimulator:
         )
         return result
 
+    # ساخت هیستوگرام زمان تکمیل
     def _build_distribution(self, times: list[int], n_bins: int = 20) -> list[dict]:
         """Build a histogram of completion times for visualization."""
         if not times:
@@ -2164,6 +2194,7 @@ class SimulationResult:
     step_completion_times: dict[str, list[int]] = field(default_factory=dict)
     completion_time_distribution: list[dict] = field(default_factory=list)
 
+    # تبدیل توزیع به دیکشنری هیستوگرام
     @property
     def histogram(self) -> dict[int, int]:
         """Convert completion_time_distribution to a dict of {bin_start_minute: count}.
@@ -2179,6 +2210,7 @@ class SimulationResult:
             result[key] = count
         return result
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "n_simulations": self.n_simulations,
@@ -2215,6 +2247,7 @@ class RouteHealthEngine:
       0-29:   Critical (route likely to fail)
     """
 
+    # محاسبه امتیاز سلامت مسیر
     @staticmethod
     def compute(route: Route) -> 'RouteHealthReport':
         if not route.steps:
@@ -2329,6 +2362,7 @@ class RouteHealthEngine:
             recommendations=RouteHealthEngine._generate_recommendations(metrics, steps),
         )
 
+    # تولید توصیه‌های بهبود مسیر
     @staticmethod
     def _generate_recommendations(metrics: dict, steps: list[RouteStep]) -> list[str]:
         recs = []
@@ -2361,6 +2395,7 @@ class RouteHealthReport:
     orphans: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
 
+    # سریال‌سازی به دیکشنری
     def to_dict(self) -> dict:
         return {
             "overall_score": self.overall_score,
@@ -2374,6 +2409,7 @@ class RouteHealthReport:
 
 # ---- Helpers ----
 
+# حذف حصارهای مارکداون
 def _strip_markdown_fences(s: str) -> str:
     s = s.strip()
     if s.startswith("```"):
@@ -2385,6 +2421,7 @@ def _strip_markdown_fences(s: str) -> str:
     return s.strip()
 
 
+# ترمیم JSON ناقص
 def _repair_json(s: str) -> str:
     """Attempt to repair common JSON issues: unclosed braces, trailing commas, etc."""
     s = s.strip()
@@ -2407,6 +2444,7 @@ def _repair_json(s: str) -> str:
     return s
 
 
+# استخراج داده‌های جزئی از JSON ناقص
 def _extract_partial(s: str) -> dict:
     """Extract whatever we can from a partially-formed JSON response."""
     result: dict = {}

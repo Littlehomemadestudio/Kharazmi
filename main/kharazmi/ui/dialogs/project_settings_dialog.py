@@ -1,4 +1,4 @@
-"""Project settings dialog."""
+# دیالوگ تنظیمات پروژه — پیکربندی پروژه
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -13,6 +13,7 @@ from ..theme import Palette
 
 
 class ProjectSettingsDialog(QDialog):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, parent=None) -> None:
         super().__init__(parent)
         self.project = project
@@ -56,6 +57,7 @@ class ProjectSettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         name = self._name.text().strip()
         if not name:

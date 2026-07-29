@@ -1,8 +1,4 @@
-"""Domain events emitted by the project aggregate root.
-
-The UI subscribes to these events to refresh its views — there is no
-direct coupling between the domain and the widgets.
-"""
+# رویدادهای دامنه — اتصال غیرمستقیم بین مدل و رابط کاربری
 from __future__ import annotations
 
 from dataclasses import dataclass, field

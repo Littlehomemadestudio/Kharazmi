@@ -1,14 +1,4 @@
-"""
-ScheduleQuestionsWidget — wizard-style scheduling preferences collector.
-
-Shown when the user clicks "Schedule in Calendar". Asks clarifying questions
-one at a time (wizard flow) about their scheduling preferences, then emits
-a preferences dict for the AI to create the schedule.
-
-Visual style: dark+gold RASK theme, matching MultipleChoiceQuestionWidget
-option cards with gold borders, hover glow, and a prominent pulsing final
-"Schedule with AI" button.
-"""
+# سوالات برنامه‌ریزی — پرسشنام‌های تنظیم برنامه
 from __future__ import annotations
 
 import re
@@ -32,6 +22,7 @@ from ...core.shamsi import ShamsiDate, parse_shamsi, to_ascii_digits
 _PERSIAN_RE = re.compile(r'[\u0600-\u06FF]')
 
 
+# بررسی rtl
 def _is_rtl(text: str) -> bool:
     """Return True if text contains Persian/Arabic characters."""
     return bool(_PERSIAN_RE.search(text))
@@ -49,6 +40,7 @@ class _ScheduleOptionButton(QFrame):
     """
     clicked = Signal(str)  # emits the value key
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         label: str,
@@ -96,16 +88,19 @@ class _ScheduleOptionButton(QFrame):
         self._apply_style()
 
     # ── Selection state ──
+    # انتخاب‌شده
     @property
     def selected(self) -> bool:
         return self._selected
 
+    # انتخاب‌شده
     @selected.setter
     def selected(self, val: bool) -> None:
         self._selected = val
         self._apply_style()
 
     # ── Styling ──
+    # اعمال سبک
     def _apply_style(self) -> None:
         if self._selected:
             bg = Palette.BG_SELECTED
@@ -135,21 +130,30 @@ class _ScheduleOptionButton(QFrame):
             )
 
     # ── Mouse events ──
+    # enterEvent
+    # enterEvent
+    # enterEvent
+
+    # enterEvent
+    # enterEvent
     def enterEvent(self, event) -> None:
         self._hovered = True
         self._apply_style()
         super().enterEvent(event)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:
         self._hovered = False
         self._apply_style()
         super().leaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._pressed = True
             self._apply_style()
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self._pressed:
             self._pressed = False
@@ -160,9 +164,11 @@ class _ScheduleOptionButton(QFrame):
             self._pressed = False
             self._apply_style()
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:
         return QSize(200, 40)
 
+    # حداقل اندازه پیشنهادی ویجت
     def minimumSizeHint(self) -> QSize:
         return QSize(120, 34)
 
@@ -174,6 +180,7 @@ class _StepPage(QFrame):
 
     selectionChanged = Signal(str)  # emits the value key when user picks
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         question_text: str,
@@ -278,6 +285,7 @@ class _StepPage(QFrame):
         else:
             self._custom_input = None
 
+    # پاسخ به option clicked
     def _on_option_clicked(self, value: str) -> None:
         # Deselect all, select this one
         self._selected_value = value
@@ -285,6 +293,7 @@ class _StepPage(QFrame):
             btn.selected = (btn._value == value)
         self.selectionChanged.emit(value)
 
+    # پاسخ به سفارشی submitted
     def _on_custom_submitted(self) -> None:
         if self._custom_input is None:
             return
@@ -296,10 +305,12 @@ class _StepPage(QFrame):
             self._selected_value = text
             self.selectionChanged.emit(text)
 
+    # انتخاب‌شده مقدار
     @property
     def selected_value(self) -> Optional[str]:
         return self._selected_value
 
+    # بازنشانی انتخاب
     def reset_selection(self) -> None:
         self._selected_value = None
         for btn in self._option_buttons:
@@ -315,6 +326,7 @@ class _DateStepPage(QFrame):
 
     selectionChanged = Signal(str)  # emits the date string
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         question_text: str,
@@ -462,6 +474,7 @@ class _DateStepPage(QFrame):
         self._selected_value = str(tomorrow)
         self._highlight_quick("tomorrow")
 
+    # pick تاریخ
     def _pick_date(self, date_str: str) -> None:
         self._selected_value = date_str
         self._validation_label.hide()
@@ -472,6 +485,13 @@ class _DateStepPage(QFrame):
             self._highlight_quick("tomorrow")
         self.selectionChanged.emit(date_str)
 
+    # highlight quick
+    # highlight quick
+    # highlight quick
+    # highlight quick
+
+    # highlight quick
+    # highlight quick
     def _highlight_quick(self, which: str) -> None:
         gold_style = f"""
             QPushButton {{
@@ -505,6 +525,7 @@ class _DateStepPage(QFrame):
         self._today_btn.setStyleSheet(gold_style if which == "today" else normal_style)
         self._tomorrow_btn.setStyleSheet(gold_style if which == "tomorrow" else normal_style)
 
+    # پاسخ به تاریخ submitted
     def _on_date_submitted(self) -> None:
         raw = self._date_input.text().strip()
         if not raw:
@@ -530,10 +551,12 @@ class _DateStepPage(QFrame):
         self._highlight_quick(None)  # deselect both quick buttons
         self.selectionChanged.emit(str(parsed))
 
+    # انتخاب‌شده مقدار
     @property
     def selected_value(self) -> Optional[str]:
         return self._selected_value
 
+    # بازنشانی انتخاب
     def reset_selection(self) -> None:
         tomorrow = ShamsiDate.today().add_days(1)
         self._selected_value = str(tomorrow)
@@ -562,6 +585,7 @@ class ScheduleQuestionsWidget(QFrame):
     # Step definitions (built lazily in _build_steps)
     _STEPS: list[dict] = []
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, route_goal: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._route_goal = route_goal
@@ -586,6 +610,7 @@ class ScheduleQuestionsWidget(QFrame):
 
     # ──────────────── UI Construction ─────────────────────────────────
 
+    # ساخت رابط کاربری
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -664,6 +689,7 @@ class ScheduleQuestionsWidget(QFrame):
         scroll.setWidget(self._content)
         outer.addWidget(scroll)
 
+    # ساخت سربرگ
     def _build_header(self) -> None:
         # Goal name with gold gradient style
         goal_label = QLabel(self._route_goal)
@@ -697,6 +723,7 @@ class ScheduleQuestionsWidget(QFrame):
         divider.setStyleSheet(f"color: {Palette.BORDER_SUBTLE};")
         self._main_layout.addWidget(divider)
 
+    # نسخه ساخت navigation
     def _build_navigation(self) -> None:
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(8)
@@ -832,6 +859,7 @@ class ScheduleQuestionsWidget(QFrame):
         self._glow_timer.setInterval(900)
         self._glow_timer.timeout.connect(self._toggle_glow)
 
+    # تغییر وضعیت glow
     def _toggle_glow(self) -> None:
         """Toggle the final button between bright and normal gold."""
         self._glow_phase = 1 - self._glow_phase
@@ -874,6 +902,7 @@ class ScheduleQuestionsWidget(QFrame):
 
     # ──────────────── Step Definitions ────────────────────────────────
 
+    # نسخه ساخت steps
     def _build_steps(self) -> None:
         """Create the 5 wizard step pages."""
         rtl = self._rtl
@@ -996,6 +1025,7 @@ class ScheduleQuestionsWidget(QFrame):
 
     # ──────────────── Navigation ──────────────────────────────────────
 
+    # مجموعه answer
     def _set_answer(self, step: int, value: str) -> None:
         self._answers[step] = value
         # Update Next button enabled state — it depends on whether the
@@ -1004,16 +1034,25 @@ class ScheduleQuestionsWidget(QFrame):
         if step == self._current_step:
             self._next_btn.setEnabled(value is not None)
 
+    # go بعدی
     def _go_next(self) -> None:
         if self._current_step < len(self._step_pages) - 1:
             self._current_step += 1
             self._update_step()
 
+    # go back
+    # go back
+    # go back
+    # go back
+
+    # go back
+    # go back
     def _go_back(self) -> None:
         if self._current_step > 0:
             self._current_step -= 1
             self._update_step()
 
+    # بروزرسانی step
     def _update_step(self) -> None:
         total = len(self._step_pages)
 
@@ -1049,12 +1088,14 @@ class ScheduleQuestionsWidget(QFrame):
         current_value = self._answers[self._current_step]
         self._next_btn.setEnabled(current_value is not None)
 
+    # پاسخ به نهایی submit
     def _on_final_submit(self) -> None:
         """Collect all answers and emit the schedulingRequested signal."""
         prefs = self._build_preferences()
         self._glow_timer.stop()
         self.schedulingRequested.emit(prefs)
 
+    # نسخه ساخت preferences
     def _build_preferences(self) -> dict:
         """Build the preferences dict from collected answers."""
         # Daily hours
@@ -1102,6 +1143,7 @@ class ScheduleQuestionsWidget(QFrame):
 
     # ──────────────── Public API ──────────────────────────────────────
 
+    # بازنشانی
     def reset(self) -> None:
         """Reset the wizard to the first step."""
         self._current_step = 0
@@ -1116,6 +1158,7 @@ class ScheduleQuestionsWidget(QFrame):
 
     # ──────────────── Resize ──────────────────────────────────────────
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         # Update progress fill width

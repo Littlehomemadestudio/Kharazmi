@@ -1,17 +1,4 @@
-"""
-RouteNodeItem — a QGraphicsItem that renders a single RouteStep.
-
-TRULY DYNAMIC SIZING + HEAVILY ENHANCED ANIMATIONS.
-
-Features:
-  - Auto-sizes to fit FULL title and description (no truncation ever)
-  - Rich entrance animation: fade + scale + slide-in + glow
-  - Hover: lift + glow + scale-up slightly
-  - Selection: pulsing gold border
-  - Double-click opens a full modal edit dialog (NodeEditDialog)
-  - Drag to move (positions persist)
-  - Tasks-like aesthetic: status accent bar, priority stripes, progress
-"""
+# آیتم گره مسیر — نمایش گره مسیر در گراف
 from __future__ import annotations
 
 import math
@@ -70,6 +57,7 @@ _KIND_ICONS = {
 }
 
 
+# wrap متن تبدیل به عرض
 def _wrap_text_to_width(text: str, max_width: float, font: QFont) -> list[str]:
     """Word-wrap *text* so each line fits within *max_width* pixels."""
     fm = QFontMetrics(font)
@@ -112,6 +100,7 @@ class RouteNodeItem(QGraphicsObject):
     nodeEditRequested = Signal(str)      # step_id — requests opening modal edit dialog
     nodePositionChanged = Signal(str)    # step_id — fired during drag for live edge updates
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, step: RouteStep, parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
         self.step = step
@@ -136,6 +125,7 @@ class RouteNodeItem(QGraphicsObject):
         self.setOpacity(0.0)
         self.setScale(0.6)
 
+    # محاسبه اندازه
     def _compute_size(self) -> None:
         """Compute width/height to fit ALL content (no truncation)."""
         title_font = QFont("Inter", 11, QFont.DemiBold)
@@ -211,20 +201,29 @@ class RouteNodeItem(QGraphicsObject):
         self._fb_lines = fb_lines
 
     # ---- Geometry ----
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         # Extra space for glow + hover lift
         return QRectF(-12, -12, self._width + 24, self._height + 24)
 
+    # شکل
     def shape(self) -> QPainterPath:
         path = QPainterPath()
         path.addRoundedRect(0, 0, self._width, self._height, 12, 12)
         return path
 
+    # اندازه
     @property
     def size(self) -> QSizeF:
         return QSizeF(self._width, self._height)
 
     # ---- Painting ----
+    # رسم
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -374,20 +373,25 @@ class RouteNodeItem(QGraphicsObject):
         painter.restore()
 
     # ---- Pulse animation ----
+    # بروزرسانی تیک تپش
     def _tick_pulse(self) -> None:
         self._glow_phase += 0.15
         self.update()
 
+    # دریافت مقیاس
     def _get_scale(self) -> float:
         return self.scale()
 
+    # مجموعه مقیاس
     def _set_scale(self, v: float) -> None:
         self.setScale(v)
 
     scale_prop = Property(float, _get_scale, _set_scale)
 
     # ---- Entrance animation ----
+    # انیمیشن entrance
     def animate_entrance(self, delay_ms: int = 0) -> None:
+        # شروع
         def _start():
             # Fade in
             self._opacity_anim = QPropertyAnimation(self, b"opacity")
@@ -417,10 +421,12 @@ class RouteNodeItem(QGraphicsObject):
             _start()
 
     # ---- Editing ----
+    # شروع editing
     def start_editing(self) -> None:
         """Request the parent view to open the modal edit dialog."""
         self.nodeEditRequested.emit(self.step.id)
 
+    # اعمال changes
     def apply_changes(self, changes: dict) -> None:
         """Apply changes from the modal edit dialog to the step."""
         for key, value in changes.items():
@@ -436,6 +442,11 @@ class RouteNodeItem(QGraphicsObject):
         )
 
     # ---- Interaction ----
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(20)
@@ -464,6 +475,12 @@ class RouteNodeItem(QGraphicsObject):
         self.setToolTip("\n".join(tip_parts))
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(10 if not self.isSelected() else 15)
@@ -472,6 +489,7 @@ class RouteNodeItem(QGraphicsObject):
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_started_pos = self.pos()
@@ -479,6 +497,7 @@ class RouteNodeItem(QGraphicsObject):
             # distinguish click from drag
         super().mousePressEvent(event)
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self._double_click_occurred = True
@@ -486,6 +505,7 @@ class RouteNodeItem(QGraphicsObject):
             self.nodeEditRequested.emit(self.step.id)
         super().mouseDoubleClickEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
         if event.button() == Qt.LeftButton and self._drag_started_pos is not None:
@@ -503,6 +523,13 @@ class RouteNodeItem(QGraphicsObject):
             self._drag_started_pos = None
             self._double_click_occurred = False
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         """Emit position change signal during drag for live edge updates."""
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -510,18 +537,22 @@ class RouteNodeItem(QGraphicsObject):
         return super().itemChange(change, value)
 
     # ---- Anchors ----
+    # anchor در
     @property
     def anchor_in(self) -> QPointF:
         return self.mapToScene(QPointF(0, self._height / 2))
 
+    # anchor خارج
     @property
     def anchor_out(self) -> QPointF:
         return self.mapToScene(QPointF(self._width, self._height / 2))
 
+    # anchor بالا
     @property
     def anchor_top(self) -> QPointF:
         return self.mapToScene(QPointF(self._width / 2, 0))
 
+    # anchor پایین
     @property
     def anchor_bottom(self) -> QPointF:
         return self.mapToScene(QPointF(self._width / 2, self._height))

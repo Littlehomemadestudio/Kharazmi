@@ -1,19 +1,4 @@
-"""
-RaskMainWindow — the unified application window.
-
-Integrates all of Rask's capabilities into a single tabbed interface:
-
-  1. Calendar  — Google-Calendar-style planner (Shamsi dates, multi-calendar,
-                 recurring events, drag-and-drop, natural-language input)
-  2. AI Planner — the analysis screen: type a goal, AI asks clarifying
-                 questions, generates a walkable node-graph route with
-                 success probabilities, fallbacks, time estimates
-  3. Journal   — history of all AI-generated routes
-  4. Tasks     — the Enterprise node-graph task operating system (CPM,
-                 PERT, Monte Carlo, Gantt, Kanban, Timeline, Statistics)
-
-The Calendar is the first/default view, exactly as the user requested.
-"""
+# پنجره اصلی RASK — رابط کاربری یکپارچه با تب‌های تقویم، برنامه‌ریز، و وظایف
 from __future__ import annotations
 
 import os
@@ -72,6 +57,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
       - Tasks (the Enterprise node-graph view)
     """
 
+    # ساخت پنجره اصلی برنامه با پروژه و خدمات‌ها
     def __init__(self, project: Optional[Project] = None) -> None:
         super().__init__()
         # ---- Domain state ----
@@ -142,6 +128,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._autosave_timer.start()
 
     # ---- UI building ----
+    # ساخت رابط کاربری با نوار عنوان شیشه‌ای
     def _build_ui_with_titlebar(self) -> None:
         """Build the main layout with the glass title bar on top."""
         central = QWidget()
@@ -159,6 +146,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
 
         self.setCentralWidget(central)
 
+    # ساخت منوهای برنامه
     def _build_menu(self) -> None:
         menubar = self.menuBar()
 
@@ -296,6 +284,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
+    # ساخت محتوای اصلی شامل تب‌ها
     def _build_content(self) -> None:
         # Tab widget — Calendar is first (default)
         self._tabs = QTabWidget()
@@ -387,6 +376,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         journal_layout.addWidget(self.journal_view)
         self._tabs.addTab(journal_container, "📖  Journal")
 
+    # ساخت تب یکپارچه برنامه‌ریز و وظایف
     def _build_planner_tasks_tab(self) -> None:
         """Build the UNIFIED AI Planner + Tasks tab.
 
@@ -407,18 +397,22 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
 
         self._tabs.addTab(container, "✦  Planner & Tasks")
 
+    # سبک دکمه حالت (برای سازگاری قبلی)
     def _mode_button_style(self, active: bool) -> str:
         """Kept for backward compat — no longer used."""
         return ""
 
+    # تغییر فضای کاری (برای سازگاری قبلی)
     def _switch_workspace(self, mode: str) -> None:
         """Kept for backward compat — no longer used."""
         pass
 
+    # ساخت فضای کاری وظایف (برای سازگاری قبلی)
     def _build_tasks_workspace(self) -> None:
         """Kept for backward compat — no longer used."""
         pass
 
+    # ساخت نوار وضعیت پایین پنجره
     def _build_statusbar(self) -> None:
         self.statusbar = StatusBar(self)
         self.setStatusBar(self.statusbar)
@@ -428,6 +422,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         )
         self._refresh_statusbar()
 
+    # به‌روزرسانی نوار وضعیت با شمارش‌ها
     def _refresh_statusbar(self) -> None:
         # Show counts
         cal_count = self.calendar_store.event_count
@@ -440,14 +435,17 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         )
 
     # ---- Tab switching ----
+    # تغییر تب فعال
     def _switch_tab(self, idx: int) -> None:
         if 0 <= idx < self._tabs.count():
             self._tabs.setCurrentIndex(idx)
 
     # ---- Project events ----
+    # پردازش رویدادهای پروژه
     def _on_project_event(self, event: DomainEvent) -> None:
         QTimer.singleShot(0, self._refresh_enterprise)
 
+    # پردازش رویدادهای فروشگاه تقویم
     def _on_calendar_store_event(self, event) -> None:
         QTimer.singleShot(0, self._refresh_statusbar)
         # Persist deletions and updates immediately so they don't "come back" or get lost on restart
@@ -461,21 +459,25 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             # For additions, use a delayed save to batch rapid changes
             QTimer.singleShot(1000, self._autosave)
 
+    # به‌روزرسانی وضعیت دکمه‌های برگشت‌پذیری
     def _on_undo_stack_changed(self) -> None:
         self._action_undo.setEnabled(self.undo_stack.can_undo())
         self._action_redo.setEnabled(self.undo_stack.can_redo())
 
+    # به‌روزرسانی نمای گراف وظایف و نوار وضعیت
     def _refresh_enterprise(self) -> None:
         # Refresh the unified graph view (sync tasks)
         if hasattr(self, "ai_planner_view") and hasattr(self.ai_planner_view, "graph_view"):
             self.ai_planner_view.graph_view._sync_tasks_to_canvas()
         self._refresh_statusbar()
 
+    # دریافت وظیفه انتخاب‌شده (دیگر استفاده نمی‌شود)
     def _get_selected_task(self) -> Optional[Task]:
         # No longer used — selection is handled by the unified graph view
         return None
 
     # ---- Cross-tab interactions ----
+    # بارگذاری مسیر یادداشت روزانه در برنامه‌ریز
     def _on_journal_entry_selected(self, entry) -> None:
         """Load a journal entry's route into the AI planner view."""
         if entry.route is not None:
@@ -488,41 +490,49 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
                 f"Loaded route from {entry.timestamp[:10]} into AI Planner", 3000
             )
 
+    # همگام‌سازی مسیر انتخاب‌شده از نمودارها با شبیه‌سازی
     def _on_graphs_route_selected(self, route: Route) -> None:
         """When a route is selected in the Graphs view, also update Simulation."""
         self.simulation_view.set_route(route)
 
+    # همگام‌سازی مسیر به‌روزرسانی‌شده برنامه‌ریز با نمودارها و شبیه‌سازی
     def _on_planner_route_updated(self, route: Route) -> None:
         """When AI Planner generates/updates a route, sync Graphs and Simulation views."""
         self.graphs_view.set_route(route)
         self.simulation_view.set_route(route)
 
     # ---- Actions ----
+    # ایجاد رویداد جدید
     def _on_new_event(self) -> None:
         self._switch_tab(1)  # Calendar tab
         dlg = EventEditorDialog(None, self.calendar_store, self)
         if dlg.exec():
             pass
 
+    # ایجاد وظیفه جدید
     def _on_new_task(self) -> None:
         self._switch_tab(2)  # Planner & Tasks tab
         if hasattr(self, "ai_planner_view") and hasattr(self.ai_planner_view, "graph_view"):
             self.ai_planner_view.graph_view._on_add_task()
 
+    # ذخیره تمام داده‌ها
     def _on_save(self) -> None:
         self.repository.save_snapshot(self.project, kind="manual")
         self.calendar_repository.save(self.calendar_store, kind="manual")
         self.statusbar.show_message("All data saved", 3000)
 
+    # باز کردن تنظیمات هوش مصنوعی
     def _on_ai_settings(self) -> None:
         dlg = AISettingsDialog(self.ai_service, self)
         dlg.exec()
         self._refresh_statusbar()
 
+    # باز کردن مدیریت تقویم‌ها
     def _on_manage_calendars(self) -> None:
         dlg = CalendarSettingsDialog(self.calendar_store, self)
         dlg.exec()
 
+    # صادرکردن وظایف به فرمت JSON
     def _on_export(self, fmt: str) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, f"Export {fmt.upper()}",
@@ -538,6 +548,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         except Exception as e:
             QMessageBox.warning(self, "Export Failed", str(e))
 
+    # صادرکردن تقویم به فرمت JSON
     def _on_export_calendar(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Calendar as JSON",
@@ -554,18 +565,22 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         except Exception as e:
             QMessageBox.warning(self, "Export Failed", str(e))
 
+    # برگشت عملیات اخیر
     def _on_undo(self) -> None:
         if self.undo_stack.undo(self.project):
             self._recalculate()
 
+    # انجام مجدد عملیات برگشت‌خورده
     def _on_redo(self) -> None:
         if self.undo_stack.redo(self.project):
             self._recalculate()
 
+    # باز کردن گزارش مشاور پروژه
     def _on_advisor(self) -> None:
         dlg = AdvisorDialog(self.project, self)
         dlg.exec()
 
+    # نمایش درباره برنامه
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
@@ -590,14 +605,17 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         )
 
     # ---- Enterprise-side helpers ----
+    # دابل‌کلیک روی نوار کناری (دیگر استفاده نمی‌شود)
     def _on_sidebar_double_clicked(self, task_id_str: str) -> None:
         # No longer used — sidebar was removed
         pass
 
+    # دابل‌کلیک روی وظیفه (دیگر استفاده نمی‌شود)
     def _on_task_double_clicked(self, task_id_str: str) -> None:
         # No longer used — handled by unified graph view
         pass
 
+    # محاسبه مجدد زمان‌بندی پروژه
     def _recalculate(self) -> None:
         result = self.scheduling.recalculate()
         if not result.ok and result.cycle_error:
@@ -607,6 +625,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         self._refresh_enterprise()
 
     # ---- Tour ----
+    # نمایش تور معرفی در اولین اجرا
     def _maybe_show_tour(self) -> None:
         import json
         from pathlib import Path
@@ -619,10 +638,12 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             except Exception:
                 pass
 
+    # شروع تور معرفی
     def _on_show_tour(self) -> None:
         start_tour(self)
 
     # ---- Autosave ----
+    # ذخیره خودکار تقویم و یادداشت‌ها
     def _autosave(self) -> None:
         try:
             self.calendar_repository.save(self.calendar_store, kind="autosave")
@@ -633,6 +654,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         except Exception:
             pass
 
+    # ذخیره فوری فروشگاه تقویم
     def _persist_calendar(self) -> None:
         """Immediately persist the calendar store (used after deletions)."""
         try:
@@ -641,6 +663,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             pass
 
     # ---- Theme switching ----
+    # تغییر تم بین روشن و تیره
     def _toggle_theme(self) -> None:
         """Switch between Light and Dark theme."""
         from .theme import current_mode, set_theme, QSS, build_qpalette
@@ -653,6 +676,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             app.setPalette(build_qpalette())
         self._reapply_theme()
 
+    # بازسازی تمام سبک‌های درخطی برای تم فعلی
     def _reapply_theme(self) -> None:
         """Rebuild all inline styles for the current theme."""
         from .theme import Palette, QSS, build_qpalette
@@ -677,7 +701,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
                 margin-right: 2px;
-                font-size: 12px;
+                font-size: 14px;
                 font-weight: bold;
                 letter-spacing: 1px;
                 text-transform: uppercase;
@@ -724,9 +748,25 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
                 self._title_bar._reapply_theme()
             except Exception:
                 pass
+        # Update all view widgets
+        for view_attr in ('dashboard_view', 'calendar_view', 'ai_planner_view',
+                          'graphs_view', 'simulation_view', 'journal_view'):
+            view = getattr(self, view_attr, None)
+            if view is not None:
+                try:
+                    view.update()
+                except Exception:
+                    pass
+        # Force repaint of all child widgets
+        for child in self.findChildren(QWidget):
+            try:
+                child.update()
+            except Exception:
+                pass
         self.update()
 
     # ---- Close ----
+    # ذخیره خودکار هنگام بستن پنجره
     def closeEvent(self, event) -> None:
         try:
             self.repository.save_snapshot(self.project, kind="autosave")

@@ -1,35 +1,4 @@
-"""
-AIPlannerView — the UNIFIED workspace (AI Planner + Tasks merged).
-
-No more separate Tasks window. Everything lives on one canvas:
-  - AI-generated route nodes
-  - User-created Tasks
-  - Insight bubbles
-  - Edges (primary, alternative, fallback, merge)
-
-Layout:
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │ Top: Goal input + stats                                            │
-  ├──────────────────────────────────────────────┬─────────────────────┤
-  │ Unified Workspace (large)                    │ Professional Chat   │
-  │  ┌─────────┐   ┌─────────┐                  │  ✦ Rask             │
-  │  │  Node   │──▶│  Node   │                  │  Building route…    │
-  │  │         │   │         │                  │  (status box)       │
-  │  └─────────┘   └─────────┘                  │                     │
-  │       │                                     │  ✦ Rask             │
-  │       ▼                                     │  Route generated!   │
-  │  ┌─────────┐                                │                     │
-  │  │  Node   │  [Insight bubbles]             │  ○ You              │
-  │  │         │                                │  How to speed up?   │
-  │  └─────────┘                                │                     │
-  │                                             │  ✦ Rask             │
-  │  Pan / zoom / drag / edit                   │  streaming reply…  │
-  │                                             │                     │
-  │  [Floating Step Details popup on click]     │                     │
-  └─────────────────────────────────────────────┴─────────────────────┘
-
-TRUE STREAMING: nodes appear one-by-one as the AI generates them.
-"""
+# نمای برنامه‌ریز هوشمند — برنامه‌ریزی خودکار با هوش مصنوعی
 from __future__ import annotations
 
 import logging
@@ -95,6 +64,7 @@ class AIPlannerView(QWidget):
     _simulationComplete = Signal(object)
     _critiqueReady = Signal(bool, object)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, ai_service: Optional[AIService] = None,
                  journal: Optional[JournalStore] = None,
                  calendar_store: Optional[CalendarStore] = None,
@@ -134,14 +104,17 @@ class AIPlannerView(QWidget):
 
         self._build_ui()
 
+    # مجموعه تقویم store
     def set_calendar_store(self, store: CalendarStore) -> None:
         self.calendar_store = store
 
+    # تنظیم پروژه
     def set_project(self, project: Project) -> None:
         self.project = project
         if self.graph_view is not None:
             self.graph_view.set_project(project)
 
+    # ساخت رابط کاربری
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -451,6 +424,7 @@ class AIPlannerView(QWidget):
         self._stack.setCurrentIndex(0)
         layout.addWidget(self._stack, stretch=1)
 
+    # پاسخ به landing goal
     def _on_landing_goal(self, goal: str) -> None:
         """User submitted a goal from the landing page — switch to workspace and start planning."""
         # Animate landing out
@@ -458,6 +432,7 @@ class AIPlannerView(QWidget):
         # Switch to workspace after a short delay for the animation
         QTimer.singleShot(300, lambda: self._switch_to_workspace(goal))
 
+    # switch تبدیل به workspace
     def _switch_to_workspace(self, goal: str) -> None:
         """Switch from landing page to workspace and trigger plan."""
         self._stack.setCurrentIndex(1)
@@ -465,12 +440,14 @@ class AIPlannerView(QWidget):
         self._goal_input.setText(goal)
         self._on_plan_clicked()
 
+    # نمایش landing
     def show_landing(self) -> None:
         """Switch back to the landing page (e.g. when user wants to start a new plan)."""
         self._stack.setCurrentIndex(0)
         self._landing.animate_in()
         self._landing.focus_input()
 
+    # نسخه ساخت goal bar
     def _build_goal_bar(self) -> QWidget:
         bar = QFrame()
         bar.setFixedHeight(80)
@@ -652,9 +629,11 @@ class AIPlannerView(QWidget):
         return bar
 
     # ---- Helpers ----
+    # تنظیم وضعیت
     def _set_status(self, text: str) -> None:
         self._stat_status.setText(text)
 
+    # بروزرسانی stats
     def _update_stats(self, route: Route) -> None:
         self._stat_steps.setText(f"○ steps: {len(route.steps)}")
         hours = route.total_duration_minutes // 60
@@ -672,6 +651,7 @@ class AIPlannerView(QWidget):
         )
 
     # ---- Tab switch animation ----
+    # پاسخ به تغییر تب
     def _on_tab_changed(self, index: int) -> None:
         """Fade animation when switching between Chat and Health tabs."""
         anim = QPropertyAnimation(self._tab_opacity, b"opacity")
@@ -684,10 +664,12 @@ class AIPlannerView(QWidget):
         self._tab_anim = anim
 
     # ---- Feedback button ----
+    # پاسخ به کلیک بازخورد
     def _on_feedback_clicked(self) -> None:
         dlg = FeedbackDialog(self)
         dlg.exec()
 
+    # نسخه ساخت existing زمینه
     def _build_existing_context(self) -> str:
         """Build a context string describing the user's existing Tasks."""
         if self.project is None:
@@ -704,10 +686,12 @@ class AIPlannerView(QWidget):
         return "\n".join(lines)
 
     # ---- Status update ----
+    # پاسخ به بروزرسانی وضعیت
     def _on_status_update(self, text: str) -> None:
         self.chat_panel.update_status(text)
 
     # ---- Plan flow ----
+    # پاسخ به کلیک طرح
     def _on_plan_clicked(self) -> None:
         goal = self._goal_input.text().strip()
         if not goal:
@@ -738,6 +722,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به clarifying دریافت‌شده
     def _on_clarifying_received(self, success, result) -> None:
         self._plan_btn.setEnabled(True)
         self.chat_panel.finish_status_box("Analysis complete")
@@ -767,6 +752,7 @@ class AIPlannerView(QWidget):
                 role="assistant", as_html=True,
             )
 
+    # نمایش multiple choice questions
     def _show_multiple_choice_questions(self, questions: list[MultipleChoiceQuestion]) -> None:
         # Remove old question widgets (keep the stretch at the end)
         while self._questions_layout.count() > 1:
@@ -790,6 +776,7 @@ class AIPlannerView(QWidget):
         self._splitter.hide()
         self._questions_outer.show()
 
+    # پاسخ به question answered
     def _on_question_answered(self, question: MultipleChoiceQuestion, answer: str) -> None:
         self._clarifying_qa.append((question.question, answer))
         self.chat_panel.add_message(
@@ -815,6 +802,7 @@ class AIPlannerView(QWidget):
         else:
             self._set_status(f"⏳ Waiting for {len(self._awaiting_questions)} more answer(s)…")
 
+    # generate مسیر
     def _generate_route(self) -> None:
         self.chat_panel.start_status_box("Building the route graph…")
         self._set_status("⏳ AI is building the route…")
@@ -839,20 +827,24 @@ class AIPlannerView(QWidget):
             existing_context=existing_context,
         )
 
+    # پاسخ به step added
     def _on_step_added(self, step: RouteStep) -> None:
         """TRUE STREAMING: a step was parsed from the AI's response.
         Add it to the canvas immediately — don't wait for the full route."""
         self.graph_view.add_step(step)
         self.chat_panel.update_status(f"Added step: {step.title[:50]}…")
 
+    # پاسخ به یال added
     def _on_edge_added(self, edge: RouteEdge) -> None:
         """An edge was parsed — add it immediately."""
         self.graph_view.add_edge(edge)
 
+    # پاسخ به insight added
     def _on_insight_added(self, insight: Insight) -> None:
         """An insight was parsed — add it immediately."""
         self.graph_view.add_insight(insight)
 
+    # پاسخ به مسیر دریافت‌شده
     def _on_route_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Route generated")
 
@@ -931,6 +923,7 @@ class AIPlannerView(QWidget):
         QTimer.singleShot(500, self._continue_working)
 
     # ---- Auto-continue ----
+    # ادامه پردازش
     def _continue_working(self) -> None:
         if self._current_route is None:
             return
@@ -949,6 +942,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به continue دریافت‌شده
     def _on_continue_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Done")
         if not success:
@@ -992,6 +986,7 @@ class AIPlannerView(QWidget):
         self._persist_route_to_journal()
 
     # ---- Free-form chat ----
+    # پاسخ به ارسال پیام چت
     def _on_chat_send(self, text: str) -> None:
         if self._current_route is None:
             self.chat_panel.add_message(
@@ -1030,9 +1025,11 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به chat قطعه
     def _on_chat_chunk(self, chunk: str) -> None:
         self.chat_panel.stream_chunk(chunk)
 
+    # پاسخ به chat انجام‌شده
     def _on_chat_done(self, success, result) -> None:
         self.chat_panel.finish_streaming()
         if not success:
@@ -1041,6 +1038,7 @@ class AIPlannerView(QWidget):
         else:
             self._set_status("✓ Ready")
 
+    # پاسخ به chat stop
     def _on_chat_stop(self) -> None:
         if self._current_request_id:
             self.ai.cancel_request(self._current_request_id)
@@ -1049,6 +1047,7 @@ class AIPlannerView(QWidget):
         self._set_status("■ Stopped")
 
     # ---- Schedule in calendar ----
+    # تپش دکمه برنامه‌ریزی
     def _pulse_schedule_btn(self) -> None:
         """Animate the schedule button with a pulsing glow."""
         if not self._schedule_btn.isEnabled():
@@ -1084,6 +1083,7 @@ class AIPlannerView(QWidget):
                 }}
             """)
 
+    # پاسخ به schedule در تقویم
     def _on_schedule_in_calendar(self) -> None:
         """Show scheduling preferences wizard before scheduling."""
         if self._current_route is None or self.calendar_store is None:
@@ -1129,6 +1129,7 @@ class AIPlannerView(QWidget):
         self._questions_outer.show()
         self._set_status("⚙ Configure your schedule…")
 
+    # پاسخ به schedule لغوشده
     def _on_schedule_cancelled(self) -> None:
         """User cancelled the scheduling questions."""
         self._questions_outer.hide()
@@ -1138,6 +1139,7 @@ class AIPlannerView(QWidget):
         if self._schedule_btn.isEnabled():
             self._schedule_pulse_timer.start()
 
+    # پاسخ به schedule preferences آماده
     def _on_schedule_preferences_ready(self, preferences: dict) -> None:
         """User answered all scheduling questions — now call AI to schedule."""
         # Hide the questions overlay
@@ -1195,6 +1197,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به schedule دریافت‌شده
     def _on_schedule_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Scheduled")
         if not success:
@@ -1264,6 +1267,7 @@ class AIPlannerView(QWidget):
         self._set_status(f"✓ Scheduled {count} events")
 
     # ---- Task creation ----
+    # پاسخ به ایجاد وظیفه
     def _on_task_created(self, title: str, x: float, y: float) -> None:
         """Handle the 'add task' button — create a new Task in the project."""
         if self.project is None:
@@ -1298,6 +1302,7 @@ class AIPlannerView(QWidget):
         )
 
     # ---- AI Step Breakdown ----
+    # پاسخ به درخواست تفکیک گام‌ها
     def _on_step_breakdown_requested(self, step_id: str) -> None:
         """Handle the right-click 'AI Break Down' action on a step."""
         if self._current_route is None:
@@ -1311,6 +1316,7 @@ class AIPlannerView(QWidget):
         self._current_request_id = f"bd-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
+        # پاسخ به breakdown انجام‌شده
         def _on_breakdown_done(success, result):
             self.chat_panel.finish_status_box("Breakdown complete")
             if not success:
@@ -1362,6 +1368,7 @@ class AIPlannerView(QWidget):
         )
 
     # ---- Public API ----
+    # تنظیم مسیر
     def set_route(self, route: Route, entry_id: Optional[str] = None) -> None:
         """Load a route from the journal.
 
@@ -1401,6 +1408,7 @@ class AIPlannerView(QWidget):
         self._set_status("✓ Loaded from journal")
 
     # ---- Monte Carlo Simulation ----
+    # پاسخ به کلیک شبیه‌سازی
     def _on_simulation_clicked(self) -> None:
         if self._current_route is None or not self._current_route.steps:
             self.chat_panel.add_message("Generate a route first before running simulation.", role="assistant", as_html=True)
@@ -1408,11 +1416,13 @@ class AIPlannerView(QWidget):
         self._set_status("⏳ Running Monte Carlo simulation (5,000 runs)…")
         self.chat_panel.add_message("<b>Running Monte Carlo simulation…</b> Simulating the route 5,000 times to compute realistic time estimates.", role="assistant", as_html=True)
 
+        # اجرای
         def _run():
             sim = MonteCarloSimulator(self._current_route, n_simulations=5000)
             result = sim.run()
             return result
 
+        # پاسخ به انجام‌شده
         def _on_done(success, result):
             if success:
                 self._simulationComplete.emit(result)
@@ -1423,6 +1433,7 @@ class AIPlannerView(QWidget):
         t = threading.Thread(target=lambda: _on_done(True, _run()), daemon=True)
         t.start()
 
+    # پاسخ به simulation تکمیل
     def _on_simulation_complete(self, result: SimulationResult) -> None:
         self._health_dashboard.update_simulation(result)
         self.chat_panel.add_message(
@@ -1440,6 +1451,7 @@ class AIPlannerView(QWidget):
         self._health_dashboard.update_health(health)
 
     # ---- AI Route Optimization ----
+    # پاسخ به کلیک بهینه‌سازی
     def _on_optimize_clicked(self) -> None:
         if self._current_route is None:
             return
@@ -1457,6 +1469,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به بهینه‌سازی دریافت‌شده
     def _on_optimize_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Optimization complete")
         if not success:
@@ -1496,6 +1509,7 @@ class AIPlannerView(QWidget):
         self._persist_route_to_journal()
 
     # ---- AI Risk Analysis ----
+    # پاسخ به کلیک تحلیل ریسک
     def _on_risk_analysis_clicked(self) -> None:
         if self._current_route is None:
             return
@@ -1513,6 +1527,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به risk analysis دریافت‌شده
     def _on_risk_analysis_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Risk analysis complete")
         if not success:
@@ -1545,6 +1560,7 @@ class AIPlannerView(QWidget):
         self._set_status(f"✓ Risk analysis · {overall}")
 
     # ---- AI Self-Critique & Improve ----
+    # پاسخ به critique clicked
     def _on_critique_clicked(self) -> None:
         if self._current_route is None:
             return
@@ -1562,6 +1578,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به critique دریافت‌شده
     def _on_critique_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Critique complete")
         if not success:
@@ -1626,6 +1643,7 @@ class AIPlannerView(QWidget):
         self._persist_route_to_journal()
 
     # ---- Smart Re-plan ----
+    # پاسخ به replan clicked
     def _on_replan_clicked(self) -> None:
         if self._current_route is None:
             return
@@ -1648,6 +1666,7 @@ class AIPlannerView(QWidget):
             request_id=self._current_request_id,
         )
 
+    # پاسخ به replan دریافت‌شده
     def _on_replan_received(self, success, result) -> None:
         self.chat_panel.finish_status_box("Re-plan complete")
         if not success:
@@ -1681,6 +1700,7 @@ class AIPlannerView(QWidget):
         self._persist_route_to_journal()
 
     # ---- Route persistence helper ----
+    # persist مسیر تبدیل به journal
     def _persist_route_to_journal(self) -> None:
         """Persist the current route back to the journal store.
 
@@ -1696,6 +1716,7 @@ class AIPlannerView(QWidget):
             # (the in-memory entry.route may already be the same object)
             self.journal.save()
 
+    # پاسخ به مسیر modified
     def _on_route_modified(self) -> None:
         """Handle route mutation from the graph view (step deleted or field changed).
 
@@ -1711,6 +1732,7 @@ class AIPlannerView(QWidget):
         self._persist_route_to_journal()
 
     # ---- Export methods ----
+    # پاسخ به خروجی csv
     def _on_export_csv(self) -> None:
         if not self._current_route or not self._current_route.steps:
             return
@@ -1726,6 +1748,7 @@ class AIPlannerView(QWidget):
             except Exception as e:
                 QMessageBox.warning(self, "Export Failed", str(e))
 
+    # پاسخ به خروجی xlsx
     def _on_export_xlsx(self) -> None:
         if not self._current_route or not self._current_route.steps:
             return
@@ -1741,6 +1764,7 @@ class AIPlannerView(QWidget):
             except Exception as e:
                 QMessageBox.warning(self, "Export Failed", str(e))
 
+    # پاسخ به خروجی html
     def _on_export_html(self) -> None:
         if not self._current_route or not self._current_route.steps:
             return

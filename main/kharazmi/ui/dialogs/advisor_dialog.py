@@ -1,4 +1,4 @@
-"""Advisor report dialog."""
+# دیالوگ مشاور — نمایش توصیه‌های هوشمند
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -14,6 +14,7 @@ from ..theme import Palette
 
 
 class AdviceCard(QFrame):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, advice: Advice, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.advice = advice
@@ -66,6 +67,7 @@ class AdviceCard(QFrame):
 
 
 class AdvisorDialog(QDialog):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, parent=None) -> None:
         super().__init__(parent)
         self.project = project

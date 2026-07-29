@@ -1,19 +1,4 @@
-"""
-MainWindow — the top-level window that ties everything together.
-
-Layout:
-  ┌────────────────────────────────────────────────────────────┐
-  │ MenuBar                                                     │
-  ├────────────────────────────────────────────────────────────┤
-  │ MainToolbar                                                 │
-  ├──────────┬──────────────────────────────────┬──────────────┤
-  │ Sidebar  │  Central widget (current view)    │  Inspector   │
-  │ (tree)   │  + Console (bottom, collapsible)  │  Panel       │
-  │          │                                   │              │
-  ├──────────┴───────────────────────────────────┴──────────────┤
-  │ StatusBar                                                   │
-  └────────────────────────────────────────────────────────────┘
-"""
+# پنجره اصلی — پنجره اصلی برنامه راسک
 from __future__ import annotations
 
 from datetime import datetime
@@ -61,6 +46,7 @@ class SidebarTree(QTreeWidget):
     """Left sidebar: project outline."""
     taskDoubleClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.project = project
@@ -79,11 +65,13 @@ class SidebarTree(QTreeWidget):
         """)
         self.itemDoubleClicked.connect(self._on_double_clicked)
 
+    # پاسخ به دابل‌کلیک آیتم
     def _on_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         tid = item.data(0, Qt.UserRole)
         if tid:
             self.taskDoubleClicked.emit(tid)
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         self.clear()
 
@@ -128,18 +116,24 @@ class SidebarTree(QTreeWidget):
                     task_node.setForeground(0, self._text_primary())
         self.expandItem(root)
 
+    # gold
+    # طلایی
     def _gold(self):
         from PySide6.QtGui import QColor
         return QColor(Palette.GOLD_PRIMARY)
 
+    # gold bright
+    # طلایی روشن
     def _gold_bright(self):
         from PySide6.QtGui import QColor
         return QColor(Palette.GOLD_BRIGHT)
 
+    # متن اولیه
     def _text_primary(self):
         from PySide6.QtGui import QColor
         return QColor(Palette.TEXT_PRIMARY)
 
+    # متن ثانویه
     def _text_secondary(self):
         from PySide6.QtGui import QColor
         return QColor(Palette.TEXT_TERTIARY)
@@ -151,6 +145,7 @@ from PySide6.QtGui import QFont
 class CentralWidget(QFrame):
     """Container for the current view + console below."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setObjectName("centralWidget")
@@ -179,6 +174,7 @@ class CentralWidget(QFrame):
         self._splitter.setSizes([600, 200])
         layout.addWidget(self._splitter)
 
+    # تغییر نوع نمای تقویم
     def set_view(self, widget: QWidget) -> None:
         # Clear old
         while self._view_layout.count():
@@ -187,18 +183,21 @@ class CentralWidget(QFrame):
                 item.widget().setParent(None)
         self._view_layout.addWidget(widget)
 
+    # مجموعه console
     def set_console(self, console: ConsolePanel) -> None:
         if self._console is not None:
             self._splitter.removeWidget(self._console)
         self._console = console
         self._splitter.addWidget(console)
 
+    # تغییر وضعیت console
     def toggle_console(self) -> None:
         if self._console is None:
             return
         self._console_visible = not self._console_visible
         self._console.setVisible(self._console_visible)
 
+    # نمایش console
     def show_console(self) -> None:
         if self._console is not None and not self._console_visible:
             self.toggle_console()
@@ -207,6 +206,7 @@ class CentralWidget(QFrame):
 class MainWindow(QMainWindow):
     """The application's main window."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Optional[Project] = None) -> None:
         super().__init__()
         self.project = project or Project(name="Untitled Project")
@@ -272,6 +272,7 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(600, self._maybe_show_tour)
 
     # ---- Building UI ----
+    # ساخت منو
     def _build_menu(self) -> None:
         menubar = self.menuBar()
 
@@ -392,14 +393,17 @@ class MainWindow(QMainWindow):
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
+    # ساخت نوارابزار
     def _build_toolbar(self) -> None:
         self.toolbar = MainToolbar(self)
         self.addToolBar(self.toolbar)
 
+    # نسخه ساخت central
     def _build_central(self) -> None:
         self.central_widget = CentralWidget(self)
         self.setCentralWidget(self.central_widget)
 
+    # ساخت نوار کناری
     def _build_sidebar(self) -> None:
         self.sidebar = SidebarTree(self.project, self)
         self.sidebar.setMinimumWidth(220)
@@ -411,6 +415,7 @@ class MainWindow(QMainWindow):
         dock.setTitleBarWidget(QWidget())  # hide title bar
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
 
+    # نسخه ساخت inspector
     def _build_inspector(self) -> None:
         self.inspector = InspectorPanel(self.project, self.task_service, self)
         dock = QDockWidget("Inspector", self)
@@ -419,14 +424,17 @@ class MainWindow(QMainWindow):
         dock.setTitleBarWidget(QWidget())
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
+    # نسخه ساخت statusbar
     def _build_statusbar(self) -> None:
         self.statusbar = StatusBar(self)
         self.setStatusBar(self.statusbar)
 
+    # نسخه ساخت minimap
     def _build_minimap(self) -> None:
         # Minimap is overlaid on the graph view itself, not the main window
         pass
 
+    # نسخه ساخت views
     def _build_views(self) -> None:
         self._views[ViewKind.GRAPH.value] = NodeGraphView(self.project, self.task_service)
         self._views[ViewKind.GANTT.value] = GanttView(self.project, self.task_service)
@@ -458,6 +466,7 @@ class MainWindow(QMainWindow):
             graph_view.horizontalScrollBar().valueChanged.connect(self._minimap.update_minimap)
             graph_view.verticalScrollBar().valueChanged.connect(self._minimap.update_minimap)
 
+    # wire نوارابزار
     def _wire_toolbar(self) -> None:
         self.toolbar.newTaskRequested.connect(self._on_new_task)
         self.toolbar.deleteRequested.connect(self._on_delete)
@@ -474,6 +483,7 @@ class MainWindow(QMainWindow):
         self.toolbar.viewChanged.connect(lambda v: self._switch_view(ViewKind(v)))
 
     # ---- View switching ----
+    # switch نما
     def _switch_view(self, kind: ViewKind) -> None:
         self._current_view_kind = kind
         view = self._views[kind.value]
@@ -486,11 +496,13 @@ class MainWindow(QMainWindow):
         self.statusbar.show_message(f"Switched to {kind.value} view")
 
     # ---- Project events ----
+    # پاسخ به پروژه رویداد
     def _on_project_event(self, event: DomainEvent) -> None:
         # Defer UI updates to the next event loop tick so heavy operations
         # don't block the command that triggered them.
         QTimer.singleShot(0, lambda: self._handle_event(event))
 
+    # مدیریت رویداد
     def _handle_event(self, event: DomainEvent) -> None:
         if isinstance(event, CycleDetected):
             self.statusbar.show_message(
@@ -501,6 +513,7 @@ class MainWindow(QMainWindow):
             self.statusbar.show_message("Schedule recalculated", 2000)
         self._refresh_all()
 
+    # بازخوانی همه
     def _refresh_all(self) -> None:
         # Refresh sidebar
         self.sidebar.refresh()
@@ -517,6 +530,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_minimap"):
             self._minimap.update_minimap()
 
+    # بازخوانی statusbar
     def _refresh_statusbar(self) -> None:
         self.statusbar.update_project(self.project)
         stats = self.task_service.statistics()
@@ -532,6 +546,7 @@ class MainWindow(QMainWindow):
         else:
             self.statusbar.update_schedule("—", 0)
 
+    # دریافت انتخاب‌شده وظیفه
     def _get_selected_task(self) -> Optional[Task]:
         # Try to read the selection from the current view
         view = self._views.get(self._current_view_kind.value)
@@ -543,6 +558,7 @@ class MainWindow(QMainWindow):
         return None
 
     # ---- Undo stack ----
+    # پاسخ به undo stack changed
     def _on_undo_stack_changed(self) -> None:
         self.toolbar.update_undo_redo(
             self.undo_stack.can_undo(), self.undo_stack.can_redo(),
@@ -553,12 +569,14 @@ class MainWindow(QMainWindow):
         self._action_redo.setEnabled(self.undo_stack.can_redo())
 
     # ---- Actions ----
+    # پاسخ به جدید وظیفه
     def _on_new_task(self) -> None:
         dlg = TaskEditorDialog(None, self.task_service, self)
         if dlg.exec():
             self._recalculate()
             self._refresh_all()
 
+    # پاسخ به حذف
     def _on_delete(self) -> None:
         task = self._get_selected_task()
         if task is None:
@@ -568,36 +586,43 @@ class MainWindow(QMainWindow):
         self.inspector.load_task(None)
         self._refresh_all()
 
+    # پاسخ به برگردان
     def _on_undo(self) -> None:
         if self.undo_stack.undo(self.project):
             self._recalculate()
             self._refresh_all()
 
+    # پاسخ به انجام دوباره
     def _on_redo(self) -> None:
         if self.undo_stack.redo(self.project):
             self._recalculate()
             self._refresh_all()
 
+    # پاسخ به چیدمان
     def _on_layout(self) -> None:
         view = self._views.get(ViewKind.GRAPH.value)
         if isinstance(view, NodeGraphView):
             view.auto_layout()
             self._refresh_all()
 
+    # پاسخ به monte carlo
     def _on_monte_carlo(self) -> None:
         self._switch_view(ViewKind.STATS)
         stats_view = self._views[ViewKind.STATS.value]
         if hasattr(stats_view, "_run_monte_carlo"):
             stats_view._run_monte_carlo()
 
+    # پاسخ به مشاور
     def _on_advisor(self) -> None:
         dlg = AdvisorDialog(self.project, self)
         dlg.exec()
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         self.repository.save_snapshot(self.project, kind="manual")
         self.statusbar.show_message(f"Saved '{self.project.name}'", 3000)
 
+    # پاسخ به باز کردن
     def _on_open(self) -> None:
         # Simple project picker
         projects = self.repository.list_projects()
@@ -642,6 +667,7 @@ class MainWindow(QMainWindow):
             self._refresh_all()
             self.statusbar.show_message(f"Loaded '{proj.name}'", 3000)
 
+    # پاسخ به خروجی
     def _on_export(self, fmt: str) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, f"Export {fmt.upper()}",
@@ -662,11 +688,13 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Export Failed", str(e))
 
+    # پاسخ به پروژه settings
     def _on_project_settings(self) -> None:
         dlg = ProjectSettingsDialog(self.project, self)
         if dlg.exec():
             self._refresh_all()
 
+    # پاسخ به درباره
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
@@ -682,6 +710,7 @@ class MainWindow(QMainWindow):
             "<p style='color:#D4AF37'><b>Version 2.0 — Enterprise</b></p>"
         )
 
+    # پاسخ به switch طرح
     def _on_switch_plan(self) -> None:
         """Switch from Enterprise down to the Basic plan."""
         ret = QMessageBox.question(
@@ -706,10 +735,12 @@ class MainWindow(QMainWindow):
             )
             self.close()
 
+    # پاسخ به نمایش tour
     def _on_show_tour(self) -> None:
         """Show the guided tour."""
         start_tour(self, plan="enterprise")
 
+    # maybe نمایش tour
     def _maybe_show_tour(self) -> None:
         """Show the tour on first run only."""
         import json
@@ -723,6 +754,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
 
+    # پاسخ به نوار کناری دابل clicked
     def _on_sidebar_double_clicked(self, task_id_str: str) -> None:
         # Switch to graph view and select the task
         self._switch_view(ViewKind.GRAPH)
@@ -734,6 +766,7 @@ class MainWindow(QMainWindow):
                 node.setSelected(True)
                 graph_view.centerOn(node)
 
+    # پاسخ به وظیفه دابل clicked
     def _on_task_double_clicked(self, task_id_str: str) -> None:
         task = self.project.get_task(TaskId(task_id_str))
         if task is None:
@@ -743,6 +776,13 @@ class MainWindow(QMainWindow):
             self._recalculate()
             self._refresh_all()
 
+    # recalculate
+    # recalculate
+    # recalculate
+    # recalculate
+
+    # recalculate
+    # recalculate
     def _recalculate(self) -> None:
         result = self.scheduling.recalculate()
         if not result.ok and result.cycle_error:
@@ -751,16 +791,19 @@ class MainWindow(QMainWindow):
             )
         self._refresh_all()
 
+    # تغییر وضعیت console
     def _toggle_console(self) -> None:
         self.central_widget.toggle_console()
 
     # ---- Command palette ----
+    # باز کردن command palette
     def _open_command_palette(self) -> None:
         commands: list[PaletteItem] = self._build_palette_items()
         dlg = CommandPaletteDialog(self, self.project, commands)
         dlg.itemActivated.connect(self._on_palette_activated)
         dlg.exec()
 
+    # نسخه ساخت palette items
     def _build_palette_items(self) -> list[PaletteItem]:
         items: list[PaletteItem] = []
         # Commands
@@ -823,6 +866,7 @@ class MainWindow(QMainWindow):
             ))
         return items
 
+    # پاسخ به palette activated
     def _on_palette_activated(self, payload) -> None:
         if callable(payload):
             payload()
@@ -834,6 +878,11 @@ class MainWindow(QMainWindow):
                 pass
 
     # ---- Keyboard ----
+    # keyPressEvent
+    # keyPressEvent
+    # keyPressEvent
+
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event) -> None:
         # Ctrl+P → command palette
         if event.matches(QKeySequence("Ctrl+P")):
@@ -845,6 +894,12 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     # ---- Close ----
+    # closeEvent
+    # closeEvent
+    # closeEvent
+
+    # closeEvent
+    # closeEvent
     def closeEvent(self, event: QCloseEvent) -> None:
         # Autosave on exit
         try:

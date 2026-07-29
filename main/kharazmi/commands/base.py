@@ -1,4 +1,4 @@
-"""Base Command class for undo/redo support."""
+# کلاس پایه فرمان برای پشتیبانی برگشت/اجرای مجدد
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -22,14 +22,17 @@ class Command(ABC):
     name: str = "Command"
     description: str = ""
 
+    # اجرای فرمان روی پروژه
     @abstractmethod
     def execute(self, project: Any) -> None:
         """Apply the command to the project."""
 
+    # برگرداندن فرمان
     @abstractmethod
     def undo(self, project: Any) -> None:
         """Reverse the command."""
 
+    # اجرای مجدد فرمان پس از برگشت
     def redo(self, project: Any) -> None:
         """Re-apply after an undo. Default = execute()."""
         self.execute(project)

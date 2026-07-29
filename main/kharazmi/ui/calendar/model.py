@@ -1,10 +1,4 @@
-"""
-CalendarModel — Data layer for the RASK! calendar.
-
-Wraps CalendarStore and adds Shamsi-aware date-range queries,
-event layout computation, and filtering. Views never access
-CalendarStore directly — they go through this model.
-"""
+# مدل تقویم — لایه داده شمسی‌محور با پرس‌وجوی بازه و چیدمان رویداد
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -49,24 +43,30 @@ class CalendarModel:
     for CalendarStore range queries.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, store: CalendarStore) -> None:
         self._store = store
 
     # ── Store Access ──
 
+    # دسترسی به ذخیره‌گاه
     @property
     def store(self) -> CalendarStore:
         return self._store
 
+    # دریافت فهرست تقویم‌ها
     def calendars(self) -> list[Calendar]:
         return list(self._store.calendars())
 
+    # دریافت تقویم‌های قابل مشاهده
     def visible_calendars(self) -> list[Calendar]:
         return list(self._store.visible_calendars())
 
+    # دریافت تقویم مربوط به رویداد
     def calendar_for_event(self, event: Event) -> Optional[Calendar]:
         return self._store.get_calendar(event.calendar_id)
 
+    # دریافت رنگ نمایشی رویداد
     def event_color(self, event: Event) -> str:
         """Return the display color for an event (event override, or calendar color)."""
         if event.color:
@@ -76,11 +76,13 @@ class CalendarModel:
 
     # ── Shamsi Date Range Queries ──
 
+    # دریافت رویدادهای یک روز
     def events_on_day(self, shamsi: ShamsiDate) -> list[Event]:
         """All events on a Shamsi day."""
         g = shamsi.to_gregorian()
         return self._store.events_on_day(g)
 
+    # دریافت رویدادهای بازه شمسی
     def events_in_shamsi_range(
         self, start: ShamsiDate, end: ShamsiDate,
     ) -> list[Event]:
@@ -91,6 +93,7 @@ class CalendarModel:
         )
         return self._store.events_in_range(g_start, g_end)
 
+    # دریافت رویدادهای یک ماه
     def events_in_month(self, year: int, month: int) -> list[Event]:
         """All events in a Shamsi month."""
         first = ShamsiDate(year, month, 1)
@@ -98,6 +101,7 @@ class CalendarModel:
         last = ShamsiDate(year, month, dim)
         return self.events_in_shamsi_range(first, last)
 
+    # دریافت رویدادهای یک هفته
     def events_in_week(self, containing: ShamsiDate) -> list[Event]:
         """All events in the Iranian week containing `containing`."""
         # Iranian week: Sat=0 .. Fri=6
@@ -113,6 +117,7 @@ class CalendarModel:
 
     # ── Structured Day Queries ──
 
+    # دریافت رویدادهای روز تفکیک‌شده
     def day_events(self, shamsi: ShamsiDate) -> DayEvents:
         """Get events for a day, split into all-day and timed."""
         all_events = self.events_on_day(shamsi)
@@ -127,6 +132,7 @@ class CalendarModel:
 
     # ── Event Layout (collision detection) ──
 
+    # محاسبه چیدمان رویدادهای زمان‌دار با تشخیص همپوشانی
     def compute_timed_layout(self, events: list[Event]) -> list[EventLayout]:
         """
         Compute overlap layout for timed events.
@@ -195,28 +201,34 @@ class CalendarModel:
 
     # ── Month Grid ──
 
+    # دریافت شبکه ۶×۷ ماه شمسی
     def month_grid(self, year: int, month: int) -> list[list[Optional[ShamsiDate]]]:
         """6×7 grid of ShamsiDate for the month (Sat..Fri)."""
         return shamsi_month_grid(year, month)
 
     # ── CRUD ──
 
+    # ایجاد رویداد جدید
     def create_event(self, calendar_id: str, title: str,
                      start: datetime, end: Optional[datetime] = None,
                      **kwargs) -> Event:
         return self._store.create_event(calendar_id, title, start, end, **kwargs)
 
+    # بروزرسانی رویداد
     def update_event(self, event_id: str, **changes) -> None:
         self._store.update_event(event_id, **changes)
 
+    # حذف رویداد
     def delete_event(self, event_id: str) -> None:
         self._store.delete_event(event_id)
 
+    # جابجایی رویداد به زمان جدید
     def move_event(self, event_id: str, new_start: datetime) -> None:
         evt = self._store.get_event(event_id)
         if evt:
             evt.move_to(new_start)
 
+    # تغییر مدت رویداد
     def resize_event(self, event_id: str, new_end: datetime) -> None:
         evt = self._store.get_event(event_id)
         if evt:
@@ -224,5 +236,6 @@ class CalendarModel:
 
     # ── Search ──
 
+    # جستجو در رویدادها
     def search(self, query: str) -> list[Event]:
         return self._store.search(query)

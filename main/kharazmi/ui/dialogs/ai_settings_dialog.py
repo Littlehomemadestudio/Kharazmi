@@ -1,14 +1,4 @@
-"""
-AISettingsDialog — configure the z.ai API key and model.
-
-Lets the user:
-  - View/change the API key
-  - Pick the model (defaults to glm-4.5-flash, the free flash model)
-  - Set temperature and max_tokens
-  - Test the connection
-
-The settings are persisted to ~/.rask/ai_settings.json.
-"""
+# دیالوگ تنظیمات هوش مصنوعی — پیکربندی دستیار هوشمند
 from __future__ import annotations
 
 from typing import Optional
@@ -41,6 +31,7 @@ KNOWN_MODELS = [
 class AISettingsDialog(QDialog):
     """Modal dialog for AI configuration."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, ai_service: AIService, parent=None) -> None:
         super().__init__(parent)
         self.ai = ai_service
@@ -158,6 +149,7 @@ class AISettingsDialog(QDialog):
         btn_row.addWidget(save_btn)
         layout.addLayout(btn_row)
 
+    # input سبک
     def _input_style(self) -> str:
         return f"""
             QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
@@ -173,6 +165,7 @@ class AISettingsDialog(QDialog):
             }}
         """
 
+    # button سبک
     def _button_style(self) -> str:
         return f"""
             QPushButton {{
@@ -193,10 +186,12 @@ class AISettingsDialog(QDialog):
             }}
         """
 
+    # پاسخ به نمایش کلید toggled
     def _on_show_key_toggled(self, checked: bool) -> None:
         self._api_key_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
         self._show_key_btn.setText("Hide" if checked else "Show")
 
+    # پاسخ به آزمون اتصال
     def _on_test_connection(self) -> None:
         # Save current values to the service temporarily
         self._apply_to_service()
@@ -206,6 +201,13 @@ class AISettingsDialog(QDialog):
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px;"
         )
 
+        # cb
+        # cb
+        # cb
+        # cb
+
+        # cb
+        # cb
         def _cb(success, result):
             self._test_btn.setEnabled(True)
             if success:
@@ -221,6 +223,7 @@ class AISettingsDialog(QDialog):
 
         self.ai.test_connection(_cb)
 
+    # اعمال تبدیل به service
     def _apply_to_service(self) -> None:
         self.ai.update_settings(
             api_key=self._api_key_edit.text().strip(),
@@ -230,6 +233,7 @@ class AISettingsDialog(QDialog):
             max_tokens=self._max_tokens_spin.value(),
         )
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         self._apply_to_service()
         self.accept()

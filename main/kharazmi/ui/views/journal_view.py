@@ -1,15 +1,4 @@
-"""
-JournalView — list of all AI-generated routes saved by the user.
-
-Shows each journal entry with:
-  - Goal
-  - Timestamp (Shamsi)
-  - Success probability
-  - Number of steps
-  - Notes
-
-Click an entry to load its route into the AI planner view.
-"""
+# نمای روزنامه — ثبت و نمایش یادداشت‌های روزانه
 from __future__ import annotations
 
 from typing import Optional
@@ -30,11 +19,13 @@ from ..theme import Palette
 class _JournalIcon(QWidget):
     """A simple hand-drawn journal/notebook icon rendered with QPainter."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setFixedSize(120, 140)
         self.setStyleSheet("background: transparent;")
 
+    # رسم محتوای ویجت
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -87,6 +78,7 @@ class JournalEntryCard(QFrame):
     deleteRequested = Signal(str)  # entry_id
     editNotesRequested = Signal(str)  # entry_id
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, entry: JournalEntry, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.entry = entry
@@ -183,12 +175,20 @@ class JournalEntryCard(QFrame):
         actions.addWidget(del_btn)
         layout.addLayout(actions)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self.clicked.emit(self.entry.id)
         super().mousePressEvent(event)
 
 
+# parse iso
+# parse iso
+# parse iso
+# parse iso
+
+
+# تجزیه زمان‌برچسب ایزو
 def _parse_iso(s: str):
     """Parse an ISO timestamp string into a datetime."""
     from datetime import datetime
@@ -203,6 +203,7 @@ class JournalView(QWidget):
     entrySelected = Signal(object)  # JournalEntry
     goToPlannerRequested = Signal()  # Navigate to AI Planner tab
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, journal: JournalStore, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.journal = journal
@@ -263,6 +264,7 @@ class JournalView(QWidget):
 
         self.refresh()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         # Clear (preserve stretch)
         while self._list_layout.count() > 1:
@@ -396,11 +398,13 @@ class JournalView(QWidget):
             card.editNotesRequested.connect(self._on_edit_notes)
             self._list_layout.insertWidget(self._list_layout.count() - 1, card)
 
+    # پاسخ به entry clicked
     def _on_entry_clicked(self, entry_id: str) -> None:
         entry = self.journal.get(entry_id)
         if entry is not None:
             self.entrySelected.emit(entry)
 
+    # پاسخ به حذف
     def _on_delete(self, entry_id: str) -> None:
         reply = QMessageBox.question(
             self, "Delete Entry",
@@ -411,6 +415,7 @@ class JournalView(QWidget):
             self.journal.delete(entry_id)
             self.refresh()
 
+    # پاسخ به edit notes
     def _on_edit_notes(self, entry_id: str) -> None:
         entry = self.journal.get(entry_id)
         if entry is None:

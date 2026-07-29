@@ -1,9 +1,4 @@
-"""
-CommandPalette — Ctrl+P quick-action launcher.
-
-A modal popup at the top of the window that lets the user fuzzy-find
-tasks or execute any registered command by name.
-"""
+# پالت فرمان — جستجو و اجرای سریع دستورات
 from __future__ import annotations
 
 from typing import Callable, Optional
@@ -37,6 +32,7 @@ class CommandPaletteDialog(QDialog):
 
     itemActivated = Signal(object)  # the PaletteItem's payload
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget, project: Project,
                  commands: list[PaletteItem]) -> None:
         super().__init__(parent)
@@ -99,6 +95,13 @@ class CommandPaletteDialog(QDialog):
         self._populate(self._all_items)
         self._input.setFocus()
 
+    # populate
+    # populate
+    # populate
+    # populate
+
+    # populate
+    # populate
     def _populate(self, items: list[PaletteItem]) -> None:
         self._list.clear()
         for item in items:
@@ -109,6 +112,13 @@ class CommandPaletteDialog(QDialog):
         if self._list.count() > 0:
             self._list.setCurrentRow(0)
 
+    # refilter
+    # refilter
+    # refilter
+    # refilter
+
+    # refilter
+    # refilter
     def _refilter(self, text: str) -> None:
         q = text.lower().strip()
         if not q:
@@ -123,6 +133,13 @@ class CommandPaletteDialog(QDialog):
         matches.sort(key=lambda x: -x[0])
         self._populate([m[1] for m in matches[:50]])
 
+    # match score
+    # match score
+    # match score
+    # match score
+
+    # match score
+    # match score
     def _match_score(self, query: str, item: PaletteItem) -> int:
         title = item.title.lower()
         sub = item.subtitle.lower()
@@ -136,16 +153,19 @@ class CommandPaletteDialog(QDialog):
             return 30
         return -1
 
+    # activate فعلی
     def _activate_current(self) -> None:
         item = self._list.currentItem()
         if item is not None:
             self._on_item_activated(item)
 
+    # پاسخ به آیتم activated
     def _on_item_activated(self, list_item: QListWidgetItem) -> None:
         pal_item: PaletteItem = list_item.data(Qt.UserRole)
         self.itemActivated.emit(pal_item)
         self.accept()
 
+    # پردازش کلیدهای ناوبری و انتخاب
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         if key == Qt.Key_Escape:
@@ -163,6 +183,7 @@ class CommandPaletteDialog(QDialog):
 class PaletteItemDelegate(QStyledItemDelegate):
     """Renders palette items with title + subtitle."""
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionViewItem,
               index) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -205,5 +226,6 @@ class PaletteItemDelegate(QStyledItemDelegate):
                 item.subtitle
             )
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self, option, index) -> QSize:
         return QSize(0, 44)

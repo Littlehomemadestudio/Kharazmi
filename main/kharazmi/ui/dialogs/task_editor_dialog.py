@@ -1,4 +1,4 @@
-"""Task editor dialog — full modal editor for a task."""
+# دیالوگ ویرایش وظیفه — فرم ویرایش جزئیات وظیفه
 from __future__ import annotations
 
 from typing import Optional
@@ -22,6 +22,7 @@ from ..theme import Palette
 class TaskEditorDialog(QDialog):
     """Full modal task editor."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, task: Optional[Task], task_service: TaskService,
                  parent=None) -> None:
         super().__init__(parent)
@@ -142,6 +143,7 @@ class TaskEditorDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         title = self._title.text().strip()
         if not title:

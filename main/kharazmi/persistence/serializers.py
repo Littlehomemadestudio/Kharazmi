@@ -1,4 +1,4 @@
-"""JSON file serializers for import/export."""
+# سریال‌سازهای فایل JSON برای ورودی/خروجی
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from typing import Union
 from ..core import Project
 
 
+# خروجی پروژه به فایل JSON
 def export_to_json(project: Project, path: Union[str, Path]) -> Path:
     """Write the project to a JSON file. Returns the resolved path."""
     p = Path(path)
@@ -19,6 +20,7 @@ def export_to_json(project: Project, path: Union[str, Path]) -> Path:
     return p
 
 
+# ورودی پروژه از فایل JSON
 def import_from_json(path: Union[str, Path]) -> Project:
     """Load a project from a JSON file."""
     p = Path(path)
@@ -26,6 +28,7 @@ def import_from_json(path: Union[str, Path]) -> Project:
     return Project.from_dict(data)
 
 
+# خروجی وظایف به CSV
 def export_to_csv_tasks(project: Project, path: Union[str, Path]) -> Path:
     """Export tasks only to CSV (no dependencies)."""
     import csv
@@ -52,6 +55,7 @@ def export_to_csv_tasks(project: Project, path: Union[str, Path]) -> Path:
     return p
 
 
+# خروجی وابستگی‌ها به CSV
 def export_to_csv_deps(project: Project, path: Union[str, Path]) -> Path:
     """Export dependencies to CSV."""
     import csv
@@ -68,6 +72,7 @@ def export_to_csv_deps(project: Project, path: Union[str, Path]) -> Path:
     return p
 
 
+# خروجی گراف وظایف به Mermaid
 def export_to_mermaid(project: Project, path: Union[str, Path]) -> Path:
     """
     Export the task graph as a Mermaid flowchart.
@@ -90,5 +95,6 @@ def export_to_mermaid(project: Project, path: Union[str, Path]) -> Path:
     return p
 
 
+# تبدیل datetime به رشته ISO
 def _dt(value) -> str:
     return "" if value is None else value.isoformat()

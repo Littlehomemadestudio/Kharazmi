@@ -1,4 +1,4 @@
-"""Module entry point: python -m kharazmi"""
+"""نقطه ورود ماژول: python -m kharazmi"""
 from .app import main
 import sys
 

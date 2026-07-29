@@ -1,13 +1,4 @@
-"""
-GoldParticleBackground — Animated ambient gold particle system.
-
-A custom QWidget that renders floating gold particles using QPainter.
-Particles drift slowly, fade in/out, and create a luxurious ambient
-effect. Used as a background layer behind key views.
-
-Performance: Uses a fixed particle count with QPropertyAnimation-free
-approach — a simple QTimer drives the simulation at 30 FPS.
-"""
+# پس‌زمینه ذره‌ای — جلوه بصری ذرات متحرک
 from __future__ import annotations
 
 import math
@@ -28,6 +19,7 @@ class Particle:
     __slots__ = ('x', 'y', 'vx', 'vy', 'size', 'opacity', 'target_opacity',
                  'fade_speed', 'life', 'max_life', 'glow')
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, x: float, y: float) -> None:
         self.x = x
         self.y = y
@@ -56,6 +48,7 @@ class GoldParticleBackground(QWidget):
     The widget is transparent except for the particles themselves.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None,
                  particle_count: int = 60) -> None:
         super().__init__(parent)
@@ -73,17 +66,34 @@ class GoldParticleBackground(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setStyleSheet("background: transparent;")
 
+    # pause
+    # pause
+    # pause
+    # pause
+
+    # pause
+    # pause
     def pause(self) -> None:
         self._paused = True
 
+    # resume
+    # resume
+    # resume
+    # resume
+
+    # resume
+    # resume
     def resume(self) -> None:
         self._paused = False
 
+    # مجموعه particle count
     def set_particle_count(self, count: int) -> None:
         self._max_particles = count
 
     # ── Simulation ──
 
+    # tick
+    # بروزرسانی تیک انیمیشن
     def _tick(self) -> None:
         if self._paused:
             return
@@ -123,6 +133,13 @@ class GoldParticleBackground(QWidget):
         self._particles = alive
         self.update()
 
+    # spawn
+    # spawn
+    # spawn
+    # spawn
+
+    # spawn
+    # spawn
     def _spawn(self, w: int, h: int) -> Particle:
         """Spawn a particle at a random position."""
         # Spawn from edges and bottom mostly
@@ -147,6 +164,7 @@ class GoldParticleBackground(QWidget):
 
     # ── Painting ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)

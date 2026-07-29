@@ -1,9 +1,4 @@
-"""
-CreditsPanel — a small widget that shows AI Credits usage counter.
-
-Stores count in ~/.rask/credits.json and displays like "🪙 12 AI Operations"
-in the AI planner view's header bar.
-"""
+# پنل اعتبارات — نمایش اطلاعات اعتبار و تیم
 from __future__ import annotations
 
 import json
@@ -18,6 +13,7 @@ from ..theme import Palette
 CREDITS_PATH = Path.home() / ".rask" / "credits.json"
 
 
+# بارگذاری credits
 def _load_credits() -> int:
     """Read credits count from disk, return 0 if missing/corrupt."""
     try:
@@ -29,6 +25,7 @@ def _load_credits() -> int:
     return 0
 
 
+# ذخیره credits
 def _save_credits(count: int) -> None:
     """Persist credits count to disk."""
     try:
@@ -44,6 +41,7 @@ def _save_credits(count: int) -> None:
 class CreditsPanel(QLabel):
     """Small gold-on-dark label showing AI operation count."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._count = _load_credits()
@@ -54,15 +52,29 @@ class CreditsPanel(QLabel):
         )
         self.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
+    # count
     @property
+    # count
+    # count
+    # count
+    # count
+    # count
     def count(self) -> int:
         return self._count
 
+    # increment
+    # increment
+    # increment
+    # increment
+
+    # increment
+    # increment
     def increment(self, amount: int = 1) -> None:
         """Increment the credit counter and persist."""
         self._count += amount
         _save_credits(self._count)
         self._update_text()
 
+    # بروزرسانی متن
     def _update_text(self) -> None:
         self.setText(f"🪙 {self._count} AI Operations")

@@ -1,21 +1,4 @@
-"""
-EventRenderer — QPainter-based event card rendering.
-
-Renders calendar events as rounded cards with:
-  - Colored left border (calendar color)
-  - Priority color indicator
-  - Title text
-  - Time text (for timed events)
-  - Icons for event type
-  - AI-generated badge
-  - Completion badge (checkbox)
-  - Attendee avatars
-  - Location pin
-  - Hover highlight
-  - Selection ring
-
-v2 — Bigger, rounder, better readability.
-"""
+# رندرر رویداد — رسم کارت رویداد با QPainter
 from __future__ import annotations
 
 from datetime import datetime
@@ -42,6 +25,7 @@ from .theme import (
 
 class EventRenderOptions:
     """Controls what gets rendered on an event card."""
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         show_time: bool = True,
@@ -72,6 +56,7 @@ class EventRenderOptions:
 class EventRenderer:
     """Static methods for painting event cards."""
 
+    # رسم کارت رویداد
     @staticmethod
     def paint(
         painter: QPainter,
@@ -239,6 +224,7 @@ class EventRenderer:
 
         painter.restore()
 
+    # رسم چپیک رویداد در نمای ماه
     @staticmethod
     def paint_month_chip(
         painter: QPainter,
@@ -305,6 +291,7 @@ class EventRenderer:
 
         painter.restore()
 
+    # رسم چپیک رویداد تمام‌روز
     @staticmethod
     def paint_all_day_chip(
         painter: QPainter,

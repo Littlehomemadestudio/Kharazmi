@@ -1,17 +1,4 @@
-"""
-CalendarTheme — Centralized visual constants for the RASK! calendar.
-
-Supports both Light and Dark modes. Every color, font, spacing, and
-metric used by the calendar is defined here so there is a single
-source of truth. Views should NEVER hardcode visual values.
-
-The Surface / Text / Border / Status / EventColors classes are
-dynamically updated when the calendar theme switches — all code
-that reads ``Surface.CANVAS`` etc. gets the current value.
-
-v2 — Bigger, rounder, better space management.
-v3 — Light/Dark theme support.
-"""
+# پوسته — رنگ‌ها، قلم‌ها و متریک‌های بصری تقویم
 from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont
@@ -53,15 +40,34 @@ for _k, _v in _LIGHT_SURFACE.items():
 
 # ──────────────────────────────── Gold Accent ─────────────────────────────
 
+_LIGHT_GOLD = {
+    "BRIGHT":        "#E8B730",
+    "PRIMARY":       "#C9A027",
+    "DEEP":          "#8C7012",
+    "MUTED":         "#6B5509",
+    "GLOW":          QColor(201, 160, 39, 30),
+    "GLOW_STRONG":   QColor(201, 160, 39, 70),
+    "GRADIENT_START": "#E8B730",
+    "GRADIENT_END":   "#C9A027",
+}
+
+_DARK_GOLD = {
+    "BRIGHT":        "#F5C842",
+    "PRIMARY":       "#D4AF37",
+    "DEEP":          "#8C7012",
+    "MUTED":         "#5C4A0E",
+    "GLOW":          QColor(212, 175, 55, 46),
+    "GLOW_STRONG":   QColor(212, 175, 55, 90),
+    "GRADIENT_START": "#F5C842",
+    "GRADIENT_END":   "#D4AF37",
+}
+
 class Gold:
-    BRIGHT   = "#F5C842"
-    PRIMARY  = "#D4AF37"
-    DEEP     = "#8C7012"
-    MUTED    = "#5C4A0E"
-    GLOW     = QColor(212, 175, 55, 46)        # 18 % opacity
-    GLOW_STRONG = QColor(212, 175, 55, 90)     # 35 % opacity
-    GRADIENT_START = "#F5C842"
-    GRADIENT_END   = "#D4AF37"
+    pass
+
+# Initialize with light mode (matches app default)
+for _k, _v in _LIGHT_GOLD.items():
+    setattr(Gold, _k, _v)
 
 
 # ──────────────────────────────── Text ────────────────────────────────────
@@ -131,6 +137,7 @@ class EventColors:
     SLATE      = "#6A7A8A"
     LAVENDER   = "#7A6AB0"
 
+    # همه
     @classmethod
     def all(cls) -> list[str]:
         return [
@@ -211,43 +218,50 @@ EVENT_TYPE_ICONS = {
 
 # ──────────────────────────────── Fonts ───────────────────────────────────
 
+# قلم عنوان
 def font_title() -> QFont:
-    f = QFont("Segoe UI", 22, QFont.Bold)
+    f = QFont("Segoe UI", 28, QFont.Bold)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم ماه عنوان
 def font_month_title() -> QFont:
-    f = QFont("Segoe UI", 18, QFont.Bold)
+    f = QFont("Segoe UI", 24, QFont.Bold)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم سربرگ
 def font_header() -> QFont:
     """Used for section headers, weekday names, mini month headers."""
-    f = QFont("Segoe UI", 12, QFont.Bold)
+    f = QFont("Segoe UI", 16, QFont.Bold)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم بدنه
 def font_body() -> QFont:
     """Primary body text — event titles, buttons, labels, day numbers."""
-    f = QFont("Inter", 12, QFont.Medium)
+    f = QFont("Inter", 15, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم small
 def font_small() -> QFont:
     """Secondary text — times, hints, chips."""
-    f = QFont("Inter", 11)
+    f = QFont("Inter", 14)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم زمان برچسب
 def font_time_label() -> QFont:
     """Time ruler labels."""
-    f = QFont("Inter", 11)
+    f = QFont("Inter", 14)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
+# قلم mini روز
 def font_mini_day() -> QFont:
     """Small day numbers in mini-month and year view."""
-    f = QFont("Inter", 10, QFont.Medium)
+    f = QFont("Inter", 13, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
@@ -319,6 +333,7 @@ class Metrics:
 
 # ──────────────────────────────── Theme switching ────────────────────────
 
+# مجموعه تقویم پوسته
 def set_calendar_theme(mode: str) -> None:
     """Switch the calendar sub-theme to 'light' or 'dark'.
 
@@ -335,6 +350,8 @@ def set_calendar_theme(mode: str) -> None:
             setattr(Border, k, v)
         for k, v in _DARK_STATUS.items():
             setattr(Status, k, v)
+        for k, v in _DARK_GOLD.items():
+            setattr(Gold, k, v)
         PRIORITY_COLORS.update(_DARK_PRIORITY)
     else:
         for k, v in _LIGHT_SURFACE.items():
@@ -345,11 +362,15 @@ def set_calendar_theme(mode: str) -> None:
             setattr(Border, k, v)
         for k, v in _LIGHT_STATUS.items():
             setattr(Status, k, v)
+        for k, v in _LIGHT_GOLD.items():
+            setattr(Gold, k, v)
         PRIORITY_COLORS.update(_LIGHT_PRIORITY)
 
 
 # ──────────────────────────────── Helpers ─────────────────────────────────
 
+# qcolor
+# تبدیل رشته رنگ به QColor
 def qcolor(hex_str: str) -> QColor:
     """Parse a hex color string to QColor. Handles #RGB, #RRGGBB, #AARRGGBB."""
     h = hex_str.lstrip("#")
@@ -362,6 +383,8 @@ def qcolor(hex_str: str) -> QColor:
     return QColor(hex_str)
 
 
+# lighten
+# روشن‌تر کردن رنگ
 def lighten(hex_str: str, factor: float = 0.15) -> QColor:
     c = qcolor(hex_str)
     h, s, v, a = c.getHsvF()
@@ -371,6 +394,8 @@ def lighten(hex_str: str, factor: float = 0.15) -> QColor:
     return result
 
 
+# darken
+# تیره‌تر کردن رنگ
 def darken(hex_str: str, factor: float = 0.15) -> QColor:
     c = qcolor(hex_str)
     h, s, v, a = c.getHsvF()
@@ -380,6 +405,7 @@ def darken(hex_str: str, factor: float = 0.15) -> QColor:
     return result
 
 
+# همراه با alpha
 def with_alpha(hex_str: str, alpha: int) -> QColor:
     c = qcolor(hex_str)
     c.setAlpha(alpha)

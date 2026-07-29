@@ -1,7 +1,4 @@
-"""
-SchedulingService — orchestrates CPM/PERT/Monte Carlo and emits
-ScheduleRecalculated events to the project.
-"""
+# سرویس زمان‌بندی — هماهنگ‌کننده CPM/PERT/مونت‌کارلو
 from __future__ import annotations
 
 from datetime import datetime
@@ -23,11 +20,14 @@ class SchedulingService:
     directly. This way the service can emit a ScheduleRecalculated
     event exactly once per recalculation.
     """
+
+    # مقداردهی اولیه سرویس زمان‌بندی
     def __init__(self, project: Project) -> None:
         self.project = project
         self._last_cpm: Optional[CPMResult] = None
         self._last_pert: Optional[PERTSummary] = None
 
+    # اجرای CPM و انتشار رویداد
     def recalculate(self, start_anchor: Optional[datetime] = None) -> CPMResult:
         """Run CPM and emit ScheduleRecalculated."""
         result = run_cpm(self.project, start_anchor)
@@ -45,6 +45,7 @@ class SchedulingService:
                     pass
         return result
 
+    # اجرای PERT
     def run_pert(self, start_anchor: Optional[datetime] = None) -> PERTSummary:
         summary = run_pert(self.project, start_anchor)
         self._last_pert = summary
@@ -61,6 +62,7 @@ class SchedulingService:
                     pass
         return summary
 
+    # اجرای شبیه‌سازی مونت‌کارلو
     def run_monte_carlo(self, iterations: int = 1000,
                         target_minutes: Optional[int] = None,
                         start_anchor: Optional[datetime] = None,
@@ -73,6 +75,7 @@ class SchedulingService:
             seed=seed,
         )
 
+    # تسطیح منابع
     def level_resources(self, start_anchor: Optional[datetime] = None) -> LevelingResult:
         result = run_resource_leveling(self.project, start_anchor)
         # Leveling changes earliest_start constraints, so emit recalc
@@ -88,10 +91,12 @@ class SchedulingService:
                     pass
         return result
 
+    # آخرین نتیجه CPM
     @property
     def last_cpm(self) -> Optional[CPMResult]:
         return self._last_cpm
 
+    # آخرین نتیجه PERT
     @property
     def last_pert(self) -> Optional[PERTSummary]:
         return self._last_pert

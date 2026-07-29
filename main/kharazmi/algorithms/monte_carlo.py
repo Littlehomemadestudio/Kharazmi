@@ -1,14 +1,4 @@
-"""
-Monte Carlo risk simulation.
-
-Runs N simulations of the project, sampling each task's duration from
-a triangular distribution bounded by its PERT optimistic/most-likely/
-pessimistic estimates. Produces a histogram of project completion
-times and percentile estimates.
-
-This is the standard technique for "what's the realistic range of
-outcomes here?" when durations are uncertain.
-"""
+# مونت‌کارلو — شبیه‌سازی مونت‌کارلو برای برآورد ریسک
 from __future__ import annotations
 
 import random
@@ -35,6 +25,7 @@ class MonteCarloResult:
     max_minutes: int
     probability_within_target: float  # P(duration <= target)
 
+    # تبدیل به دیکشنری
     def to_dict(self) -> dict:
         return {
             "iterations": self.iterations,
@@ -52,6 +43,14 @@ class MonteCarloResult:
         }
 
 
+# triangular sample
+# triangular sample
+# triangular sample
+# triangular sample
+
+
+# triangular sample
+# triangular sample
 def _triangular_sample(opt: int, mode: int, pess: int) -> int:
     """Sample from a triangular distribution with given low/mode/high."""
     if opt == pess:
@@ -69,6 +68,7 @@ def _triangular_sample(opt: int, mode: int, pess: int) -> int:
 import math
 
 
+# اجرای monte carlo
 def run_monte_carlo(
     project: Project,
     iterations: int = 1000,
@@ -152,6 +152,13 @@ def run_monte_carlo(
     durations.sort()
     n = len(durations)
 
+    # percentile
+    # percentile
+    # percentile
+    # percentile
+
+    # percentile
+    # percentile
     def percentile(p: float) -> int:
         idx = max(0, min(n - 1, int(round(p * (n - 1)))))
         return durations[idx]

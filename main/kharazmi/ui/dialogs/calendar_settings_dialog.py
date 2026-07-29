@@ -1,9 +1,4 @@
-"""
-CalendarSettingsDialog — create/edit/delete calendars.
-
-Lists all calendars; lets the user create new ones, rename, recolor,
-or delete (non-default, non-readonly).
-"""
+# دیالوگ تنظیمات تقویم — پیکربندی تقویم‌ها
 from __future__ import annotations
 
 from typing import Optional
@@ -23,6 +18,7 @@ from ..theme import Palette
 class CalendarSettingsDialog(QDialog):
     """Manage calendars."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, store: CalendarStore, parent=None) -> None:
         super().__init__(parent)
         self.store = store
@@ -126,6 +122,7 @@ class CalendarSettingsDialog(QDialog):
         self._selected_cal_id: Optional[str] = None
         self._refresh_list()
 
+    # بازخوانی فهرست
     def _refresh_list(self) -> None:
         self._list.clear()
         for cal in sorted(self.store.calendars(),
@@ -141,6 +138,7 @@ class CalendarSettingsDialog(QDialog):
         if self._list.count() > 0:
             self._list.setCurrentRow(0)
 
+    # پاسخ به انتخاب
     def _on_selection(self, row: int) -> None:
         if row < 0 or row >= self._list.count():
             return
@@ -157,14 +155,17 @@ class CalendarSettingsDialog(QDialog):
         self._name_edit.setEnabled(not cal.is_readonly)
         self._desc_edit.setEnabled(not cal.is_readonly)
 
+    # مجموعه رنگ
     def _set_color(self, color: str) -> None:
         self._current_color = color
 
+    # pick سفارشی رنگ
     def _pick_custom_color(self) -> None:
         color = QColorDialog.getColor(QColor(self._current_color), self)
         if color.isValid():
             self._current_color = color.name()
 
+    # اعمال changes
     def _apply_changes(self) -> None:
         if self._selected_cal_id is None:
             return
@@ -179,6 +180,7 @@ class CalendarSettingsDialog(QDialog):
         )
         self._refresh_list()
 
+    # حذف تقویم
     def _delete_calendar(self) -> None:
         if self._selected_cal_id is None:
             return
@@ -195,6 +197,7 @@ class CalendarSettingsDialog(QDialog):
             self._selected_cal_id = None
             self._refresh_list()
 
+    # ایجاد جدید
     def _create_new(self) -> None:
         name, ok = QInputDialog.getText(self, "New Calendar", "Calendar name:")
         if not ok or not name.strip():

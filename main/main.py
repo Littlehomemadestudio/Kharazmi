@@ -1,16 +1,8 @@
-"""
-Kharazmi launcher.
-
-Run with:
-    python main.py
-
-Or, for the module entry point:
-    python -m kharazmi
-"""
+# راه‌انداز RASK — نقطه ورود اصلی
 import sys
 import os
 
-# Ensure the parent directory is on the path so `kharazmi` imports resolve
+# Ensure the parent directory is on the path so imports resolve
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from kharazmi.app import main

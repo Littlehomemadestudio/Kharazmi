@@ -1,19 +1,4 @@
-"""
-The Project aggregate root.
-
-A Project is a directed graph of Tasks connected by Dependencies. It is
-the only object that may create / delete tasks and dependencies —
-external code goes through Project's methods so invariants are always
-enforced:
-
-  1. No self-dependencies.
-  2. No duplicate dependencies (same predecessor, successor, type).
-  3. No cycles (a dependency that would close a cycle is rejected and
-     a CycleDetected event is emitted).
-  4. Deleting a task also deletes every dependency that references it.
-
-The Project emits DomainEvents; the UI listens and refreshes itself.
-"""
+# ریشه تجمیعی پروژه — گراف جهت‌دار وظایف و وابستگی‌ها
 from __future__ import annotations
 
 import copy
@@ -54,6 +39,7 @@ class Project:
     def subscribe(self, listener: EventListener) -> None:
         self._listeners.append(listener)
 
+    # انتشار رویداد به تمام شنودگرها
     def _emit(self, event: DomainEvent) -> None:
         for listener in list(self._listeners):
             try:
@@ -70,20 +56,24 @@ class Project:
         self._emit(TaskCreated(task_id=task.id, title=task.title))
         return task
 
+    # ساخت و افزودن وظیفه جدید با شناسه خودکار
     def create_task(self, title: str, **kwargs) -> Task:
         """Convenience factory that generates a fresh TaskId."""
         task = Task(id=TaskId.generate(), title=title, **kwargs)
         return self.add_task(task)
 
+    # دریافت وظیفه بر اساس شناسه
     def get_task(self, task_id: TaskId) -> Optional[Task]:
         return self._tasks.get(task_id.value)
 
+    # دریافت وظیفه؛ خطا در صورت عدم وجود
     def require_task(self, task_id: TaskId) -> Task:
         t = self.get_task(task_id)
         if t is None:
             raise KeyError(f"No such task: {task_id}")
         return t
 
+    # حذف وظیفه و وابستگی‌هایش
     def delete_task(self, task_id: TaskId) -> None:
         if task_id.value not in self._tasks:
             return
@@ -101,6 +91,7 @@ class Project:
         del self._tasks[task_id.value]
         self._emit(TaskDeleted(task_id=task_id))
 
+    # بروزرسانی فیلدهای وظیفه
     def update_task(self, task_id: TaskId, **changes) -> None:
         """Patch a task's fields. Unknown keys raise."""
         task = self.require_task(task_id)
@@ -114,6 +105,7 @@ class Project:
             task.touch()
             self._emit(TaskUpdated(task_id=task_id, field=k, old=old, new=v))
 
+    # تغییر وضعیت وظیفه
     def change_status(self, task_id: TaskId, new_status) -> None:
         task = self.require_task(task_id)
         old = task.status
@@ -150,6 +142,7 @@ class Project:
         ))
         return dep
 
+    # حذف وابستگی بین دو وظیفه
     def remove_dependency(self, predecessor_id: TaskId, successor_id: TaskId,
                           dep_type: DependencyType = DependencyType.FINISH_START) -> None:
         key = (predecessor_id.value, successor_id.value, dep_type.value)
@@ -159,10 +152,12 @@ class Project:
                 predecessor_id=predecessor_id, successor_id=successor_id,
             ))
 
+    # وابستگی‌هایی که وظیفه جانشین آنهاست
     def dependencies_of(self, task_id: TaskId) -> list[Dependency]:
         """Dependencies where task_id is the SUCCESSOR (i.e. its predecessors)."""
         return [d for d in self._deps.values() if d.successor_id == task_id]
 
+    # وابستگی‌هایی که وظیفه مقدم آنهاست
     def dependents_of(self, task_id: TaskId) -> list[Dependency]:
         """Dependencies where task_id is the PREDECESSOR (i.e. its successors)."""
         return [d for d in self._deps.values() if d.predecessor_id == task_id]
@@ -173,6 +168,7 @@ class Project:
         # predecessor -> successor closes a cycle.
         return self._can_reach(successor, predecessor)
 
+    # بررسی دسترسی‌پذیری از یک گره به دیگری
     def _can_reach(self, src: TaskId, dst: TaskId) -> bool:
         if src == dst:
             return True
@@ -190,6 +186,7 @@ class Project:
                     stack.append(dep.successor_id.value)
         return False
 
+    # جستجوی مسیر بین دو گره (BFS)
     def _find_path(self, src: TaskId, dst: TaskId) -> list[TaskId]:
         """BFS path search, returns the list of nodes from src to dst (inclusive)."""
         if src == dst:
@@ -217,21 +214,26 @@ class Project:
     def tasks(self) -> Iterator[Task]:
         return iter(self._tasks.values())
 
+    # تکرارگر تمام وابستگی‌ها
     def dependencies(self) -> Iterator[Dependency]:
         return iter(self._deps.values())
 
+    # تعداد وظایف
     @property
     def task_count(self) -> int:
         return len(self._tasks)
 
+    # تعداد وابستگی‌ها
     @property
     def dependency_count(self) -> int:
         return len(self._deps)
 
+    # وظایف بدون مقدم (نقاط ورود گراف)
     def roots(self) -> list[Task]:
         """Tasks with no predecessors — entry points of the graph."""
         return [t for t in self._tasks.values() if not self.dependencies_of(t.id)]
 
+    # وظایف بدون جانشین (نقاط خروج گراف)
     def leaves(self) -> list[Task]:
         """Tasks with no successors — exit points of the graph."""
         return [t for t in self._tasks.values() if not self.dependents_of(t.id)]
@@ -252,6 +254,7 @@ class Project:
             "dependencies": [d.to_dict() for d in self._deps.values()],
         }
 
+    # بازسازی پروژه از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Project":
         proj = cls(
@@ -275,6 +278,7 @@ class Project:
                 continue
         return proj
 
+    # کپی عمیق برای عملیات برگشت
     def snapshot(self) -> "Project":
         """Deep copy for undo/redo."""
         return copy.deepcopy(self)

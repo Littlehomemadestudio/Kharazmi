@@ -1,15 +1,4 @@
-"""
-PERT (Program Evaluation and Review Technique).
-
-Uses three-point estimates (optimistic, most likely, pessimistic) to
-compute an expected duration and variance per task. The expected
-durations can be fed into CPM, and the variances enable probabilistic
-project-duration estimates.
-
-This module provides:
-  * aggregate_pert(project) — collects PERT stats along the critical path
-  * probability_of_finishing_by(project, target) — Z-score based probability
-"""
+# پرت — تحلیل PERT و برآورد زمان پروژه
 from __future__ import annotations
 
 import math
@@ -28,6 +17,7 @@ class PERTSummary:
     std_dev: float
     critical_path: list[TaskId]
 
+    # probability بر اساس
     def probability_by(self, target_minutes: int) -> float:
         """
         P(project finishes within `target_minutes`).
@@ -42,11 +32,25 @@ class PERTSummary:
         return _normal_cdf(z)
 
 
+# normal cdf
+# normal cdf
+# normal cdf
+# normal cdf
+
+
+# normal توزیع تجمعی
 def _normal_cdf(z: float) -> float:
     """Standard normal CDF using the error function approximation."""
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
 
 
+# ensure pert estimates
+# ensure pert estimates
+# ensure pert estimates
+# ensure pert estimates
+
+
+# ensure پرت estimates
 def ensure_pert_estimates(project: Project) -> None:
     """
     For every task that lacks a PERT estimate, synthesise one from its
@@ -67,6 +71,7 @@ def ensure_pert_estimates(project: Project) -> None:
         )
 
 
+# اجرای تحلیل PERT
 def run_pert(project: Project, start_anchor: Optional[datetime] = None) -> PERTSummary:
     """
     Compute the PERT summary for the project.

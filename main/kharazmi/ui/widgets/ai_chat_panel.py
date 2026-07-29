@@ -1,16 +1,4 @@
-"""
-AIChatPanel — a professional Cursor IDE-style chat panel.
-
-Features:
-  - Streaming responses with REAL text (not JSON)
-  - For structured operations (route generation), shows meaningful
-    status boxes like 'Building fallback branches…' instead of raw JSON
-  - Role icons (✦ for AI, ○ for user)
-  - Multi-line input with auto-resize
-  - Stop button while streaming
-  - Suggested follow-up prompts
-  - Clean, professional styling
-"""
+# پنل گفتگوی هوشمند — رابط چت با دستیار هوش مصنوعی
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,6 +19,7 @@ from ...ai import AIService
 from ..theme import Palette
 
 
+# بررسی راست‌به‌چپ بودن متن
 def _is_rtl(text: str) -> bool:
     """Detect if text is primarily RTL (Persian/Arabic)."""
     rtl_count = sum(1 for ch in text if '\u0600' <= ch <= '\u06FF' or '\uFB50' <= ch <= '\uFDFF' or '\uFE70' <= ch <= '\uFEFF')
@@ -41,6 +30,7 @@ class StatusBox(QFrame):
     """A small status box shown during structured operations.
     Displays messages like 'Building fallback branches…' instead of raw JSON."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, text: str = "", parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setStyleSheet(f"""
@@ -80,13 +70,16 @@ class StatusBox(QFrame):
         self._spinner_timer.timeout.connect(self._tick_spinner)
         self._spinner_timer.start()
 
+    # بروزرسانی چرخنده
     def _tick_spinner(self) -> None:
         self._spinner_idx = (self._spinner_idx + 1) % len(self._spinner_chars)
         self._spinner.setText(self._spinner_chars[self._spinner_idx])
 
+    # تنظیم متن
     def set_text(self, text: str) -> None:
         self._label.setText(text)
 
+    # توقف چرخنده
     def stop_spinner(self) -> None:
         self._spinner_timer.stop()
         self._spinner.setText("✓")
@@ -99,6 +92,7 @@ class StatusBox(QFrame):
 class ChatMessage(QFrame):
     """A chat message bubble (user or assistant). Auto-sizes to content."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, role: str = "assistant", parent: QWidget = None) -> None:
         super().__init__(parent)
         self.role = role
@@ -172,16 +166,19 @@ class ChatMessage(QFrame):
 
         self._body.document().contentsChanged.connect(self._adjust_height)
 
+    # adjust ارتفاع
     def _adjust_height(self) -> None:
         doc_height = self._body.document().size().height()
         self._body.setFixedHeight(int(doc_height) + 8)
 
+    # append متن
     def append_text(self, text: str) -> None:
         cursor = self._body.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self._body.setTextCursor(cursor)
 
+    # تنظیم متن
     def set_text(self, text: str) -> None:
         self._body.setPlainText(text)
         if _is_rtl(text):
@@ -189,6 +186,7 @@ class ChatMessage(QFrame):
         else:
             self._body.setLayoutDirection(Qt.LeftToRight)
 
+    # مجموعه html
     def set_html(self, html: str) -> None:
         self._body.setHtml(html)
         plain = self._body.toPlainText()
@@ -197,6 +195,7 @@ class ChatMessage(QFrame):
         else:
             self._body.setLayoutDirection(Qt.LeftToRight)
 
+    # دریافت متن
     def get_text(self) -> str:
         return self._body.toPlainText()
 
@@ -205,6 +204,7 @@ class ChatInput(QPlainTextEdit):
     """Multi-line input. Enter sends, Shift+Enter for newline."""
     sendMessage = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setPlaceholderText("Ask Rask about this route…  (Enter to send, Shift+Enter for newline)")
@@ -225,6 +225,7 @@ class ChatInput(QPlainTextEdit):
         self.setMinimumHeight(40)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):
             text = self.toPlainText().strip()
@@ -241,6 +242,7 @@ class AIChatPanel(QWidget):
     sendRequested = Signal(str)
     stopRequested = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, ai_service: AIService, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.ai = ai_service
@@ -360,6 +362,7 @@ class AIChatPanel(QWidget):
         input_layout.addLayout(action_row)
         layout.addWidget(input_frame)
 
+    # پاسخ به send
     def _on_send(self, text: str) -> None:
         text = text.strip()
         if not text:
@@ -367,6 +370,7 @@ class AIChatPanel(QWidget):
         self.add_message(text, role="user")
         self.sendRequested.emit(text)
 
+    # پاسخ به stop
     def _on_stop(self) -> None:
         if self._current_request_id:
             self.ai.cancel_request(self._current_request_id)
@@ -374,6 +378,7 @@ class AIChatPanel(QWidget):
         self.stopRequested.emit()
 
     # ---- Public API ----
+    # افزودن پیام
     def add_message(self, text: str, role: str = "assistant",
                     as_html: bool = False) -> ChatMessage:
         """Add a complete message to the conversation."""
@@ -387,6 +392,7 @@ class AIChatPanel(QWidget):
         self._messages.append({"role": role, "content": text})
         return msg
 
+    # شروع وضعیت box
     def start_status_box(self, initial_text: str = "Working…") -> StatusBox:
         """Show a status box (used during structured operations like route generation).
         Shows meaningful status text instead of raw JSON."""
@@ -398,11 +404,13 @@ class AIChatPanel(QWidget):
         self._send_btn.hide()
         return box
 
+    # بروزرسانی وضعیت
     def update_status(self, text: str) -> None:
         """Update the current status box's text."""
         if self._current_status_box is not None:
             self._current_status_box.set_text(text)
 
+    # پایان وضعیت box
     def finish_status_box(self, final_text: Optional[str] = None) -> None:
         """Mark the status box as done (changes spinner to checkmark)."""
         if self._current_status_box is not None:
@@ -413,6 +421,7 @@ class AIChatPanel(QWidget):
         self._stop_btn.hide()
         self._send_btn.show()
 
+    # شروع streaming message
     def start_streaming_message(self) -> ChatMessage:
         """Start a streaming assistant message (for free-form chat, not structured ops)."""
         msg = ChatMessage("assistant")
@@ -423,12 +432,14 @@ class AIChatPanel(QWidget):
         self._send_btn.hide()
         return msg
 
+    # stream قطعه
     def stream_chunk(self, text: str) -> None:
         """Append a chunk of text to the current streaming message."""
         if self._current_streaming_msg is not None:
             self._current_streaming_msg.append_text(text)
             self._scroll_to_bottom()
 
+    # پایان streaming
     def finish_streaming(self, full_text: Optional[str] = None) -> None:
         if self._current_streaming_msg is not None:
             if full_text is not None:
@@ -441,9 +452,11 @@ class AIChatPanel(QWidget):
         self._stop_btn.hide()
         self._send_btn.show()
 
+    # مجموعه request شناسه
     def set_request_id(self, request_id: str) -> None:
         self._current_request_id = request_id
 
+    # پاک کردن conversation
     def clear_conversation(self) -> None:
         while self._conv_layout.count() > 1:
             item = self._conv_layout.takeAt(0)
@@ -453,6 +466,7 @@ class AIChatPanel(QWidget):
         self._current_streaming_msg = None
         self._current_status_box = None
 
+    # پیمایش تبدیل به پایین
     def _scroll_to_bottom(self) -> None:
         QTimer.singleShot(10, lambda: self._scroll.verticalScrollBar().setValue(
             self._scroll.verticalScrollBar().maximum()

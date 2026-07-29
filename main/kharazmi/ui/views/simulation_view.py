@@ -1,13 +1,4 @@
-"""
-SimulationView — dedicated simulation & health analysis page for RASK! routes.
-
-Runs Monte Carlo simulations, shows:
-  - Where the route succeeds/fails
-  - Per-step failure analysis
-  - Completion time distribution histogram
-  - Recommendations for improvement
-  - How to fix the weak points
-"""
+# نمای شبیه‌سازی — اجرای شبیه‌سازی سناریوها
 from __future__ import annotations
 
 import math
@@ -34,12 +25,14 @@ from ..theme import Palette
 class _HistogramWidget(QWidget):
     """Custom-painted histogram showing completion time distribution."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, result: SimulationResult, parent=None):
         super().__init__(parent)
         self.result = result
         self.setFixedHeight(200)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -114,6 +107,7 @@ class _HistogramWidget(QWidget):
 class _StepFailureWidget(QWidget):
     """Shows per-step failure rates with visual bars."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, result: SimulationResult, route: Route, parent=None):
         super().__init__(parent)
         self.result = result
@@ -121,6 +115,7 @@ class _StepFailureWidget(QWidget):
         self.setMinimumHeight(max(200, len(route.steps) * 28 + 50))
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -194,17 +189,20 @@ class _StepFailureWidget(QWidget):
 class _CircularGauge(QWidget):
     """Circular gauge showing a 0-100 score."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None):
         super().__init__(parent)
         self._score = 0.0
         self._label = ""
         self.setFixedSize(180, 180)
 
+    # مجموعه score
     def set_score(self, score: float, label: str = ""):
         self._score = max(0, min(100, score))
         self._label = label
         self.update()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -258,6 +256,7 @@ class SimulationView(QWidget):
       - Recommendations for improvement
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None):
         super().__init__(parent)
         self._route: Optional[Route] = None
@@ -265,6 +264,7 @@ class SimulationView(QWidget):
         self._health: Optional[RouteHealthReport] = None
         self._build_ui()
 
+    # ساخت رابط کاربری
     def _build_ui(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -351,6 +351,7 @@ class SimulationView(QWidget):
         scroll.setWidget(self._content)
         layout.addWidget(scroll, stretch=1)
 
+    # تنظیم مسیر
     def set_route(self, route: Route):
         self._route = route
         self._route_info.setText(
@@ -363,6 +364,7 @@ class SimulationView(QWidget):
         self._health = RouteHealthEngine.compute(route)
         self._show_results()
 
+    # اجرای simulation
     def _run_simulation(self):
         if not self._route:
             return
@@ -383,6 +385,7 @@ class SimulationView(QWidget):
         self._run_btn.setEnabled(True)
         self._show_results()
 
+    # نمایش results
     def _show_results(self):
         # Clear placeholder / existing content
         while self._content_layout.count():
@@ -510,6 +513,12 @@ class SimulationView(QWidget):
 
         self._content_layout.addStretch()
 
+    # card
+    # card
+    # card
+    # card
+
+    # ساخت کارت
     def _card(self) -> QFrame:
         card = QFrame()
         card.setStyleSheet(f"""
@@ -521,6 +530,7 @@ class SimulationView(QWidget):
         """)
         return card
 
+    # وضعیت card
     def _status_card(self, title: str, subtitle: str, items: list, accent: str) -> QFrame:
         card = self._card()
         card.setStyleSheet(f"""
@@ -551,6 +561,7 @@ class SimulationView(QWidget):
 
         return card
 
+    # دریافت failing steps
     def _get_failing_steps(self) -> list[str]:
         if not self._sim_result or not self._route:
             return []
@@ -563,6 +574,7 @@ class SimulationView(QWidget):
                 result.append(f"{step.title} — fails {fail_rate:.0%} of the time (risk: {step.risk_level}, fallback: {'yes' if step.fallback else 'NONE'})")
         return result
 
+    # دریافت succeeding steps
     def _get_succeeding_steps(self) -> list[str]:
         if not self._sim_result or not self._route:
             return []
@@ -575,6 +587,7 @@ class SimulationView(QWidget):
                 result.append(f"{step.title} — reliable ({step.success_probability:.0%} success)")
         return result
 
+    # دریافت recommendations
     def _get_recommendations(self) -> list[str]:
         recs = []
         if not self._route:

@@ -1,9 +1,4 @@
-"""
-SQLite-backed persistence for the calendar subsystem.
-
-Stores CalendarStore snapshots in SQLite. Mirrors the Enterprise
-plan's SQLiteRepository pattern.
-"""
+# مخزن تقویم SQLite — ذخیره اسنپشات تقویم
 from __future__ import annotations
 
 import json
@@ -32,6 +27,7 @@ CREATE TABLE IF NOT EXISTS calendar_snapshots (
 class CalendarRepository:
     """Thread-safe SQLite repository for the CalendarStore."""
 
+    # مقداردهی اولیه مخزن تقویم SQLite
     def __init__(self, db_path: Optional[Path] = None) -> None:
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -44,14 +40,17 @@ class CalendarRepository:
         self._conn.row_factory = sqlite3.Row
         self._init_schema()
 
+    # ایجاد جدول اسنپشات تقویم
     def _init_schema(self) -> None:
         with self._lock:
             self._conn.executescript(_SCHEMA)
 
+    # بستن اتصال پایگاه داده
     def close(self) -> None:
         with self._lock:
             self._conn.close()
 
+    # ذخیره اسنپشات تقویم
     def save(self, store: CalendarStore, kind: str = "manual") -> int:
         """Persist a snapshot of the calendar store."""
         payload = json.dumps(store.to_dict(), ensure_ascii=False, indent=2)
@@ -71,6 +70,7 @@ class CalendarRepository:
             )
             return cur.lastrowid
 
+    # بارگذاری آخرین اسنپشات تقویم
     def load_latest(self) -> Optional[CalendarStore]:
         with self._lock:
             cur = self._conn.execute(
@@ -82,6 +82,7 @@ class CalendarRepository:
                 return None
             return CalendarStore.from_dict(json.loads(row["payload_json"]))
 
+    # آیا اسنپشاتی وجود دارد
     def has_snapshot(self) -> bool:
         with self._lock:
             cur = self._conn.execute("SELECT COUNT(*) as c FROM calendar_snapshots")

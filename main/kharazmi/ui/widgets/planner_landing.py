@@ -1,22 +1,4 @@
-"""
-PlannerLanding — the first screen users see when opening the AI Planner.
-
-A sleek, centered landing page inspired by modern AI assistants:
-  - Bold headline at center with animated gold underline
-  - Subtitle tagline
-  - Large centered text input with send button
-  - Keyboard shortcut hints
-  - Suggestion chips (6 total)
-  - Power badges row (capability pills)
-  - Recent activity section (last 2 journal entries)
-  - Release notes / changelog card
-  - Category tabs at the bottom
-
-When the user types a goal and submits, the `goalSubmitted` signal fires,
-and the parent view transitions to the workspace (canvas + chat).
-
-Uses the Kharazmi gold-on-dark theme throughout.
-"""
+# صفحه فرود برنامه‌ریز — ورود به بخش برنامه‌ریزی
 from __future__ import annotations
 
 import math
@@ -36,6 +18,7 @@ from ..theme import Palette, with_alpha
 class _CategoryTab(QPushButton):
     """A rounded category tab button with icon and label."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, icon_char: str, label: str, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._icon = icon_char
@@ -47,6 +30,7 @@ class _CategoryTab(QPushButton):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._update_style()
 
+    # بروزرسانی سبک
     def _update_style(self) -> None:
         self.setStyleSheet(f"""
             QPushButton {{
@@ -71,6 +55,7 @@ class _CategoryTab(QPushButton):
             }}
         """)
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         # Let stylesheet handle background, then draw icon + label
         super().paintEvent(event)
@@ -100,6 +85,7 @@ class PlannerLanding(QWidget):
 
     goalSubmitted = Signal(str)  # Emits the goal text
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, journal_store=None, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._selected_category = "plan"
@@ -135,6 +121,13 @@ class PlannerLanding(QWidget):
         self._timer.timeout.connect(self._advance_particles)
         self._timer.start(33)  # ~30fps
 
+    # advance particles
+    # advance particles
+    # advance particles
+    # advance particles
+
+    # advance particles
+    # advance particles
     def _advance_particles(self) -> None:
         self._tick += 1
 
@@ -166,6 +159,7 @@ class PlannerLanding(QWidget):
 
         self.update()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         """Draw floating gold particles + animated gold underline behind all content."""
         painter = QPainter(self)
@@ -201,6 +195,7 @@ class PlannerLanding(QWidget):
         finally:
             painter.end()
 
+    # ساخت رابط کاربری
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -217,7 +212,7 @@ class PlannerLanding(QWidget):
         # ---- Logo / brand (with pulse animation) ----
         brand_row = QHBoxLayout()
         brand_row.addStretch()
-        self._brand_label = QLabel("✦ KHARAZMI")
+        self._brand_label = QLabel("✦ RASK")
         self._brand_label.setStyleSheet(f"""
             color: {Palette.GOLD_BRIGHT};
             font-size: 14px;
@@ -623,6 +618,7 @@ class PlannerLanding(QWidget):
         # IMPORTANT: Add content to the outer layout so it actually shows!
         outer.addWidget(content, stretch=1)
 
+    # دریافت recent entries
     def _get_recent_entries(self) -> list[str]:
         """Get the last 2 journal entry goal texts, or empty list."""
         if self._journal_store is None:
@@ -635,6 +631,7 @@ class PlannerLanding(QWidget):
             pass
         return []
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:
         """Update headline geometry for animated underline."""
         super().resizeEvent(event)
@@ -643,26 +640,31 @@ class PlannerLanding(QWidget):
         content_w = self.width() - 120  # margins
         self._headline_geom = (60, 0, content_w)
 
+    # پاسخ به tab clicked
     def _on_tab_clicked(self, key: str) -> None:
         self._selected_category = key
         for tab in self._tab_buttons:
             tab.setChecked(tab.property("category_key") == key)
 
+    # پاسخ به chip clicked
     def _on_chip_clicked(self, text: str) -> None:
         """Fill the input with the clicked suggestion and submit."""
         self._input.setText(text)
         self.goalSubmitted.emit(text)
 
+    # پاسخ به ارسال
     def _on_submit(self) -> None:
         goal = self._input.text().strip()
         if not goal:
             return
         self.goalSubmitted.emit(goal)
 
+    # تمرکز input
     def focus_input(self) -> None:
         """Set focus to the input field."""
         self._input.setFocus()
 
+    # animate خارج
     def animate_out(self) -> None:
         """Fade out animation before switching to workspace."""
         effect = QGraphicsOpacityEffect(self)
@@ -674,6 +676,7 @@ class PlannerLanding(QWidget):
         self._fade_anim.setEasingCurve(QEasingCurve.Type.InCubic)
         self._fade_anim.start()
 
+    # animate در
     def animate_in(self) -> None:
         """Fade in animation when showing the landing page."""
         effect = QGraphicsOpacityEffect(self)

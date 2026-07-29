@@ -1,16 +1,4 @@
-"""
-GlassTitleBar — Custom frameless window title bar with glassmorphic effect.
-
-Features:
-  - Frosted-glass blurred background (simulated with semi-transparent layers)
-  - Gold accent line at the top
-  - Custom min / max / close buttons with hover glow animations
-  - Draggable window movement
-  - Double-click to maximize/restore
-  - App icon + title on the left
-
-This replaces the default OS title bar for a premium, branded look.
-"""
+# نوار عنوان شیشه‌ای — نوار عنوان سفارشی با افکت شیشه‌ای و دکمه‌های کنترل
 from __future__ import annotations
 
 from typing import Optional
@@ -31,6 +19,7 @@ from ..theme import Palette
 class _TitleBarButton(QPushButton):
     """A custom title bar button (minimize / maximize / close) with glow."""
 
+    # ساخت دکمه نوار عنوان با آیکون و رنگ
     def __init__(self, icon_char: str, color: str, hover_color: str,
                  parent=None) -> None:
         super().__init__(icon_char, parent)
@@ -41,6 +30,7 @@ class _TitleBarButton(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self._apply_style()
 
+    # اعمال سبک بصری دکمه بر اساس حالت هاور
     def _apply_style(self) -> None:
         if self._hovered:
             bg = f"rgba(255, 255, 255, 0.08)"
@@ -61,11 +51,13 @@ class _TitleBarButton(QPushButton):
             }}
         """)
 
+    # مدیریت ورود ماوس به دکمه
     def enterEvent(self, event) -> None:
         self._hovered = True
         self._apply_style()
         super().enterEvent(event)
 
+    # مدیریت خروج ماوس از دکمه
     def leaveEvent(self, event) -> None:
         self._hovered = False
         self._apply_style()
@@ -85,9 +77,11 @@ class GlassTitleBar(QWidget):
     minimize_clicked = Signal()
     maximize_clicked = Signal()
     close_clicked = Signal()
+    theme_toggle_clicked = Signal()
 
     TITLE_BAR_HEIGHT = 40
 
+    # ساخت نوار عنوان شیشه‌ای با آیکون و دکمه‌ها
     def __init__(self, title: str = "RASK!", icon: Optional[QPixmap] = None,
                  parent=None) -> None:
         super().__init__(parent)
@@ -118,6 +112,12 @@ class GlassTitleBar(QWidget):
 
         layout.addStretch()
 
+        # Theme toggle button
+        self._theme_btn = _TitleBarButton("◐", Palette.TEXT_SECONDARY, Palette.GOLD_BRIGHT)
+        self._theme_btn.setToolTip("تغییر تم روشن/تیره")
+        self._theme_btn.clicked.connect(self.theme_toggle_clicked.emit)
+        layout.addWidget(self._theme_btn)
+
         # Window control buttons
         self._min_btn = _TitleBarButton("─", Palette.TEXT_SECONDARY, Palette.GOLD_BRIGHT)
         self._min_btn.clicked.connect(self.minimize_clicked.emit)
@@ -131,10 +131,12 @@ class GlassTitleBar(QWidget):
         self._close_btn.clicked.connect(self.close_clicked.emit)
         layout.addWidget(self._close_btn)
 
+    # تنظیم عنوان نوار عنوان
     def set_title(self, title: str) -> None:
         self._title = title
         self._title_label.setText(title)
 
+    # بازسازی سبک‌های درخطی برای تم فعلی
     def _reapply_theme(self) -> None:
         """Update inline styles for the current theme."""
         self._title_label.setStyleSheet(f"""
@@ -142,6 +144,9 @@ class GlassTitleBar(QWidget):
             background: transparent;
             letter-spacing: 2px;
         """)
+        self._theme_btn._color = Palette.TEXT_SECONDARY
+        self._theme_btn._hover_color = Palette.GOLD_BRIGHT
+        self._theme_btn._apply_style()
         self._min_btn._color = Palette.TEXT_SECONDARY
         self._min_btn._hover_color = Palette.GOLD_BRIGHT
         self._min_btn._apply_style()
@@ -152,26 +157,31 @@ class GlassTitleBar(QWidget):
 
     # ── Drag to move ──
 
+    # مدیریت فشردن ماوس برای شروع کشیدن
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.window().frameGeometry().topLeft()
         super().mousePressEvent(event)
 
+    # مدیریت حرکت ماوس برای جابجایی پنجره
     def mouseMoveEvent(self, event) -> None:
         if self._drag_pos and event.buttons() & Qt.LeftButton:
             self.window().move(event.globalPosition().toPoint() - self._drag_pos)
         super().mouseMoveEvent(event)
 
+    # مدیریت رها کردن ماوس
     def mouseReleaseEvent(self, event) -> None:
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 
+    # مدیریت دابل‌کلیک برای بیشینه‌سازی
     def mouseDoubleClickEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self.maximize_clicked.emit()
 
     # ── Paint the glass effect ──
 
+    # رسم افکت شیشه‌ای و خط طلایی
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -224,6 +234,7 @@ class FramelessWindowMixin:
         - Particle background (optional)
     """
 
+    # مقداردهی اولیه پنجره بدون قاب با نوار عنوان شیشه‌ای
     def _init_frameless(self, title: str = "RASK!",
                         icon: Optional[QPixmap] = None) -> None:
         """Call this in __init__ after super().__init__()."""
@@ -240,6 +251,7 @@ class FramelessWindowMixin:
         self._title_bar.minimize_clicked.connect(self.showMinimized)
         self._title_bar.maximize_clicked.connect(self._toggle_maximize)
         self._title_bar.close_clicked.connect(self.close)
+        self._title_bar.theme_toggle_clicked.connect(self._on_title_bar_theme_toggle)
 
         # Resize handles
         self._resize_margin = 6
@@ -248,14 +260,27 @@ class FramelessWindowMixin:
         self._resize_start_geo = None
         self._resize_start_pos = None
 
+    # تغییر حالت بین بیشینه و عادی
     def _toggle_maximize(self) -> None:
         if self.isMaximized():
             self.showNormal()
         else:
             self.showMaximized()
 
+    # مدیریت تغییر تم از دکمه نوار عنوان
+    def _on_title_bar_theme_toggle(self) -> None:
+        from ..theme import current_mode, set_theme, QSS, build_qpalette
+        new_mode = "dark" if current_mode() == "light" else "light"
+        set_theme(new_mode)
+        app = QApplication.instance()
+        if app:
+            app.setStyleSheet(QSS)
+            app.setPalette(build_qpalette())
+        if hasattr(self, '_reapply_theme') and callable(self._reapply_theme):
+            self._reapply_theme()
+
+    # تغییر حالت تمام‌صفحه
     def toggle_fullscreen(self) -> None:
-        """Toggle between fullscreen and normal mode."""
         if self.isFullScreen():
             self.showNormal()
             # Show the title bar when exiting fullscreen
@@ -267,8 +292,8 @@ class FramelessWindowMixin:
                 self._title_bar.hide()
             self.showFullScreen()
 
+    # مدیریت فشردن کلید Escape برای خروج از تمام‌صفحه
     def keyPressEvent(self, event) -> None:
-        """Handle Escape to exit fullscreen."""
         from PySide6.QtCore import Qt
         if event.key() == Qt.Key_Escape and self.isFullScreen():
             self.toggle_fullscreen()
@@ -276,14 +301,14 @@ class FramelessWindowMixin:
             return
         super().keyPressEvent(event)
 
+    # افزودن نوار عنوان به بالای لایه‌بندی
     def _add_titlebar_to_layout(self, layout: QVBoxLayout) -> None:
-        """Insert the title bar at the top of a VBoxLayout."""
         layout.insertWidget(0, self._title_bar)
 
     # ── Resize from edges ──
 
+    # تشخیص لبه نزدیک به مکان‌نما برای تغییر اندازه
     def _edge_at(self, pos) -> str:
-        """Return which edge(s) the cursor is near."""
         m = self._resize_margin
         w, h = self.width(), self.height()
         x, y = pos.x(), pos.y()
@@ -299,6 +324,7 @@ class FramelessWindowMixin:
             edges += "r"
         return edges
 
+    # مدیریت فشردن ماوس برای شروع تغییر اندازه
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             edge = self._edge_at(event.position().toPoint())
@@ -311,6 +337,7 @@ class FramelessWindowMixin:
                 return
         super().mousePressEvent(event)
 
+    # مدیریت حرکت ماوس برای تغییر اندازه پنجره
     def mouseMoveEvent(self, event) -> None:
         if self._resizing and self._resize_dir:
             delta = event.globalPosition().toPoint() - self._resize_start_pos
@@ -351,6 +378,7 @@ class FramelessWindowMixin:
                 self.setCursor(Qt.ArrowCursor)
         super().mouseMoveEvent(event)
 
+    # مدیریت رها کردن ماوس برای پایان تغییر اندازه
     def mouseReleaseEvent(self, event) -> None:
         self._resizing = False
         self._resize_dir = None

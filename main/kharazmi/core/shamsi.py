@@ -1,14 +1,4 @@
-"""
-Persian Shamsi (Jalali) calendar utilities.
-
-Provides bidirectional conversion between Gregorian and Jalali dates,
-formatting in Persian style, and helper functions used throughout
-the UI.
-
-All display dates in Rask go through `format_shamsi` so the entire
-application speaks Shamsi — the Gregorian calendar is only used for
-internal storage and CPM math (which is timezone-naive UTC).
-"""
+# ماژول تقویم شمسی — تبدیل و نمایش تاریخ شمسی
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,6 +45,7 @@ SHAMSI_SEASONS_EN = ["Spring", "Summer", "Autumn", "Winter"]
 # ---- Core conversion algorithm ----
 # Reference algorithm (widely used; matches known Nowruz dates 979-3000).
 
+# تبدیل تاریخ میلادی به جلالی
 def _gregorian_to_jalali(gy: int, gm: int, gd: int) -> tuple[int, int, int]:
     """Convert a Gregorian Y/M/D to Jalali Y/M/D."""
     g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
@@ -92,6 +83,7 @@ def _gregorian_to_jalali(gy: int, gm: int, gd: int) -> tuple[int, int, int]:
     return jy, jm, jd
 
 
+# تبدیل تاریخ جلالی به میلادی
 def _jalali_to_gregorian(jy: int, jm: int, jd: int) -> tuple[int, int, int]:
     """Convert a Jalali Y/M/D to Gregorian Y/M/D."""
     jy2 = jy - 979
@@ -141,6 +133,7 @@ def _jalali_to_gregorian(jy: int, jm: int, jd: int) -> tuple[int, int, int]:
     return gy, gm, gd
 
 
+# بررسی کبیسه بودن سال شمسی
 def is_leap(jy: int) -> bool:
     """True if the Jalali year `jy` is a leap year (Esfand has 30 days)."""
     # The Jalali leap-year cycle is 33 years long. The standard algorithm:
@@ -165,6 +158,7 @@ def is_leap(jy: int) -> bool:
     return False
 
 
+# تعداد روزهای ماه شمسی
 def days_in_month(jy: int, jm: int) -> int:
     """Number of days in a Shamsi month."""
     if jm <= 6:
@@ -183,6 +177,7 @@ class ShamsiDate:
     month: int   # 1..12
     day: int     # 1..31
 
+    # اعتبارسنجی تاریخ شمسی پس از ساخت
     def __post_init__(self) -> None:
         if not (1 <= self.month <= 12):
             raise ValueError(f"Shamsi month must be 1..12, got {self.month}")
@@ -193,6 +188,7 @@ class ShamsiDate:
                 f"got {self.day}"
             )
 
+    # ساخت ShamsiDate از تاریخ میلادی
     @classmethod
     def from_gregorian(cls, d: date | datetime) -> "ShamsiDate":
         if isinstance(d, datetime):
@@ -200,30 +196,37 @@ class ShamsiDate:
         jy, jm, jd = _gregorian_to_jalali(d.year, d.month, d.day)
         return cls(jy, jm, jd)
 
+    # دریافت تاریخ شمسی امروز
     @classmethod
     def today(cls) -> "ShamsiDate":
         return cls.from_gregorian(date.today())
 
+    # ساخت ShamsiDate از شیء datetime
     @classmethod
     def from_datetime(cls, dt: datetime) -> "ShamsiDate":
         return cls.from_gregorian(dt.date())
 
+    # تبدیل به تاریخ میلادی
     def to_gregorian(self) -> date:
         gy, gm, gd = _jalali_to_gregorian(self.year, self.month, self.day)
         return date(gy, gm, gd)
 
+    # تبدیل به شیء datetime میلادی
     def to_datetime(self, hour: int = 0, minute: int = 0) -> datetime:
         g = self.to_gregorian()
         return datetime(g.year, g.month, g.day, hour, minute)
 
+    # نام فارسی ماه
     @property
     def month_name_fa(self) -> str:
         return SHAMSI_MONTHS_FA[self.month - 1]
 
+    # نام انگلیسی ماه
     @property
     def month_name_en(self) -> str:
         return SHAMSI_MONTHS_EN[self.month - 1]
 
+    # نام فارسی روز هفته
     @property
     def weekday_fa(self) -> str:
         """Persian weekday name. Saturday=0 ... Friday=6 (Iranian week)."""
@@ -235,6 +238,7 @@ class ShamsiDate:
         iranian = (py_wd + 2) % 7
         return SHAMSI_WEEKDAYS_FA[iranian]
 
+    # نام انگلیسی روز هفته
     @property
     def weekday_en(self) -> str:
         """English weekday name (Saturday..Friday)."""
@@ -243,6 +247,7 @@ class ShamsiDate:
         iranian = (py_wd + 2) % 7
         return SHAMSI_WEEKDAYS_EN[iranian]
 
+    # نام اختصاری انگلیسی روز هفته
     @property
     def weekday_short_en(self) -> str:
         g = self.to_gregorian()
@@ -250,11 +255,13 @@ class ShamsiDate:
         iranian = (py_wd + 2) % 7
         return SHAMSI_WEEKDAYS_SHORT_EN[iranian]
 
+    # بررسی جمعه بودن (تعطیل هفتگی ایران)
     @property
     def is_friday(self) -> bool:
         """Friday is the Iranian weekend."""
         return self.to_gregorian().weekday() == 4
 
+    # شماره فصل (۰=بهار تا ۳=زمستان)
     @property
     def season_index(self) -> int:
         """0=Spring, 1=Summer, 2=Autumn, 3=Winter."""
@@ -266,18 +273,22 @@ class ShamsiDate:
             return 2
         return 3
 
+    # نام فارسی فصل
     @property
     def season_fa(self) -> str:
         return SHAMSI_SEASONS_FA[self.season_index]
 
+    # نام انگلیسی فصل
     @property
     def season_en(self) -> str:
         return SHAMSI_SEASONS_EN[self.season_index]
 
+    # افزودن روز به تاریخ شمسی
     def add_days(self, n: int) -> "ShamsiDate":
         g = self.to_gregorian() + timedelta(days=n)
         return ShamsiDate.from_gregorian(g)
 
+    # افزودن ماه به تاریخ شمسی
     def add_months(self, n: int) -> "ShamsiDate":
         total = self.month - 1 + n
         new_year = self.year + total // 12
@@ -286,6 +297,7 @@ class ShamsiDate:
         new_day = min(self.day, max_day)
         return ShamsiDate(new_year, new_month, new_day)
 
+    # افزودن سال به تاریخ شمسی
     def add_years(self, n: int) -> "ShamsiDate":
         new_year = self.year + n
         max_day = days_in_month(new_year, self.month)
@@ -325,18 +337,23 @@ class ShamsiDate:
             s = to_persian_digits(s)
         return s
 
+    # نمایش رشته‌ای تاریخ شمسی
     def __str__(self) -> str:
         return self.format("yyyy/mm/dd")
 
+    # عملگر کوچک‌تر برای مقایسه تاریخ
     def __lt__(self, other: "ShamsiDate") -> bool:
         return (self.year, self.month, self.day) < (other.year, other.month, other.day)
 
+    # عملگر کوچک‌تر یا مساوی
     def __le__(self, other: "ShamsiDate") -> bool:
         return (self.year, self.month, self.day) <= (other.year, other.month, other.day)
 
+    # عملگر بزرگ‌تر
     def __gt__(self, other: "ShamsiDate") -> bool:
         return (self.year, self.month, self.day) > (other.year, other.month, other.day)
 
+    # عملگر بزرگ‌تر یا مساوی
     def __ge__(self, other: "ShamsiDate") -> bool:
         return (self.year, self.month, self.day) >= (other.year, other.month, other.day)
 
@@ -346,11 +363,13 @@ class ShamsiDate:
 _PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
 
 
+# تبدیل ارقام لاتین به فارسی
 def to_persian_digits(s: str) -> str:
     """Replace ASCII digits with Persian digits."""
     return "".join(_PERSIAN_DIGITS[int(c)] if c.isdigit() else c for c in s)
 
 
+# تبدیل ارقام فارسی به لاتین
 def to_ascii_digits(s: str) -> str:
     """Replace Persian digits with ASCII digits."""
     out = []
@@ -360,6 +379,7 @@ def to_ascii_digits(s: str) -> str:
     return "".join(out)
 
 
+# قالب‌بندی تاریخ شمسی با کدهای فرمت
 def format_shamsi(dt: Optional[datetime], fmt: str = "yyyy/mm/dd",
                   include_time: bool = False,
                   use_persian_digits: bool = False) -> str:
@@ -375,6 +395,7 @@ def format_shamsi(dt: Optional[datetime], fmt: str = "yyyy/mm/dd",
     return s
 
 
+# ساخت شبکه ۶×۷ روزهای ماه شمسی
 def shamsi_month_grid(year: int, month: int) -> list[list[Optional[ShamsiDate]]]:
     """
     Return a 6x7 grid of ShamsiDates for the given month.
@@ -408,6 +429,7 @@ def shamsi_month_grid(year: int, month: int) -> list[list[Optional[ShamsiDate]]]
     return grid
 
 
+# دریافت ۷ روز هفته شمسی شامل تاریخ مشخص
 def iterate_week(start: ShamsiDate) -> list[ShamsiDate]:
     """Return the 7 days of the Iranian week containing `start`."""
     g = start.to_gregorian()
@@ -417,6 +439,7 @@ def iterate_week(start: ShamsiDate) -> list[ShamsiDate]:
     return [ShamsiDate.from_gregorian(saturday + timedelta(days=i)) for i in range(7)]
 
 
+# تجزیه رشته تاریخ شمسی
 def parse_shamsi(s: str) -> Optional[ShamsiDate]:
     """Parse a string like '1403/05/14' or '1403-5-14' into a ShamsiDate."""
     s = to_ascii_digits(s).strip()

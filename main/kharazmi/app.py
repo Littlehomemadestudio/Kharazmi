@@ -1,19 +1,4 @@
-"""
-Rask application bootstrap.
-
-Run with:
-    python -m kharazmi.app
-or:
-    python main.py
-
-Rask is a unified planning workspace that integrates:
-  - Calendar (Google-Calendar-style, Shamsi dates)
-  - AI Planner (z.ai GLM-4.5-flash generates walkable route graphs)
-  - Journal (history of AI-generated routes)
-  - Tasks (Enterprise node-graph task operating system)
-
-The Calendar tab is shown first by default.
-"""
+# راه‌اندازی برنامه RASK — نقطه ورود اصلی برنامه
 from __future__ import annotations
 
 import os
@@ -37,6 +22,8 @@ from .ui.theme import QSS, build_qpalette, default_font, set_theme, load_theme_p
 from .ui.widgets import RaskSplashScreen
 
 
+# خفه کردن خطاهای RuntimeError ناشی از حذف اشیاء C++ در PySide6
+
 def _silent_excepthook(exc_type, exc_value, exc_tb):
     """Suppress RuntimeError from deleted PySide6 C++ objects."""
     if exc_type is RuntimeError and "already deleted" in str(exc_value):
@@ -51,6 +38,8 @@ def _silent_excepthook(exc_type, exc_value, exc_tb):
 sys.excepthook = _silent_excepthook
 
 
+# خفه کردن خطاهای RuntimeError در نخ‌ها
+
 def _silent_threading_excepthook(args):
     """Suppress RuntimeError from deleted PySide6 C++ objects in threads."""
     if args.exc_type is RuntimeError and "already deleted" in str(args.exc_value):
@@ -62,8 +51,10 @@ def _silent_threading_excepthook(args):
 threading.excepthook = _silent_threading_excepthook
 
 
+# ایجاد وظایف نمونه برای نمایش در تب Enterprise
+
 def _seed_demo_project(project: Project) -> None:
-    """Seed the project with demo tasks so the Enterprise tab opens to something."""
+    """ایجاد وظایف نمونه برای نمایش در تب برنامه‌ریز"""
     a = project.create_task(
         title="Define product vision",
         duration=Duration.of(2, DurationUnit.DAY),
@@ -139,6 +130,8 @@ def _seed_demo_project(project: Project) -> None:
     project.add_dependency(Dependency(f.id, h.id, DependencyType.FINISH_START))
     project.add_dependency(Dependency(g.id, h.id, DependencyType.FINISH_START))
 
+
+# نقطه ورود اصلی برنامه
 
 def main(argv: Optional[list[str]] = None) -> int:
     """Application entry point."""

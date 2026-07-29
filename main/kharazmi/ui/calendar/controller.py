@@ -1,16 +1,4 @@
-"""
-CalendarController — Navigation, CRUD, and command orchestration.
-
-The controller sits between the model and the views. It manages:
-  - Current view kind (month / week / day / year)
-  - Current navigation date (which month/week/day is in view)
-  - Event creation via double-click or drag
-  - Event editing via dialog
-  - Drag-and-drop movement
-  - Event resize
-  - Natural-language input parsing
-  - Store subscription → view refresh
-"""
+# کنترل‌کننده تقویم — ناوبری، ایجاد/ویرایش رویداد و مدیریت حالت
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -37,6 +25,7 @@ class CalendarController(QObject):
     events_changed = Signal()            # events added/updated/removed
     selection_changed = Signal()         # forwarded from SelectionManager
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, store: CalendarStore, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._model = CalendarModel(store)
@@ -52,29 +41,35 @@ class CalendarController(QObject):
 
     # ── Properties ──
 
+    # دسترسی به مدل
     @property
     def model(self) -> CalendarModel:
         return self._model
 
+    # دسترسی به مدیریت انتخاب
     @property
     def selection(self) -> SelectionManager:
         return self._selection
 
+    # دسترسی به نوع نمای فعلی
     @property
     def view_kind(self) -> CalendarViewKind:
         return self._view_kind
 
+    # دسترسی به تاریخ ناوبری
     @property
     def nav_date(self) -> ShamsiDate:
         return self._nav_date
 
     # ── View Switching ──
 
+    # تغییر نوع نمای تقویم
     def set_view(self, kind: CalendarViewKind) -> None:
         if self._view_kind != kind:
             self._view_kind = kind
             self.view_changed.emit(kind.value)
 
+    # تغییر نوع نما با مقدار رشته‌ای
     def set_view_value(self, val: str) -> None:
         try:
             self.set_view(CalendarViewKind(val))
@@ -83,11 +78,13 @@ class CalendarController(QObject):
 
     # ── Navigation ──
 
+    # رفتن به امروز
     def go_today(self) -> None:
         self._nav_date = ShamsiDate.today()
         self._selection.go_to_today()
         self.date_changed.emit()
 
+    # رفتن به بعد
     def go_next(self) -> None:
         if self._view_kind == CalendarViewKind.MONTH:
             self._nav_date = self._nav_date.add_months(1)
@@ -99,6 +96,7 @@ class CalendarController(QObject):
             self._nav_date = ShamsiDate(self._nav_date.year + 1, 1, 1)
         self.date_changed.emit()
 
+    # رفتن به قبل
     def go_prev(self) -> None:
         if self._view_kind == CalendarViewKind.MONTH:
             self._nav_date = self._nav_date.add_months(-1)
@@ -110,6 +108,7 @@ class CalendarController(QObject):
             self._nav_date = ShamsiDate(self._nav_date.year - 1, 1, 1)
         self.date_changed.emit()
 
+    # رفتن به تاریخ مشخص
     def go_to_date(self, d: ShamsiDate) -> None:
         self._nav_date = d
         self._selection.selected_date = d
@@ -117,6 +116,7 @@ class CalendarController(QObject):
 
     # ── Navigation Title ──
 
+    # عنوان ناوبری فعلی
     def nav_title(self) -> str:
         d = self._nav_date
         if self._view_kind == CalendarViewKind.MONTH:
@@ -137,6 +137,7 @@ class CalendarController(QObject):
 
     # ── Event CRUD ──
 
+    # ایجاد رویداد در زمان مشخص
     def create_event_at(
         self,
         start: datetime,
@@ -168,6 +169,7 @@ class CalendarController(QObject):
         self._selection.selected_event_id = evt.id
         return evt
 
+    # ایجاد رویداد از متن زبان طبیعی
     def create_event_from_nl(self, text: str) -> Optional[Event]:
         """Parse natural language text and create an event."""
         parsed = nl_parse(text)
@@ -193,18 +195,22 @@ class CalendarController(QObject):
         )
         return evt
 
+    # جابجایی رویداد به زمان جدید
     def move_event(self, event_id: str, new_start: datetime) -> None:
         self._model.move_event(event_id, new_start)
         self.events_changed.emit()
 
+    # تغییر مدت رویداد
     def resize_event(self, event_id: str, new_end: datetime) -> None:
         self._model.resize_event(event_id, new_end)
         self.events_changed.emit()
 
+    # حذف رویداد
     def delete_event(self, event_id: str) -> None:
         self._model.delete_event(event_id)
         self.events_changed.emit()
 
+    # تغییر وضعیت تکمیل رویداد
     def toggle_event_completed(self, event_id: str) -> None:
         """Toggle the completed state of an event. Uses store.update_event
         so the change is properly emitted and persisted.
@@ -225,6 +231,7 @@ class CalendarController(QObject):
 
     # ── Store Events ──
 
+    # پاسخ به رویداد ذخیره‌گاه
     def _on_store_event(self, event: CalendarEvent) -> None:
         """Forward store events to views."""
         QTimer.singleShot(0, self.events_changed.emit)

@@ -1,14 +1,4 @@
-"""
-SQLite-backed project repository.
-
-Stores project snapshots in SQLite. Each save creates a new snapshot
-row, so the full history of project states is preserved — this powers
-undo/redo across sessions.
-
-Schema:
-  projects(id, name, description, created_at)
-  snapshots(id, project_id, saved_at, payload_json, kind)
-"""
+# مخزن پروژه SQLite — ذخیره اسنپشات با تاریخچه
 from __future__ import annotations
 
 import json
@@ -22,7 +12,7 @@ from typing import Optional
 from ..core import Project
 
 
-DEFAULT_DB_PATH = Path.home() / ".rask" / "kharazmi.sqlite3"
+DEFAULT_DB_PATH = Path.home() / ".rask" / "rask.sqlite3"
 
 
 _schema = """
@@ -61,6 +51,8 @@ class SQLiteRepository:
     it with a lock (SQLite handles concurrency poorly across threads
     when sharing a connection).
     """
+
+    # مقداردهی اولیه مخزن SQLite
     def __init__(self, db_path: Optional[Path] = None) -> None:
         self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,10 +65,12 @@ class SQLiteRepository:
         self._conn.row_factory = sqlite3.Row
         self._init_schema()
 
+    # ایجاد جداول پایگاه داده
     def _init_schema(self) -> None:
         with self._lock:
             self._conn.executescript(_schema)
 
+    # بستن اتصال پایگاه داده
     def close(self) -> None:
         with self._lock:
             self._conn.close()
@@ -102,6 +96,7 @@ class SQLiteRepository:
                 )
         return pid
 
+    # فهرست پروژه‌ها
     def list_projects(self) -> list[dict]:
         with self._lock:
             cur = self._conn.execute(
@@ -109,6 +104,7 @@ class SQLiteRepository:
             )
             return [dict(r) for r in cur.fetchall()]
 
+    # حذف پروژه و اسنپشات‌هایش
     def delete_project(self, project_id: str) -> None:
         with self._lock:
             self._conn.execute("DELETE FROM snapshots WHERE project_id=?", (project_id,))
@@ -126,6 +122,7 @@ class SQLiteRepository:
             )
             return cur.lastrowid
 
+    # بارگذاری آخرین اسنپشات
     def load_latest(self, project_id: str) -> Optional[Project]:
         with self._lock:
             cur = self._conn.execute(
@@ -138,6 +135,7 @@ class SQLiteRepository:
                 return None
             return Project.from_dict(json.loads(row["payload_json"]))
 
+    # بارگذاری اسنپشات مشخص
     def load_snapshot(self, snapshot_id: int) -> Optional[Project]:
         with self._lock:
             cur = self._conn.execute(
@@ -149,6 +147,7 @@ class SQLiteRepository:
                 return None
             return Project.from_dict(json.loads(row["payload_json"]))
 
+    # فهرست اسنپشات‌ها
     def list_snapshots(self, project_id: str, limit: int = 50) -> list[SnapshotInfo]:
         with self._lock:
             cur = self._conn.execute(
@@ -167,6 +166,7 @@ class SQLiteRepository:
             ]
 
 
+# تبدیل نام به کلید امن SQLite
 def _slug(name: str) -> str:
     """Make a string safe for use as a SQLite primary key."""
     out = []

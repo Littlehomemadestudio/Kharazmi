@@ -1,12 +1,4 @@
-"""
-CalendarStore — the in-memory container for all calendars and events.
-
-This is the calendar subsystem's equivalent of the Enterprise plan's
-Project aggregate root. It owns Calendar and Event objects, enforces
-invariants, and emits events that the UI listens to.
-
-A single CalendarStore is shared by the entire Basic plan window.
-"""
+# مخزن تقویم — نگهدارنده درون‌حافظه‌ای تقویم‌ها و رویدادها
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -74,6 +66,7 @@ class CalendarStore:
     mutations go through this class so invariants are enforced.
     """
 
+    # مقداردهی اولیه مخزن با تقویم پیش‌فرض
     def __init__(self) -> None:
         self._calendars: dict[str, Calendar] = {}
         self._events: dict[str, Event] = {}
@@ -92,6 +85,7 @@ class CalendarStore:
     def subscribe(self, listener: StoreListener) -> None:
         self._listeners.append(listener)
 
+    # انتشار رویداد به شنودگرها
     def _emit(self, event: CalendarEvent) -> None:
         for listener in list(self._listeners):
             try:
@@ -107,20 +101,24 @@ class CalendarStore:
         self._emit(CalendarAdded(calendar_id=calendar.id))
         return calendar
 
+    # ساخت و افزودن تقویم جدید
     def create_calendar(self, name: str, color: str = "#D4AF37",
                         description: str = "") -> Calendar:
         cal = Calendar.create(name=name, color=color, description=description)
         return self.add_calendar(cal)
 
+    # دریافت تقویم بر اساس شناسه
     def get_calendar(self, cal_id: str) -> Optional[Calendar]:
         return self._calendars.get(cal_id)
 
+    # دریافت تقویم؛ خطا در صورت عدم وجود
     def require_calendar(self, cal_id: str) -> Calendar:
         cal = self.get_calendar(cal_id)
         if cal is None:
             raise KeyError(f"No such calendar: {cal_id}")
         return cal
 
+    # بروزرسانی فیلدهای تقویم
     def update_calendar(self, cal_id: str, **changes) -> None:
         cal = self.require_calendar(cal_id)
         for k, v in changes.items():
@@ -128,6 +126,7 @@ class CalendarStore:
                 setattr(cal, k, v)
         self._emit(CalendarUpdated(calendar_id=cal_id))
 
+    # تنظیم وضعیت نمایش تقویم
     def set_calendar_visible(self, cal_id: str, visible: bool) -> None:
         cal = self.get_calendar(cal_id)
         if cal is None or cal.visible == visible:
@@ -135,6 +134,7 @@ class CalendarStore:
         cal.visible = visible
         self._emit(CalendarVisibilityChanged(calendar_id=cal_id, visible=visible))
 
+    # حذف تقویم و رویدادهایش
     def delete_calendar(self, cal_id: str) -> None:
         cal = self.get_calendar(cal_id)
         if cal is None or cal.is_default:
@@ -149,12 +149,15 @@ class CalendarStore:
         del self._calendars[cal_id]
         self._emit(CalendarRemoved(calendar_id=cal_id))
 
+    # تکرارگر تمام تقویم‌ها
     def calendars(self) -> Iterator[Calendar]:
         return iter(self._calendars.values())
 
+    # تکرارگر تقویم‌های قابل نمایش
     def visible_calendars(self) -> Iterator[Calendar]:
         return (c for c in self._calendars.values() if c.visible)
 
+    # تعداد تقویم‌ها
     @property
     def calendar_count(self) -> int:
         return len(self._calendars)
@@ -169,6 +172,7 @@ class CalendarStore:
         self._emit(EventAdded(event_id=event.id))
         return event
 
+    # ساخت و افزودن رویداد جدید
     def create_event(self, calendar_id: str, title: str,
                      start: datetime, end: Optional[datetime] = None,
                      **kwargs) -> Event:
@@ -176,15 +180,18 @@ class CalendarStore:
                             start=start, end=end, **kwargs)
         return self.add_event(evt)
 
+    # دریافت رویداد بر اساس شناسه
     def get_event(self, event_id: str) -> Optional[Event]:
         return self._events.get(event_id)
 
+    # دریافت رویداد؛ خطا در صورت عدم وجود
     def require_event(self, event_id: str) -> Event:
         evt = self.get_event(event_id)
         if evt is None:
             raise KeyError(f"No such event: {event_id}")
         return evt
 
+    # بروزرسانی فیلدهای رویداد
     def update_event(self, event_id: str, **changes) -> None:
         evt = self.require_event(event_id)
         for k, v in changes.items():
@@ -193,17 +200,21 @@ class CalendarStore:
         evt.touch()
         self._emit(EventUpdated(event_id=event_id))
 
+    # حذف رویداد
     def delete_event(self, event_id: str) -> None:
         if event_id in self._events:
             del self._events[event_id]
             self._emit(EventRemoved(event_id=event_id))
 
+    # تکرارگر تمام رویدادها
     def events(self) -> Iterator[Event]:
         return iter(self._events.values())
 
+    # تکرارگر تمام رویدادها
     def events_in_calendar(self, cal_id: str) -> Iterator[Event]:
         return (e for e in self._events.values() if e.calendar_id == cal_id)
 
+    # تعداد رویدادها
     @property
     def event_count(self) -> int:
         return len(self._events)
@@ -266,6 +277,7 @@ class CalendarStore:
                         results.append(occ)
         return results
 
+    # رویدادهای N روز آینده
     def upcoming_events(self, days: int = 7) -> list[Event]:
         """Return events starting within the next N days, sorted by start time."""
         now = datetime.utcnow()
@@ -274,12 +286,14 @@ class CalendarStore:
         upcoming.sort(key=lambda e: e.start)
         return upcoming
 
+    # تکرارگر تمام رویدادها
     def events_on_day(self, day: datetime.date) -> list[Event]:
         """All events on the given calendar day."""
         start = datetime.combine(day, datetime.min.time())
         end = datetime.combine(day, datetime.max.time())
         return self.events_in_range(start, end)
 
+    # جستجوی رویدادها بر اساس متن
     def search(self, query: str) -> list[Event]:
         """Search events by title, description, location, or attendee."""
         q = query.lower().strip()
@@ -301,6 +315,7 @@ class CalendarStore:
             "events": [e.to_dict() for e in self._events.values()],
         }
 
+    # بازسازی مخزن از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "CalendarStore":
         store = cls()

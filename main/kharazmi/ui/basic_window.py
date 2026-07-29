@@ -1,23 +1,4 @@
-"""
-BasicMainWindow — the slim window for the Basic plan.
-
-Shows ONLY:
-  - Menu bar (File / Edit / Help, with limited options)
-  - GoogleCalendarView (the full Google-Calendar-style experience)
-  - Status bar (minimal)
-
-Does NOT show:
-  - The node graph, gantt, kanban, timeline, statistics views
-  - The inspector panel
-  - The command console
-  - The command palette
-  - The sidebar / outline tree
-  - The toolbar with CPM / Monte Carlo / etc.
-
-This is the calendar mode — full Google-Calendar-like experience
-with Shamsi dates, multiple calendars, recurring events, drag-and-drop,
-and natural-language input. Switch to Enterprise via the menu.
-"""
+# پنجره پایه — پنجره ساده اولیه برنامه
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -56,6 +37,7 @@ from .dialogs import (
 class BasicMainWindow(QMainWindow):
     """The Basic plan window — Google-Calendar-style experience."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Optional[Project] = None) -> None:
         super().__init__()
         # Keep a Project reference for compatibility, but the Basic plan
@@ -111,6 +93,7 @@ class BasicMainWindow(QMainWindow):
         self._autosave_timer.timeout.connect(self._autosave)
         self._autosave_timer.start()
 
+    # ساخت منو
     def _build_menu(self) -> None:
         menubar = self.menuBar()
 
@@ -184,21 +167,24 @@ class BasicMainWindow(QMainWindow):
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
+    # ساخت محتوا
     def _build_content(self) -> None:
         self.calendar_view = CalendarView(self.calendar_store)
         self.calendar_view.setObjectName("centralWidget")
         self.setCentralWidget(self.calendar_view)
 
+    # نسخه ساخت statusbar
     def _build_statusbar(self) -> None:
         self.statusbar = StatusBar(self)
         self.setStatusBar(self.statusbar)
         today = ShamsiDate.today()
         self.statusbar.update_project_named(
-            f"  ◆  KHARAZMI BASIC   •   {today.format('d MMMM yyyy')}  •  {today.weekday_fa}"
+            f"  ◆  RASK   •   {today.format('d MMMM yyyy')}  •  {today.weekday_fa}"
         )
         # Count events
         self._refresh_statusbar()
 
+    # بازخوانی statusbar
     def _refresh_statusbar(self) -> None:
         # Subscribe to store changes
         from ..calendar import CalendarEvent, EventAdded, EventUpdated, EventRemoved
@@ -209,6 +195,7 @@ class BasicMainWindow(QMainWindow):
             0,
         )
 
+    # پاسخ به تقویم store رویداد
     def _on_calendar_store_event(self, event) -> None:
         QTimer.singleShot(0, lambda: self.statusbar.show_message(
             f"{self.calendar_store.event_count} events across "
@@ -224,18 +211,22 @@ class BasicMainWindow(QMainWindow):
             QTimer.singleShot(1000, self._autosave)
 
     # ---- Actions ----
+    # پاسخ به جدید رویداد
     def _on_new_event(self) -> None:
         dlg = EventEditorDialog(None, self.calendar_store, self)
         dlg.exec()
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         self.calendar_repository.save(self.calendar_store, kind="manual")
         self.statusbar.show_message("Calendar saved", 3000)
 
+    # پاسخ به manage calendars
     def _on_manage_calendars(self) -> None:
         dlg = CalendarSettingsDialog(self.calendar_store, self)
         dlg.exec()
 
+    # پاسخ به خروجی
     def _on_export(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Calendar as JSON",
@@ -252,6 +243,7 @@ class BasicMainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Export Failed", str(e))
 
+    # پاسخ به switch طرح
     def _on_switch_plan(self) -> None:
         """Switch from Basic to the Enterprise plan."""
         ret = QMessageBox.question(
@@ -275,14 +267,17 @@ class BasicMainWindow(QMainWindow):
             )
             self.close()
 
+    # پاسخ به برگردان
     def _on_undo(self) -> None:
         # Calendar store doesn't have undo (yet); this is a no-op
         self.statusbar.show_message("Undo not available in Basic plan", 2000)
 
+    # پاسخ به انجام دوباره
     def _on_redo(self) -> None:
         self.statusbar.show_message("Redo not available in Basic plan", 2000)
 
     # ---- Tour ----
+    # maybe نمایش tour
     def _maybe_show_tour(self) -> None:
         """Show the tour if the user hasn't seen it yet."""
         import json
@@ -296,9 +291,11 @@ class BasicMainWindow(QMainWindow):
             except Exception:
                 pass
 
+    # پاسخ به نمایش tour
     def _on_show_tour(self) -> None:
         start_tour(self)
 
+    # پاسخ به نمایش shortcuts
     def _on_show_shortcuts(self) -> None:
         QMessageBox.information(
             self, "Keyboard Shortcuts",
@@ -317,6 +314,7 @@ class BasicMainWindow(QMainWindow):
             "</table>"
         )
 
+    # پاسخ به درباره
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
@@ -341,12 +339,20 @@ class BasicMainWindow(QMainWindow):
             "<p style='color:#D4AF37'><b>Version 2.0 — Basic</b></p>"
         )
 
+    # autosave
+    # autosave
+    # autosave
+    # autosave
+
+    # autosave
+    # autosave
     def _autosave(self) -> None:
         try:
             self.calendar_repository.save(self.calendar_store, kind="autosave")
         except Exception:
             pass
 
+    # پردازش رویداد بستن ویجت
     def closeEvent(self, event) -> None:
         # Final autosave on close
         try:

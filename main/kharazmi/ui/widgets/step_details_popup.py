@@ -1,10 +1,4 @@
-"""
-StepDetailsPopup — a floating, closeable popup window showing step details.
-
-Appears as a frameless window near the cursor when a node is clicked.
-Can be dragged around. Has a close button and a "Full Edit" button.
-Shows full step info with inline editing + Save/Cancel buttons.
-"""
+# پاپ‌آپ جزئیات گام — نمایش پنجره جزئیات گام
 from __future__ import annotations
 
 from typing import Optional
@@ -33,6 +27,7 @@ class StepDetailsPopup(QFrame):
     stepFieldChanged = Signal(str, str, object)  # step_id, field_name, new_value
     fullEditRequested = Signal(str)  # step_id — requests opening NodeEditDialog
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, step: RouteStep, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.step = step
@@ -294,6 +289,7 @@ class StepDetailsPopup(QFrame):
         self._opacity_anim.setEasingCurve(QEasingCurve.OutCubic)
         QTimer.singleShot(50, self._opacity_anim.start)
 
+    # make برچسب
     def _make_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -303,6 +299,7 @@ class StepDetailsPopup(QFrame):
         )
         return lbl
 
+    # input سبک
     def _input_style(self) -> str:
         return f"""
             QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
@@ -319,6 +316,7 @@ class StepDetailsPopup(QFrame):
             }}
         """
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         """Save all field changes and close."""
         title = self._title_edit.text().strip()
@@ -335,11 +333,13 @@ class StepDetailsPopup(QFrame):
         self.stepEdited.emit(self.step.id, title, self._desc_edit.toPlainText())
         self._on_close()
 
+    # پاسخ به full edit
     def _on_full_edit(self) -> None:
         """Request opening the full modal edit dialog."""
         self.fullEditRequested.emit(self.step.id)
         self._on_close()
 
+    # پاسخ به بستن
     def _on_close(self) -> None:
         # Fade out then close
         self._close_anim = QPropertyAnimation(self, b"windowOpacity")
@@ -351,6 +351,12 @@ class StepDetailsPopup(QFrame):
         self._close_anim.start()
 
     # ---- Dragging ----
+    # mousePressEvent
+    # mousePressEvent
+    # mousePressEvent
+
+    # mousePressEvent
+    # mousePressEvent
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             # Only start drag from the header area
@@ -361,6 +367,7 @@ class StepDetailsPopup(QFrame):
                 return
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._dragging:
             self.move(event.globalPosition().toPoint() - self._drag_offset)
@@ -368,10 +375,12 @@ class StepDetailsPopup(QFrame):
             return
         super().mouseMoveEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self._dragging = False
         super().mouseReleaseEvent(event)
 
+    # پردازش رویداد بستن ویجت
     def closeEvent(self, event) -> None:
         self.closed.emit()
         super().closeEvent(event)

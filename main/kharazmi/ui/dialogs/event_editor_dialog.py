@@ -1,19 +1,4 @@
-"""
-EventEditorDialog — full editor for a calendar event.
-
-Mirrors Google Calendar's event editor with:
-  - Title, description, location
-  - Start/end date+time (or all-day)
-  - Calendar selector
-  - Color override
-  - Event type (normal, meeting, focus time, out of office, etc.)
-  - Availability (busy/free/tentative)
-  - Recurrence (with presets + custom)
-  - Attendees (add/remove, RSVP status)
-  - Reminders (multiple, with method)
-  - Meeting link
-  - Attachments (file paths)
-"""
+# دیالوگ ویرایش رویداد — فرم ویرایش جزئیات رویداد
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -42,6 +27,7 @@ from ..theme import Palette
 class EventEditorDialog(QDialog):
     """Full event editor."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, event: Optional[Event], store: CalendarStore,
                  parent=None) -> None:
         super().__init__(parent)
@@ -114,6 +100,7 @@ class EventEditorDialog(QDialog):
                     self._calendar_combo.setCurrentText(cal.name)
                     break
 
+    # ساخت سربرگ
     def _build_header(self) -> None:
         title = QLabel("EVENT EDITOR")
         title.setStyleSheet(
@@ -122,6 +109,7 @@ class EventEditorDialog(QDialog):
         )
         self._layout.addWidget(title)
 
+    # ساخت گروه اطلاعات پایه
     def _build_basic_group(self) -> None:
         group = QGroupBox("Basic")
         form = QFormLayout(group)
@@ -180,6 +168,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه زمان
     def _build_time_group(self) -> None:
         group = QGroupBox("Time")
         form = QFormLayout(group)
@@ -209,6 +198,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه دسته‌بندی
     def _build_classification_group(self) -> None:
         group = QGroupBox("Classification")
         form = QFormLayout(group)
@@ -242,6 +232,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه تکرار
     def _build_recurrence_group(self) -> None:
         group = QGroupBox("Recurrence")
         layout = QVBoxLayout(group)
@@ -285,6 +276,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه شرکت‌کنندگان
     def _build_attendees_group(self) -> None:
         group = QGroupBox("Attendees")
         layout = QVBoxLayout(group)
@@ -310,6 +302,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه یادآوری‌ها
     def _build_reminders_group(self) -> None:
         group = QGroupBox("Reminders")
         layout = QVBoxLayout(group)
@@ -338,6 +331,7 @@ class EventEditorDialog(QDialog):
 
         self._layout.addWidget(group)
 
+    # ساخت گروه موارد اضافی
     def _build_extras_group(self) -> None:
         group = QGroupBox("Meeting & Attachments")
         form = QFormLayout(group)
@@ -363,6 +357,7 @@ class EventEditorDialog(QDialog):
         self._layout.addWidget(group)
 
     # ---- Load existing event ----
+    # بارگذاری ساخت از رویداد
     def _load_from_event(self, event: Event) -> None:
         self._title_edit.setText(event.title)
         self._location_edit.setText(event.location)
@@ -433,9 +428,11 @@ class EventEditorDialog(QDialog):
             self._attachments_list.addItem(att)
 
     # ---- Interaction handlers ----
+    # پاسخ به رنگ تغییر وضعیت
     def _on_color_toggle(self, checked: bool) -> None:
         self._color_btn.setEnabled(checked)
 
+    # pick رنگ
     def _pick_color(self) -> None:
         color = QColorDialog.getColor(QColor(self._custom_color), self)
         if color.isValid():
@@ -445,6 +442,7 @@ class EventEditorDialog(QDialog):
                 f"border: 1px solid {Palette.BORDER_NORMAL};"
             )
 
+    # پاسخ به همه روز تغییر وضعیت
     def _on_all_day_toggle(self, checked: bool) -> None:
         if checked:
             self._start_dt.setDisplayFormat("yyyy-MM-dd")
@@ -453,6 +451,7 @@ class EventEditorDialog(QDialog):
             self._start_dt.setDisplayFormat("yyyy-MM-dd HH:mm")
             self._end_dt.setDisplayFormat("yyyy-MM-dd HH:mm")
 
+    # افزودن شرکت‌کننده
     def _add_attendee(self) -> None:
         name = self._att_name_edit.text().strip()
         email = self._att_email_edit.text().strip()
@@ -465,10 +464,12 @@ class EventEditorDialog(QDialog):
         self._att_name_edit.clear()
         self._att_email_edit.clear()
 
+    # حذف شرکت‌کننده
     def _remove_attendee(self) -> None:
         for item in self._attendees_list.selectedItems():
             self._attendees_list.takeItem(self._attendees_list.row(item))
 
+    # افزودن یادآوری
     def _add_reminder(self) -> None:
         minutes = self._reminder_minutes.value()
         method = self._reminder_method.currentData()
@@ -477,20 +478,24 @@ class EventEditorDialog(QDialog):
         item.setData(Qt.UserRole, rem)
         self._reminders_list.addItem(item)
 
+    # حذف یادآوری
     def _remove_reminder(self) -> None:
         for item in self._reminders_list.selectedItems():
             self._reminders_list.takeItem(self._reminders_list.row(item))
 
+    # افزودن attachment
     def _add_attachment(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Add Attachment")
         if path:
             self._attachments_list.addItem(path)
 
+    # حذف attachment
     def _remove_attachment(self) -> None:
         for item in self._attachments_list.selectedItems():
             self._attachments_list.takeItem(self._attachments_list.row(item))
 
     # ---- Save ----
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         title = self._title_edit.text().strip()
         if not title:
@@ -590,6 +595,7 @@ class EventEditorDialog(QDialog):
             )
         self.accept()
 
+    # پاسخ به حذف
     def _on_delete(self) -> None:
         if self.evt is None:
             return

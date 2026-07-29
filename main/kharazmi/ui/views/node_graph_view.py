@@ -1,19 +1,4 @@
-"""
-NodeGraphView — the main screen of Rask.
-
-A QGraphicsView + QGraphicsScene that shows every task as a
-TaskNodeItem and every dependency as an EdgeItem. Supports:
-
-  - Pan (middle-mouse or space+drag)
-  - Zoom (Ctrl+wheel)
-  - Multi-select (rubber-band or Shift+click)
-  - Drag-create dependency (drag from a node's right edge to another)
-  - Double-click to edit
-  - Right-click context menu
-  - Fit-in-view (F key)
-  - Auto-layout (L key) — Dagre-like hierarchical layout
-  - Minimap (corner overlay)
-"""
+# نمای گراف گرهی — نمایش و ویرایش گراف گرهی پروژه
 from __future__ import annotations
 
 from typing import Optional
@@ -52,6 +37,7 @@ class NodeGraphView(QGraphicsView):
     taskSelected = Signal(object)  # Task or None
     selectionChanged = Signal(list)  # list of TaskIds
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -100,10 +86,12 @@ class NodeGraphView(QGraphicsView):
         QTimer.singleShot(50, self.fit_all)
 
     # ---- Project event handling ----
+    # پاسخ به پروژه رویداد
     def _on_project_event(self, event: DomainEvent) -> None:
         # Defer to next event loop tick so we don't process during a command
         QTimer.singleShot(0, lambda: self._handle_event(event))
 
+    # مدیریت رویداد
     def _handle_event(self, event: DomainEvent) -> None:
         if isinstance(event, TaskCreated):
             self._add_node_for(event.task_id)
@@ -117,6 +105,11 @@ class NodeGraphView(QGraphicsView):
         # CycleDetected is handled by the command layer (which refused to add)
 
     # ---- Scene construction ----
+    # rebuild scene
+    # rebuild scene
+    # rebuild scene
+
+    # بازسازی صحنه
     def _rebuild_scene(self) -> None:
         self._scene.clear()
         self._node_items.clear()
@@ -126,6 +119,7 @@ class NodeGraphView(QGraphicsView):
         self._rebuild_edges()
         self._refresh_critical_flags()
 
+    # افزودن گره برای
     def _add_node_for(self, task_id: TaskId) -> None:
         if task_id.value in self._node_items:
             return
@@ -139,6 +133,7 @@ class NodeGraphView(QGraphicsView):
         self._scene.addItem(item)
         self._node_items[task_id.value] = item
 
+    # حذف گره
     def _remove_node(self, task_id: TaskId) -> None:
         item = self._node_items.pop(task_id.value, None)
         if item is not None:
@@ -152,6 +147,7 @@ class NodeGraphView(QGraphicsView):
             edge = self._edge_items.pop(key)
             self._scene.removeItem(edge)
 
+    # rebuild یال‌ها
     def _rebuild_edges(self) -> None:
         # Remove all edges and re-add — simpler than diffing
         for edge in list(self._edge_items.values()):
@@ -167,6 +163,7 @@ class NodeGraphView(QGraphicsView):
             self._scene.addItem(edge)
             self._edge_items[dep.key] = edge
 
+    # بازخوانی critical flags
     def _refresh_critical_flags(self) -> None:
         for edge in self._edge_items.values():
             src = edge.source_item
@@ -180,6 +177,7 @@ class NodeGraphView(QGraphicsView):
         for node in self._node_items.values():
             node.refresh_from_task()
 
+    # بازخوانی همه
     def _refresh_all(self) -> None:
         # Update node positions from tasks (in case they were moved externally)
         for tid, item in self._node_items.items():
@@ -192,14 +190,21 @@ class NodeGraphView(QGraphicsView):
         self._refresh_critical_flags()
 
     # ---- Node interaction ----
+    # پاسخ به گره دابل clicked
     def _on_node_double_clicked(self, task_id_str: str) -> None:
         self.taskDoubleClicked.emit(task_id_str)
 
+    # پاسخ به گره moved
     def _on_node_moved(self, task_id_str: str, x: float, y: float) -> None:
         # Use TaskService to push an undo entry
         self.task_service.move_task(TaskId(task_id_str), x, y, recalc=False)
 
     # ---- View interaction: pan & zoom ----
+    # wheelEvent
+    # wheelEvent
+    # wheelEvent
+
+    # پردازش رویداد چرخ ماوس
     def wheelEvent(self, event: QWheelEvent) -> None:
         if event.modifiers() & Qt.ControlModifier:
             # Zoom
@@ -209,6 +214,7 @@ class NodeGraphView(QGraphicsView):
         else:
             super().wheelEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and (event.modifiers() & Qt.SpaceModifier)):
@@ -219,6 +225,7 @@ class NodeGraphView(QGraphicsView):
             return
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._panning and self._pan_last is not None:
             delta = event.position().toPoint() - self._pan_last
@@ -233,6 +240,7 @@ class NodeGraphView(QGraphicsView):
             return
         super().mouseMoveEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self._panning:
             self._panning = False
@@ -243,6 +251,11 @@ class NodeGraphView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     # ---- Keyboard shortcuts ----
+    # keyPressEvent
+    # keyPressEvent
+    # keyPressEvent
+
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         mods = event.modifiers()
@@ -258,6 +271,11 @@ class NodeGraphView(QGraphicsView):
             super().keyPressEvent(event)
 
     # ---- Drawing the background grid ----
+    # drawBackground
+    # drawBackground
+    # drawBackground
+
+    # رسم پس‌زمینه صحنه
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         painter.fillRect(rect, QColor(Palette.BG_DEEPEST))
         if not self._show_grid:
@@ -290,12 +308,14 @@ class NodeGraphView(QGraphicsView):
             y += 100
 
     # ---- Public actions ----
+    # fit همه
     def fit_all(self) -> None:
         items_rect = self._scene.itemsBoundingRect()
         if items_rect.isNull() or items_rect.width() < 10:
             items_rect = QRectF(-400, -300, 800, 600)
         self.fitInView(items_rect.adjusted(-40, -40, 40, 40), Qt.KeepAspectRatio)
 
+    # چیدمان خودکار
     def auto_layout(self) -> None:
         """
         Hierarchical left-to-right layout (Sugiyama-style, simplified).
@@ -366,6 +386,7 @@ class NodeGraphView(QGraphicsView):
         self.task_service.scheduling.recalculate()
         self.fit_all()
 
+    # حذف انتخاب‌شده
     def _delete_selected(self) -> None:
         selected = [item for item in self._scene.selectedItems()
                     if isinstance(item, TaskNodeItem)]
@@ -373,6 +394,11 @@ class NodeGraphView(QGraphicsView):
             self.task_service.delete_task(node.task.id)
 
     # ---- Selection ----
+    # selectionChanged
+    # selectionChanged
+    # selectionChanged
+
+    # پاسخ به تغییر انتخاب
     def selectionChanged(self) -> None:  # noqa: N802 — Qt signal name
         # Forward to our signal
         selected_ids = [
@@ -386,10 +412,16 @@ class NodeGraphView(QGraphicsView):
             self.taskSelected.emit(None)
 
     # Connect scene's signal
+    # connect scene انتخاب
     def _connect_scene_selection(self) -> None:
         self._scene.selectionChanged.connect(self.selectionChanged)
 
     # ---- Context menu ----
+    # contextMenuEvent
+    # contextMenuEvent
+    # contextMenuEvent
+
+    # پردازش منوی زمینه
     def contextMenuEvent(self, event) -> None:
         # Defer to viewport — but QGraphicsView already handles per-item menus
         super().contextMenuEvent(event)

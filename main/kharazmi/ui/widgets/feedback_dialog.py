@@ -1,10 +1,4 @@
-"""
-FeedbackDialog — a simple dialog for collecting user feedback.
-
-Displays a text area and "Submit" button. On submit, the feedback
-is stored locally at ~/.rask/feedback.json and a thank-you message
-is shown. Styled consistent with the app's gold-on-dark theme.
-"""
+# بازخورد — فرم دریافت نظرات کاربر
 from __future__ import annotations
 
 import json
@@ -23,6 +17,7 @@ from ..theme import Palette
 FEEDBACK_PATH = Path.home() / ".rask" / "feedback.json"
 
 
+# بارگذاری feedback
 def _load_feedback() -> list[dict]:
     """Read existing feedback entries from disk."""
     try:
@@ -33,6 +28,7 @@ def _load_feedback() -> list[dict]:
     return []
 
 
+# ذخیره feedback
 def _save_feedback(entries: list[dict]) -> None:
     """Persist feedback entries to disk."""
     try:
@@ -48,6 +44,7 @@ def _save_feedback(entries: list[dict]) -> None:
 class FeedbackDialog(QDialog):
     """Gold-on-dark feedback dialog with text area and submit button."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("💡 Feedback")
@@ -142,6 +139,7 @@ class FeedbackDialog(QDialog):
 
         layout.addLayout(btn_row)
 
+    # پاسخ به ارسال
     def _on_submit(self) -> None:
         text = self._text_area.toPlainText().strip()
         if not text:

@@ -1,22 +1,4 @@
-"""
-RouteGraphView — unified workspace for BOTH AI route nodes AND Tasks nodes.
-
-This is now THE workspace — no separate Tasks window. AI-generated
-route steps and user-created Tasks coexist on the same canvas.
-
-Features:
-  - TRUE streaming: nodes appear one-by-one as AI generates them
-  - Complex interconnected graph: branches, parallel paths, alternative
-    edges (dashed), fallback edges (dotted), merge edges (thick)
-  - GENEROUS auto-layout — nodes spread out so you never need to drag apart
-  - Pan / zoom / drag / customize
-  - Double-click opens a proper modal NodeEditDialog with Save/Cancel
-  - Floating StepDetailsPopup (closeable, draggable) on single-click
-  - Insight bubbles float as overlay boxes
-  - Heavily enhanced node animations
-  - Tasks nodes and Route nodes share the same canvas
-  - Auto-layout after AI generation with smooth animation
-"""
+# نمای گراف یکپارچه — نمایش واحد گراف‌های مختلف
 from __future__ import annotations
 
 import math
@@ -71,6 +53,7 @@ Y_SPACING = 420
 class UnifiedEdgeItem(QGraphicsPathItem):
     """A beautiful edge between two nodes with gradient, glow, arrowhead, and label."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source: RouteNodeItem,
                  target: RouteNodeItem, is_critical: bool = False,
                  parent: QGraphicsItem = None) -> None:
@@ -101,6 +84,7 @@ class UnifiedEdgeItem(QGraphicsPathItem):
 
         self._update_path()
 
+    # بروزرسانی مسیر
     def _update_path(self) -> None:
         """Compute a smooth bezier curve from source anchor to target anchor.
 
@@ -166,6 +150,7 @@ class UnifiedEdgeItem(QGraphicsPathItem):
 
         self.setPath(path)
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option, widget=None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
 
@@ -243,6 +228,12 @@ class UnifiedEdgeItem(QGraphicsPathItem):
             painter.setPen(QPen(self._base_color))
             painter.drawText(label_rect, Qt.AlignCenter, self._label)
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event) -> None:
         # Brighten on hover
         bright = QColor(self._base_color)
@@ -254,6 +245,12 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         self.setZValue(5)
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event) -> None:
         pen = QPen(self._base_color, self._style["width"] + (0.8 if self._is_critical else 0), self._style["style"])
         pen.setCapStyle(Qt.RoundCap)
@@ -262,6 +259,13 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         self.setZValue(0)
         super().hoverLeaveEvent(event)
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSceneHasChanged:
             self._update_path()
@@ -286,6 +290,7 @@ class UnifiedGraphView(QGraphicsView):
     stepFieldChanged = Signal(str, str, object)  # step_id, field, value
     routeModified = Signal()           # emitted when route is mutated (step removed/field changed)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._route: Optional[Route] = None
@@ -338,6 +343,7 @@ class UnifiedGraphView(QGraphicsView):
         # Toolbar for auto-layout
         self._build_toolbar()
 
+    # ساخت نوارابزار
     def _build_toolbar(self) -> None:
         """Build a floating toolbar with layout style selector, zoom controls."""
         toolbar = QFrame(self)
@@ -565,6 +571,7 @@ class UnifiedGraphView(QGraphicsView):
 
         self._toolbar = toolbar
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         # Position toolbar at top-right
@@ -572,10 +579,12 @@ class UnifiedGraphView(QGraphicsView):
         tb.move(self.width() - tb.width() - 12, 12)
 
     # ---- Project sync ----
+    # تنظیم پروژه
     def set_project(self, project: Project) -> None:
         self._project = project
         self._sync_tasks_to_canvas()
 
+    # sync وظایف تبدیل به canvas
     def _sync_tasks_to_canvas(self) -> None:
         """Sync project tasks to the canvas as route-step-like nodes."""
         if self._project is None:
@@ -608,6 +617,7 @@ class UnifiedGraphView(QGraphicsView):
             step = self._task_to_step(task)
             self._add_node(step, x=task.x, y=task.y, animate=True)
 
+    # وظیفه تبدیل به step
     @staticmethod
     def _task_to_step(task) -> RouteStep:
         """Convert a Task to a RouteStep for display on the canvas."""
@@ -624,6 +634,7 @@ class UnifiedGraphView(QGraphicsView):
         )
 
     # ---- Loading ----
+    # تنظیم مسیر
     def set_route(self, route: Optional[Route]) -> None:
         # Clear the deleted-step set when a brand-new route is set
         self._deleted_step_ids.clear()
@@ -733,6 +744,7 @@ class UnifiedGraphView(QGraphicsView):
         # Auto-select AI Creative layout if the route has AI position hints
         self._auto_select_ai_layout(route)
 
+    # افزودن گره
     def _add_node(self, step: RouteStep, x: float = 0, y: float = 0,
                   animate: bool = False, delay_ms: int = 0) -> RouteNodeItem:
         """Add a single node to the canvas."""
@@ -750,6 +762,7 @@ class UnifiedGraphView(QGraphicsView):
             item.animate_entrance(delay_ms=delay_ms)
         return item
 
+    # افزودن یال
     def _add_edge(self, edge: RouteEdge, is_crit: bool = False) -> None:
         source = self._node_items.get(edge.source_id)
         target = self._node_items.get(edge.target_id)
@@ -775,6 +788,7 @@ class UnifiedGraphView(QGraphicsView):
         self._edges_by_node.setdefault(edge.source_id, []).append(edge_item)
         self._edges_by_node.setdefault(edge.target_id, []).append(edge_item)
 
+    # افزودن insight
     def _add_insight(self, insight: Insight) -> None:
         # Special annotation types get their own distinctive visual items
         if insight.kind == "breakthrough":
@@ -795,6 +809,7 @@ class UnifiedGraphView(QGraphicsView):
         self._scene.addItem(bubble)
         self._bubble_items[bubble_id] = bubble
 
+    # افزودن breakthrough
     def _add_breakthrough(self, insight: Insight) -> None:
         """Add a BreakthroughFlash annotation near the anchored node."""
         anchor = insight.anchor_step_id or ""
@@ -805,6 +820,7 @@ class UnifiedGraphView(QGraphicsView):
         self._annotation_items.append(item)
         logger.debug("Added BreakthroughFlash anchored to %s", anchor)
 
+    # افزودن skip
     def _add_skip(self, insight: Insight) -> None:
         """Add a SkipWhirl annotation near the anchored node."""
         anchor = insight.anchor_step_id or ""
@@ -815,6 +831,7 @@ class UnifiedGraphView(QGraphicsView):
         self._annotation_items.append(item)
         logger.debug("Added SkipWhirl anchored to %s", anchor)
 
+    # افزودن loop
     def _add_loop(self, insight: Insight) -> None:
         """Add a LoopCurl annotation near the anchored node."""
         anchor = insight.anchor_step_id or ""
@@ -825,6 +842,7 @@ class UnifiedGraphView(QGraphicsView):
         self._annotation_items.append(item)
         logger.debug("Added LoopCurl anchored to %s", anchor)
 
+    # محاسبه annotation موقعیت
     def _compute_annotation_position(self, insight: Insight, item,
                                       offset_side: str = "left") -> QPointF:
         """Position an annotation near its anchor node with an offset."""
@@ -851,6 +869,7 @@ class UnifiedGraphView(QGraphicsView):
         return QPointF(x, y)
 
     # ---- Incremental addition (for streaming) ----
+    # fuzzy match گام شناسه
     def _fuzzy_match_step_id(self, ref_id: str) -> Optional[str]:
         """Try to find a step ID on the canvas that matches *ref_id* even if
         the exact string differs.  Handles cases like the AI using 'step_1'
@@ -876,6 +895,7 @@ class UnifiedGraphView(QGraphicsView):
                     return nid
         return None
 
+    # افزودن step
     def add_step(self, step: RouteStep) -> None:
         """Add a single step to the canvas (for TRUE streaming — one at a time)."""
         if step.id in self._node_items:
@@ -895,6 +915,7 @@ class UnifiedGraphView(QGraphicsView):
         # Process any pending edges that were waiting for this node
         self._process_pending_edges()
 
+    # افزودن یال
     def add_edge(self, edge: RouteEdge) -> None:
         """Add a single edge (for streaming).
 
@@ -929,6 +950,7 @@ class UnifiedGraphView(QGraphicsView):
             self._route.edges.append(edge)
         self._add_edge(edge)
 
+    # پردازش در انتظار یال‌ها
     def _process_pending_edges(self) -> None:
         """Try to add all pending edges whose nodes now exist."""
         still_pending: list[RouteEdge] = []
@@ -957,12 +979,14 @@ class UnifiedGraphView(QGraphicsView):
                 still_pending.append(edge)
         self._pending_edges = still_pending
 
+    # افزودن insight
     def add_insight(self, insight: Insight) -> None:
         """Add a single insight bubble (for streaming)."""
         if self._route is not None:
             self._route.insights.append(insight)
         self._add_insight(insight)
 
+    # finalize مسیر
     def finalize_route(self, route: Route) -> None:
         """After streaming adds all steps, ensure ALL edges exist.
 
@@ -1064,6 +1088,7 @@ class UnifiedGraphView(QGraphicsView):
         # if the AI provided position hints
         self._auto_select_ai_layout(route)
 
+    # افزودن steps و یال‌ها
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
         """Add multiple steps/edges/insights (for 'continue working')."""
@@ -1083,9 +1108,11 @@ class UnifiedGraphView(QGraphicsView):
         QTimer.singleShot(500, self.auto_layout)
 
     # Keep alias for backward compat
+    # افزودن insights
     def add_insights(self, insights: list[Insight]) -> None:
         self.add_steps_and_edges([], [], insights)
 
+    # محاسبه bubble موقعیت
     def _compute_bubble_position(self, insight: Insight, bubble) -> QPointF:
         if insight.anchor_step_id and insight.anchor_step_id in self._node_items:
             node = self._node_items[insight.anchor_step_id]
@@ -1100,12 +1127,14 @@ class UnifiedGraphView(QGraphicsView):
         return QPointF(x, y)
 
     # ---- Layout & analysis ----
+    # دریافت چیدمان سبک
     def _get_layout_style(self) -> str:
         """Get the currently selected layout style from the combo box."""
         if hasattr(self, '_layout_combo') and self._layout_combo is not None:
             return self._layout_combo.currentData() or "organic"
         return "organic"
 
+    # auto انتخاب ai چیدمان
     def _auto_select_ai_layout(self, route: Route) -> None:
         """Auto-select the AI Creative layout after route generation.
         
@@ -1131,6 +1160,7 @@ class UnifiedGraphView(QGraphicsView):
                     )
                     break
 
+    # محاسبه چیدمان
     def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
         """Dispatch to the selected layout algorithm.
         
@@ -1154,6 +1184,7 @@ class UnifiedGraphView(QGraphicsView):
             return self._layout_organic(route)
 
     # ---- 0. AI Creative (uses AI-provided x_hint / y_hint) ----
+    # چیدمان ai creative
     def _layout_ai_creative(self, route: Route) -> dict[str, tuple[float, float]]:
         """Use AI-provided x_hint/y_hint positions directly, with collision resolution.
         
@@ -1221,6 +1252,7 @@ class UnifiedGraphView(QGraphicsView):
         return positions
 
 
+    # نسخه ساخت topology
     def _build_topology(self, route: Route):
         """Build topological data structures shared by all layouts.
         Returns (steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes).
@@ -1270,6 +1302,8 @@ class UnifiedGraphView(QGraphicsView):
             if b not in branches_seen:
                 branches_seen.append(b)
 
+        # branch priority
+        # branch اولویت
         def branch_priority(b: str) -> int:
             if b == "main": return 0
             elif b.startswith("alt"): return 1
@@ -1303,6 +1337,7 @@ class UnifiedGraphView(QGraphicsView):
         return steps_by_id, ranks, edge_pairs, succ, pred, branch_lanes, node_sizes
 
     # ---- 1. Organic Flow (default) ----
+    # چیدمان organic
     def _layout_organic(self, route: Route) -> dict[str, tuple[float, float]]:
         """Organic flow: branches spread wide with heavy jitter, RTL direction."""
         rng = random.Random(42)
@@ -1368,6 +1403,7 @@ class UnifiedGraphView(QGraphicsView):
         return positions
 
     # ---- 2. Radial Burst ----
+    # چیدمان radial
     def _layout_radial(self, route: Route) -> dict[str, tuple[float, float]]:
         """Radial: start nodes at center, branches radiate outward like a starburst.
         RTL: start center-right, end outer-left.
@@ -1453,6 +1489,7 @@ class UnifiedGraphView(QGraphicsView):
         return positions
 
     # ---- 3. Mind Map ----
+    # چیدمان mindmap
     def _layout_mindmap(self, route: Route) -> dict[str, tuple[float, float]]:
         """Mind map: start node(s) in center, branches go in different directions.
         Each branch gets its own angular sector radiating from center.
@@ -1538,6 +1575,7 @@ class UnifiedGraphView(QGraphicsView):
         return positions
 
     # ---- 4. Layered DAG ----
+    # چیدمان layered
     def _layout_layered(self, route: Route) -> dict[str, tuple[float, float]]:
         """Classic Sugiyama-style layered DAG layout with proper layering.
         RTL: start on right, end on left. Each layer is a vertical column.
@@ -1574,6 +1612,12 @@ class UnifiedGraphView(QGraphicsView):
                 prev_pos = {sid: i for i, sid in enumerate(prev_sids)}
 
                 # For each node in this rank, compute barycenter of predecessors
+                # barycenter
+                # barycenter
+                # barycenter
+
+                # barycenter
+                # barycenter
                 def barycenter(sid: str) -> float:
                     preds = pred.get(sid, [])
                     if not preds:
@@ -1604,6 +1648,7 @@ class UnifiedGraphView(QGraphicsView):
         return positions
 
     # ---- 5. Force Field (physics simulation) ----
+    # چیدمان force
     def _layout_force(self, route: Route) -> dict[str, tuple[float, float]]:
         """Force-directed layout: nodes repel each other, edges act as springs.
         Starts with topological positions, then runs a physics simulation.
@@ -1705,6 +1750,13 @@ class UnifiedGraphView(QGraphicsView):
         result = self._eliminate_overlaps(result, node_sizes)
         return result
 
+    # eliminate overlaps
+    # eliminate overlaps
+    # eliminate overlaps
+    # eliminate overlaps
+
+    # eliminate overlaps
+    # eliminate overlaps
     def _eliminate_overlaps(self, positions: dict[str, tuple[float, float]],
                             node_sizes: dict[str, tuple[float, float]]) -> dict[str, tuple[float, float]]:
         """Push overlapping nodes apart until no two nodes overlap.
@@ -1841,6 +1893,7 @@ class UnifiedGraphView(QGraphicsView):
 
         return {k: (v[0], v[1]) for k, v in pos.items()}
 
+    # محاسبه critical مسیر
     def _compute_critical_path(self, route: Route) -> list[str]:
         if not route.steps:
             return []
@@ -1848,6 +1901,7 @@ class UnifiedGraphView(QGraphicsView):
         memo: dict[str, tuple[int, list[str]]] = {}
         visiting: set[str] = set()  # cycle detection
 
+        # longest مسیر ending در
         def longest_path_ending_at(sid: str) -> tuple[int, list[str]]:
             if sid in memo:
                 return memo[sid]
@@ -1883,6 +1937,7 @@ class UnifiedGraphView(QGraphicsView):
         return best_overall[1]
 
     # ---- Step lookup helper ----
+    # یافتن گام
     def _find_step(self, step_id: str):
         """Find a RouteStep by ID — checks route steps first, then tasks.
         Returns (step, is_task). Returns (None, False) if not found.
@@ -1902,6 +1957,7 @@ class UnifiedGraphView(QGraphicsView):
 
     # ---- Interaction ----
     # ---- Manual node creation ----
+    # پاسخ به افزودن گره clicked
     def _on_add_node_clicked(self) -> None:
         """Open the NewNodeDialog and create a manual node on the canvas."""
         dialog = NewNodeDialog(self)
@@ -1918,6 +1974,7 @@ class UnifiedGraphView(QGraphicsView):
             self._add_node(step, x=center.x(), y=center.y(), animate=True)
 
     # ---- Manual edge drawing ----
+    # پاسخ به connect mode changed
     def _on_connect_mode_changed(self, index: int) -> None:
         """User selected an edge type from the Connect dropdown."""
         mode = self._connect_combo.currentData() or ""
@@ -1934,12 +1991,14 @@ class UnifiedGraphView(QGraphicsView):
             self._clear_edge_preview()
             self.setCursor(Qt.ArrowCursor)
 
+    # پاک کردن یال preview
     def _clear_edge_preview(self) -> None:
         """Remove the preview edge line from the scene."""
         if self._edge_preview is not None:
             self._scene.removeItem(self._edge_preview)
             self._edge_preview = None
 
+    # مدیریت یال drawing کلیک
     def _handle_edge_drawing_click(self, event: QMouseEvent) -> bool:
         """Handle a click in edge-drawing mode. Returns True if consumed."""
         if not self._edge_drawing_mode:
@@ -2018,11 +2077,13 @@ class UnifiedGraphView(QGraphicsView):
             self.setCursor(Qt.ArrowCursor)
             return True
 
+    # پاسخ به گره clicked
     def _on_node_clicked(self, step_id: str) -> None:
         # Update selection UI whenever a node is clicked
         self._update_selection_ui()
         # No popup on single-click — double-click opens the edit dialog instead
 
+    # deferred نمایش پاپ‌آپ
     def _deferred_show_popup(self) -> None:
         """Show the details popup after the click timer expires (no double-click came)."""
         self._click_timer.timeout.disconnect(self._deferred_show_popup)
@@ -2035,6 +2096,7 @@ class UnifiedGraphView(QGraphicsView):
             self.stepSelected.emit(step)
             self._show_details_popup(step)
 
+    # پاسخ به گره دابل clicked
     def _on_node_double_clicked(self, step_id: str) -> None:
         # Cancel the pending popup from the first click
         self._click_timer.stop()
@@ -2048,6 +2110,7 @@ class UnifiedGraphView(QGraphicsView):
         if step is not None:
             self.stepDoubleClicked.emit(step)
 
+    # پاسخ به گره edit درخواستی
     def _on_node_edit_requested(self, step_id: str) -> None:
         """Open the modal NodeEditDialog for the given step."""
         step, is_task = self._find_step(step_id)
@@ -2095,6 +2158,7 @@ class UnifiedGraphView(QGraphicsView):
             for key, value in changes.items():
                 self.stepFieldChanged.emit(step_id, key, value)
 
+    # پاسخ به گره moved
     def _on_node_moved(self, step_id: str, x: float, y: float) -> None:
         # Update connected edges' paths using O(1) index lookup
         for edge_item in self._edges_by_node.get(step_id, []):
@@ -2110,11 +2174,13 @@ class UnifiedGraphView(QGraphicsView):
             except Exception:
                 logger.debug("Failed to update task position for %s", step_id, exc_info=True)
 
+    # پاسخ به گره موقعیت changed
     def _on_node_position_changed(self, step_id: str) -> None:
         """Live edge update during drag — called on every position change."""
         for edge_item in self._edges_by_node.get(step_id, []):
             edge_item._update_path()
 
+    # پاسخ به گره edited
     def _on_node_edited(self, step_id: str, new_title: str, new_desc: str) -> None:
         # Update the underlying Task if it's a task
         if self._project is not None:
@@ -2134,12 +2200,14 @@ class UnifiedGraphView(QGraphicsView):
                     step.description = new_desc
                     break
 
+    # پاسخ به bubble clicked
     def _on_bubble_clicked(self, bubble_id: str) -> None:
         bubble = self._bubble_items.get(bubble_id)
         if bubble is not None:
             self.insightSelected.emit(bubble.insight)
 
     # ---- Details popup ----
+    # نمایش details پاپ‌آپ
     def _show_details_popup(self, step: RouteStep) -> None:
         """Show the floating details popup for a step."""
         # Close any existing popup
@@ -2159,6 +2227,7 @@ class UnifiedGraphView(QGraphicsView):
         self._details_popup.fullEditRequested.connect(self._on_node_edit_requested)
         self._details_popup.closed.connect(lambda: setattr(self, "_details_popup", None))
 
+    # پاسخ به step field changed
     def _on_step_field_changed(self, step_id: str, field: str, value) -> None:
         """Handle field changes from the details popup."""
         # Update the RouteStep
@@ -2209,6 +2278,11 @@ class UnifiedGraphView(QGraphicsView):
         self.routeModified.emit()
 
     # ---- Pan & zoom ----
+    # wheelEvent
+    # wheelEvent
+    # wheelEvent
+
+    # پردازش رویداد چرخ ماوس
     def wheelEvent(self, event: QWheelEvent) -> None:
         angle = event.angleDelta().y()
         factor = 1.15 if angle > 0 else 1 / 1.15
@@ -2219,6 +2293,7 @@ class UnifiedGraphView(QGraphicsView):
         self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() + delta.x())
         self.verticalScrollBar().setValue(self.verticalScrollBar().value() + delta.y())
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:
         # Edge drawing mode takes priority
         if event.button() == Qt.LeftButton and self._edge_drawing_mode:
@@ -2254,6 +2329,7 @@ class UnifiedGraphView(QGraphicsView):
                 return
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._panning and self._pan_last is not None:
             delta = event.position().toPoint() - self._pan_last
@@ -2273,6 +2349,7 @@ class UnifiedGraphView(QGraphicsView):
             return
         super().mouseMoveEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self._panning:
             self._panning = False
@@ -2287,6 +2364,7 @@ class UnifiedGraphView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     # ---- Rubber band selection ----
+    # شروع rubber band
     def _start_rubber_band(self, start: QPointF) -> None:
         """Create the rubber band rectangle at the start position."""
         if self._rubber_band_rect is not None:
@@ -2300,6 +2378,7 @@ class UnifiedGraphView(QGraphicsView):
         self._rubber_band_rect.setZValue(1000)
         self._rubber_band_rect.setOpacity(0.0)  # Start invisible, show on move
 
+    # بروزرسانی rubber band
     def _update_rubber_band(self, start: QPointF, current: QPointF) -> None:
         """Update the rubber band rectangle as the mouse moves."""
         if self._rubber_band_rect is None:
@@ -2324,6 +2403,7 @@ class UnifiedGraphView(QGraphicsView):
                 # Only deselect if Ctrl isn't held (Ctrl = additive selection)
                 item.setSelected(False)
 
+    # پایان rubber band
     def _finish_rubber_band(self) -> None:
         """Finish rubber band selection — select all nodes within the rect."""
         self._rubber_band_active = False
@@ -2342,6 +2422,7 @@ class UnifiedGraphView(QGraphicsView):
 
         self._update_selection_ui()
 
+    # بروزرسانی انتخاب ui
     def _update_selection_ui(self) -> None:
         """Update the Delete button and selection count in toolbar."""
         if not hasattr(self, '_delete_sel_btn') or self._delete_sel_btn is None:
@@ -2354,6 +2435,7 @@ class UnifiedGraphView(QGraphicsView):
             self._sel_count_label.setText(f"{count} selected")
 
     # ---- Delete selected nodes ----
+    # حذف انتخاب‌شده nodes
     def _delete_selected_nodes(self) -> None:
         """Delete all currently selected nodes and their connected edges."""
         selected_ids = [
@@ -2367,6 +2449,7 @@ class UnifiedGraphView(QGraphicsView):
             self._remove_step(step_id)
         self._update_selection_ui()
 
+    # پردازش رویداد منوی زمینه
     def contextMenuEvent(self, event) -> None:
         """Right-click context menu on nodes."""
         item = self.itemAt(event.pos())
@@ -2470,6 +2553,7 @@ class UnifiedGraphView(QGraphicsView):
 
         menu.exec(event.globalPos())
 
+    # شروع connect ساخت از
     def _start_connect_from(self, source_step_id: str, edge_kind: str) -> None:
         """Start edge drawing mode from a specific node (via context menu)."""
         self._edge_drawing_mode = edge_kind
@@ -2482,6 +2566,7 @@ class UnifiedGraphView(QGraphicsView):
                 break
         logger.info("Edge drawing mode: %s from %s — click target node", edge_kind, source_step_id)
 
+    # افزودن گره در موقعیت
     def _add_node_at_position(self, x: float, y: float) -> None:
         """Open the NewNodeDialog and create a node at the given position."""
         dialog = NewNodeDialog(self)
@@ -2494,6 +2579,7 @@ class UnifiedGraphView(QGraphicsView):
             self._route.steps.append(step)
             self._add_node(step, x=x, y=y, animate=True)
 
+    # حذف step
     def _remove_step(self, step_id: str) -> None:
         """Remove a step from the route and the canvas, cleaning up ALL references.
 
@@ -2614,6 +2700,7 @@ class UnifiedGraphView(QGraphicsView):
         # 8. Notify that the route data model was mutated
         self.routeModified.emit()
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         if key == Qt.Key_F:
@@ -2642,6 +2729,11 @@ class UnifiedGraphView(QGraphicsView):
             super().keyPressEvent(event)
 
     # ---- Background grid ----
+    # drawBackground
+    # drawBackground
+    # drawBackground
+
+    # رسم پس‌زمینه صحنه
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         painter.fillRect(rect, QColor(Palette.BG_DEEPEST))
         painter.setPen(QPen(QColor(Palette.BORDER_SUBTLE), 1, Qt.DotLine))
@@ -2668,12 +2760,14 @@ class UnifiedGraphView(QGraphicsView):
             y += 100
 
     # ---- Public actions ----
+    # fit همه
     def fit_all(self) -> None:
         items_rect = self._scene.itemsBoundingRect()
         if items_rect.isNull() or items_rect.width() < 10:
             items_rect = QRectF(-400, -300, 800, 600)
         self.fitInView(items_rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
+    # نسخه ساخت canvas مسیر
     def _build_canvas_route(self) -> Route:
         """Build a synthetic Route that includes ALL nodes currently on the canvas.
 
@@ -2708,6 +2802,7 @@ class UnifiedGraphView(QGraphicsView):
             edges=edges,
         )
 
+    # چیدمان خودکار
     def auto_layout(self) -> None:
         """Auto-layout ALL nodes on the canvas with generous spacing and smooth animation.
 
@@ -2746,6 +2841,7 @@ class UnifiedGraphView(QGraphicsView):
         # Fit all after animation, and update edges
         QTimer.singleShot(600, self._post_layout_update)
 
+    # post چیدمان بروزرسانی
     def _post_layout_update(self) -> None:
         """Called after layout animation finishes — update edges and fit view."""
         for edge_item in list(self._edge_items):
@@ -2755,11 +2851,13 @@ class UnifiedGraphView(QGraphicsView):
                 pass  # edge already deleted
         self.fit_all()
 
+    # auto چیدمان همه گره‌ها
     def _auto_layout_all_nodes(self) -> None:
         """Layout all nodes on the canvas using the selected layout style."""
         # Delegate to auto_layout which now handles all nodes
         self.auto_layout()
 
+    # animate گره تبدیل به
     def _animate_node_to(self, item, x: float, y: float) -> None:
         """Smoothly animate a QGraphicsItem to a new position."""
         # Prune already-deleted animations first (safe cleanup)

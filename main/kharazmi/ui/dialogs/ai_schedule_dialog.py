@@ -1,18 +1,4 @@
-"""
-AIScheduleDialog — AI-powered interactive scheduling dialog.
-
-When the user clicks "AI Schedule" in the calendar toolbar, this dialog
-opens. The AI asks questions, the user answers, and when the AI has enough
-information, it creates events directly in the calendar.
-
-Flow:
-  1. Dialog opens with an initial prompt input
-  2. User describes what they want scheduled
-  3. AI may ask clarifying questions
-  4. User answers (multi-turn conversation)
-  5. When AI is ready, it creates events in the calendar
-  6. Dialog shows a summary of created events
-"""
+# دیالوگ برنامه‌ریزی هوشمند — زمان‌بندی خودکار با هوش مصنوعی
 from __future__ import annotations
 
 import uuid
@@ -39,6 +25,7 @@ from ..theme import Palette
 
 # ---- RTL detection ----
 
+# بررسی rtl
 def _is_rtl(text: str) -> bool:
     rtl_count = sum(
         1 for ch in text
@@ -54,6 +41,7 @@ def _is_rtl(text: str) -> bool:
 class _ScheduleBubble(QFrame):
     """A chat message bubble for the scheduling conversation."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, role: str = "assistant", parent=None) -> None:
         super().__init__(parent)
         self.role = role
@@ -136,16 +124,19 @@ class _ScheduleBubble(QFrame):
 
         self._body.document().contentsChanged.connect(self._adjust_height)
 
+    # adjust ارتفاع
     def _adjust_height(self) -> None:
         doc_height = self._body.document().size().height()
         self._body.setFixedHeight(int(doc_height) + 6)
 
+    # append متن
     def append_text(self, text: str) -> None:
         cursor = self._body.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self._body.setTextCursor(cursor)
 
+    # تنظیم متن
     def set_text(self, text: str) -> None:
         self._body.setPlainText(text)
         if _is_rtl(text):
@@ -153,6 +144,7 @@ class _ScheduleBubble(QFrame):
         else:
             self._body.setLayoutDirection(Qt.LeftToRight)
 
+    # دریافت متن
     def get_text(self) -> str:
         return self._body.toPlainText()
 
@@ -164,6 +156,7 @@ class _ScheduleInput(QPlainTextEdit):
 
     sendMessage = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setPlaceholderText(
@@ -186,6 +179,7 @@ class _ScheduleInput(QPlainTextEdit):
         self.setMinimumHeight(32)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):
             text = self.toPlainText().strip()
@@ -215,6 +209,7 @@ class AIScheduleDialog(QDialog):
         "Block focus time this week",
     ]
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         calendar_store: CalendarStore,
@@ -235,6 +230,7 @@ class AIScheduleDialog(QDialog):
 
         self._setup_ui()
 
+    # ساخت رابط کاربری
     def _setup_ui(self) -> None:
         self.setWindowTitle("✦ AI Schedule")
         self.setMinimumSize(520, 600)
@@ -451,6 +447,7 @@ class AIScheduleDialog(QDialog):
 
     # ---- Context ----
 
+    # نسخه ساخت زمینه
     def _build_context(self) -> dict:
         """Build calendar context for the AI."""
         now = datetime.now()
@@ -478,6 +475,13 @@ class AIScheduleDialog(QDialog):
                 "color": cal.color,
             })
 
+        # serialize
+        # serialize
+        # serialize
+        # serialize
+
+        # serialize
+        # serialize
         def _serialize(events):
             result = []
             for ev in events:
@@ -510,11 +514,13 @@ class AIScheduleDialog(QDialog):
 
     # ---- Conversation ----
 
+    # پاسخ به quick prompt
     def _on_quick_prompt(self, text: str) -> None:
         """Handle a quick prompt chip click."""
         self._input.setPlainText(text)
         self._on_send(text)
 
+    # پاسخ به send
     def _on_send(self, text: str) -> None:
         text = text.strip()
         if not text:
@@ -530,6 +536,7 @@ class AIScheduleDialog(QDialog):
         # Start streaming AI response
         self._start_streaming(text)
 
+    # شروع streaming
     def _start_streaming(self, user_message: str) -> None:
         """Start a streaming AI scheduling request."""
         self._request_id = f"schedule-{uuid.uuid4().hex[:8]}"
@@ -548,12 +555,21 @@ class AIScheduleDialog(QDialog):
         if not self._context:
             self._context = self._build_context()
 
+        # پاسخ به قطعه
         def on_chunk(chunk: str) -> None:
             QTimer.singleShot(0, lambda: self._handle_chunk(chunk))
 
+        # پاسخ به وضعیت
         def on_status(status: str) -> None:
             pass
 
+        # callback
+        # callback
+        # callback
+        # callback
+
+        # callback
+        # callback
         def callback(success: bool, result: Any) -> None:
             QTimer.singleShot(0, lambda: self._handle_stream_done(success, result))
 
@@ -567,12 +583,14 @@ class AIScheduleDialog(QDialog):
             request_id=self._request_id,
         )
 
+    # مدیریت قطعه
     def _handle_chunk(self, chunk: str) -> None:
         """Handle a streaming chunk."""
         if self._streaming_msg is not None:
             self._streaming_msg.append_text(chunk)
             self._scroll_to_bottom()
 
+    # مدیریت stream انجام‌شده
     def _handle_stream_done(self, success: bool, result: Any) -> None:
         """Handle completion of streaming."""
         if not success:
@@ -629,6 +647,7 @@ class AIScheduleDialog(QDialog):
 
         self._reset_input()
 
+    # بازنشانی input
     def _reset_input(self) -> None:
         """Reset the input area after streaming is done."""
         self._stop_btn.hide()
@@ -637,12 +656,14 @@ class AIScheduleDialog(QDialog):
         self._input.setFocus()
         self._request_id = None
 
+    # پاسخ به stop
     def _on_stop(self) -> None:
         """Stop the current streaming request."""
         if self._request_id:
             self._ai.cancel_request(self._request_id)
         self._handle_stream_done(True, {"mode": "ask", "message": "⏹ Stopped."})
 
+    # ایجاد رویدادها
     def _create_events(self, events_data: list[dict]) -> None:
         """Create events in the calendar store from AI-provided data."""
         created = []
@@ -748,6 +769,7 @@ class AIScheduleDialog(QDialog):
                 self._conv_layout.count() - 1, more_btn
             )
 
+    # پیمایش تبدیل به پایین
     def _scroll_to_bottom(self) -> None:
         """Scroll the conversation area to the bottom."""
         QTimer.singleShot(
@@ -757,6 +779,7 @@ class AIScheduleDialog(QDialog):
             ),
         )
 
+    # پردازش رویداد نمایش ویجت
     def showEvent(self, event) -> None:
         """When the dialog is shown, auto-start with a welcome message."""
         super().showEvent(event)

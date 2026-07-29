@@ -1,9 +1,4 @@
-"""
-Vector icons drawn in code — no external image files needed.
-
-Each function returns a QIcon built from a QPolygonF / QPainterPath.
-This keeps the application self-contained.
-"""
+# آیکون‌ها — تعریف و مدیریت آیکون‌های برنامه
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QSize
@@ -14,6 +9,7 @@ from PySide6.QtGui import (
 from .theme import Palette
 
 
+# ایجاد نقشه پیکسلی جدید
 def _new_pixmap(size: int = 24) -> tuple[QPixmap, QPainter]:
     pm = QPixmap(size, size)
     pm.fill(Qt.transparent)
@@ -23,10 +19,12 @@ def _new_pixmap(size: int = 24) -> tuple[QPixmap, QPainter]:
     return pm, p
 
 
+# تبدیل به آیکون
 def _to_icon(pm: QPixmap) -> QIcon:
     return QIcon(pm)
 
 
+# آیکون افزودن
 def icon_plus() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.GOLD_BRIGHT), 2.5)
@@ -38,6 +36,7 @@ def icon_plus() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون کاستن
 def icon_minus() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.TEXT_SECONDARY), 2.5)
@@ -48,6 +47,7 @@ def icon_minus() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون سطل زباله
 def icon_trash() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.STATUS_BLOCKED), 2))
@@ -65,6 +65,7 @@ def icon_trash() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون اجرا
 def icon_play() -> QIcon:
     pm, p = _new_pixmap()
     path = QPainterPath()
@@ -77,6 +78,7 @@ def icon_play() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون pause
 def icon_pause() -> QIcon:
     pm, p = _new_pixmap()
     p.fillRect(6, 5, 4, 14, QColor(Palette.GOLD_PRIMARY))
@@ -85,6 +87,7 @@ def icon_pause() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون بررسی
 def icon_check() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.STATUS_DONE), 2.5)
@@ -97,6 +100,7 @@ def icon_check() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون بلوک
 def icon_block() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.STATUS_BLOCKED), 2))
@@ -107,6 +111,7 @@ def icon_block() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون پیوند
 def icon_link() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.GOLD_PRIMARY), 2)
@@ -119,6 +124,7 @@ def icon_link() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون unlink
 def icon_unlink() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.STATUS_BLOCKED), 2)
@@ -131,6 +137,7 @@ def icon_unlink() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون برگردان
 def icon_undo() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.TEXT_PRIMARY), 2)
@@ -149,6 +156,7 @@ def icon_undo() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون انجام دوباره
 def icon_redo() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.TEXT_PRIMARY), 2)
@@ -166,6 +174,7 @@ def icon_redo() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون گراف
 def icon_graph() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.GOLD_BRIGHT), 1.5))
@@ -181,6 +190,7 @@ def icon_graph() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون گانت
 def icon_gantt() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(Qt.NoPen)
@@ -194,6 +204,7 @@ def icon_gantt() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون کانبان
 def icon_kanban() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.BORDER_NORMAL), 1))
@@ -210,6 +221,7 @@ def icon_kanban() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون آمار
 def icon_stats() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.TEXT_TERTIARY), 1))
@@ -226,6 +238,7 @@ def icon_stats() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون خط زمانی
 def icon_timeline() -> QIcon:
     pm, p = _new_pixmap()
     pen = QPen(QColor(Palette.TEXT_TERTIARY), 1.5)
@@ -240,6 +253,7 @@ def icon_timeline() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون console
 def icon_console() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.GOLD_PRIMARY), 2))
@@ -250,6 +264,7 @@ def icon_console() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون جستجو
 def icon_search() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.TEXT_SECONDARY), 2))
@@ -260,6 +275,7 @@ def icon_search() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون ذخیره
 def icon_save() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.TEXT_PRIMARY), 1.5))
@@ -275,6 +291,7 @@ def icon_save() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون باز کردن
 def icon_open() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.TEXT_PRIMARY), 1.5))
@@ -292,6 +309,7 @@ def icon_open() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون settings
 def icon_settings() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.TEXT_SECONDARY), 1.5))
@@ -308,6 +326,7 @@ def icon_settings() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون هشدار
 def icon_warning() -> QIcon:
     pm, p = _new_pixmap()
     path = QPainterPath()
@@ -327,6 +346,7 @@ def icon_warning() -> QIcon:
     return _to_icon(pm)
 
 
+# آیکون command palette
 def icon_command_palette() -> QIcon:
     pm, p = _new_pixmap()
     p.setPen(QPen(QColor(Palette.GOLD_BRIGHT), 2))
@@ -366,6 +386,7 @@ ICONS = {
 }
 
 
+# دریافت آیکون
 def get_icon(name: str) -> QIcon:
     factory = ICONS.get(name)
     if factory is None:

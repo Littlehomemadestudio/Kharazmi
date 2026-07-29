@@ -1,17 +1,4 @@
-"""
-AnimationManager — Smooth transitions for the RASK! calendar.
-
-Provides reusable animation building blocks:
-  - Fade in/out
-  - Slide (horizontal/vertical)
-  - Scale (zoom)
-  - Ripple (material-design-style)
-  - Page transitions (for month navigation)
-
-Uses QVariantAnimation for frame-rate-independent smooth motion.
-All animations run at the display's native refresh rate via Qt's
-compositor (no fixed 60fps cap).
-"""
+# انیمیشن — جلوه‌های نرم و انتقال صفحه
 from __future__ import annotations
 
 from typing import Callable, Optional
@@ -37,6 +24,8 @@ EASE_SPRING   = QEasingCurve(QEasingCurve.OutElastic)
 
 # ──────────────────────────────── Fade ────────────────────────────────────
 
+# fade widget
+# محو کردن ویجت
 def fade_widget(
     widget: QWidget,
     from_opacity: float = 0.0,
@@ -62,6 +51,7 @@ def fade_widget(
 class SlideAnimation(QVariantAnimation):
     """Slide a widget from one position to another."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         widget: QWidget,
@@ -81,10 +71,12 @@ class SlideAnimation(QVariantAnimation):
         if on_finished:
             self.finished.connect(on_finished)
 
+    # پاسخ به مقدار
     def _on_value(self, pos: QPoint) -> None:
         self._widget.move(pos)
 
 
+# ورود با لغزش
 def slide_in(
     widget: QWidget,
     direction: str = "left",
@@ -114,6 +106,7 @@ def slide_in(
 class ScaleAnimation(QVariantAnimation):
     """Animate a scale factor (caller applies in paintEvent)."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         target: object,
@@ -135,6 +128,7 @@ class ScaleAnimation(QVariantAnimation):
         if on_finished:
             self.finished.connect(on_finished)
 
+    # پاسخ به مقدار
     def _on_value(self, val: float) -> None:
         if hasattr(self._target, self._prop):
             setattr(self._target, self._prop, val)
@@ -147,18 +141,21 @@ class ScaleAnimation(QVariantAnimation):
 class RippleOverlay(QWidget):
     """Material Design ripple effect overlay."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget) -> None:
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self._ripples: list[_Ripple] = []
 
+    # شروع
     def start(self, pos: QPointF, color: QColor = QColor(212, 175, 55, 80)) -> None:
         r = _Ripple(pos, color, self)
         self._ripples.append(r)
         r.finished.connect(lambda: self._ripples.remove(r) if r in self._ripples else None)
         r.start()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -170,6 +167,7 @@ class RippleOverlay(QWidget):
 
 
 class _Ripple:
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, origin: QPointF, color: QColor, overlay: RippleOverlay) -> None:
         self._origin = origin
         self._color = color
@@ -186,17 +184,22 @@ class _Ripple:
         self._anim.valueChanged.connect(self._tick)
         self._anim.finished.connect(self._done)
 
+    # شروع
     def start(self) -> None:
         self._anim.start(QAbstractAnimation.DeleteWhenStopped)
 
+    # tick
+    # بروزرسانی تیک انیمیشن
     def _tick(self, val: float) -> None:
         self._progress = val
         self._overlay.update()
 
+    # انجام‌شده
     def _done(self) -> None:
         if self.finished:
             self.finished()
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter) -> None:
         radius = self._progress * self._max_radius
         alpha = int(80 * (1.0 - self._progress))
@@ -216,10 +219,13 @@ class PageTransition:
     Supports slide-left, slide-right, and fade transitions.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, container: QWidget) -> None:
         self._container = container
         self._anim: Optional[QVariantAnimation] = None
 
+    # transition
+    # انیمیشن انتقال صفحه
     def transition(
         self,
         old_widget: Optional[QWidget],
@@ -248,10 +254,13 @@ class PageTransition:
         self._anim.setDuration(Metrics.ANIM_DURATION_MS)
         self._anim.setEasingCurve(EASE_OUT)
 
+        # tick
+        # بروزرسانی تیک انیمیشن
         def _tick(v: float) -> None:
             old_widget.setWindowOpacity(1.0 - v)
             new_widget.setWindowOpacity(v)
 
+        # انجام‌شده
         def _done() -> None:
             old_widget.hide()
             old_widget.setWindowOpacity(1.0)
@@ -267,22 +276,27 @@ class PageTransition:
 class HoverGlow:
     """Tracks hover state and provides a smooth glow factor 0..1."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, widget: QWidget, duration_ms: int = Metrics.ANIM_FAST_MS) -> None:
         self._widget = widget
         self._value = 0.0
         self._anim: Optional[QVariantAnimation] = None
         self._duration = duration_ms
 
+    # مقدار
     @property
     def value(self) -> float:
         return self._value
 
+    # ورود حالت شناور
     def enter(self) -> None:
         self._animate_to(1.0)
 
+    # خروج حالت شناور
     def leave(self) -> None:
         self._animate_to(0.0)
 
+    # animate تبدیل به
     def _animate_to(self, target: float) -> None:
         # Safely check if a previous animation is still running.
         # The C++ object may have been deleted (DeleteWhenStopped),
@@ -302,6 +316,8 @@ class HoverGlow:
         self._anim.valueChanged.connect(self._tick)
         self._anim.start(QAbstractAnimation.DeleteWhenStopped)
 
+    # tick
+    # بروزرسانی تیک انیمیشن
     def _tick(self, v: float) -> None:
         self._value = v
         self._widget.update()

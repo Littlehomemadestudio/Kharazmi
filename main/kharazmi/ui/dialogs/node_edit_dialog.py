@@ -1,11 +1,4 @@
-"""
-NodeEditDialog — a proper modal dialog for editing route-step and task nodes.
-
-Replaces the old inline Ctrl+Enter editor. This dialog has:
-  - All editable fields (title, description, duration, risk, branch, etc.)
-  - A visible SAVE button and CANCEL button at the bottom
-  - Full keyboard support: Enter in title moves to description, Save button works
-"""
+# دیالوگ ویرایش گره — ویرایش جزئیات گره
 from __future__ import annotations
 
 from typing import Optional
@@ -30,6 +23,7 @@ class NodeEditDialog(QDialog):
     Returns the edited values via get_changes() after accepted().
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, step: RouteStep, parent=None) -> None:
         super().__init__(parent)
         self.step = step
@@ -237,6 +231,7 @@ class NodeEditDialog(QDialog):
         # Focus title on open
         self._title.setFocus()
 
+    # برچسب
     def _label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -246,6 +241,7 @@ class NodeEditDialog(QDialog):
         )
         return lbl
 
+    # input سبک
     def _input_style(self, large: bool = False) -> str:
         font_size = "13px" if large else "11px"
         font_weight = "bold" if large else "normal"
@@ -266,6 +262,7 @@ class NodeEditDialog(QDialog):
             }}
         """
 
+    # پاسخ به ذخیره
     def _on_save(self) -> None:
         title = self._title.text().strip()
         if not title:
@@ -288,6 +285,7 @@ class NodeEditDialog(QDialog):
         }
         self.accept()
 
+    # دریافت changes
     def get_changes(self) -> dict:
         """Return the dict of changed fields after dialog is accepted."""
         return self._changes

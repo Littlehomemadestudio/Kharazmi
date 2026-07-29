@@ -1,18 +1,4 @@
-"""
-StepDetailsPanel — collapsible panel that expands when a route step is clicked.
-
-When collapsed, shows a thin bar with "Step details" label.
-When expanded (after clicking a node), shows full details:
-  - Title
-  - ID, duration, success probability, risk
-  - Location, description
-  - Fallback strategy
-  - Sub-goals list
-  - Dependencies
-  - Cost estimate
-
-A close button collapses the panel.
-"""
+# پنل جزئیات گام — نمایش اطلاعات گام انتخاب‌شده
 from __future__ import annotations
 
 from typing import Optional
@@ -40,6 +26,7 @@ class StepDetailsPanel(QFrame):
     COLLAPSED_HEIGHT = 32
     EXPANDED_HEIGHT = 280
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._step: Optional[RouteStep] = None
@@ -146,6 +133,7 @@ class StepDetailsPanel(QFrame):
         layout.addWidget(self._content)
         self._content.hide()
 
+    # نمایش step
     def show_step(self, step: RouteStep) -> None:
         """Expand the panel and show details for the given step."""
         self._step = step
@@ -180,6 +168,7 @@ class StepDetailsPanel(QFrame):
         self._expanded = True
         self.setFixedHeight(self.EXPANDED_HEIGHT)
 
+    # جمع کردن
     def collapse(self) -> None:
         self._step = None
         self._content.hide()
@@ -188,6 +177,7 @@ class StepDetailsPanel(QFrame):
         self._expanded = False
         self.setFixedHeight(self.COLLAPSED_HEIGHT)
 
+    # بررسی expanded
     @property
     def is_expanded(self) -> bool:
         return self._expanded

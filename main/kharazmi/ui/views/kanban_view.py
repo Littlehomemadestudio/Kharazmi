@@ -1,4 +1,4 @@
-"""KanbanView — task board grouped by status."""
+# نمای کانبان — نمایش ستونی وظایف
 from __future__ import annotations
 
 from typing import Optional
@@ -39,8 +39,9 @@ class KanbanCard(QFrame):
     cardDoubleClicked = Signal(str)
     statusChangeRequested = Signal(str, str)  # task_id, new_status
 
-    DRAG_MIME = "application/x-kharazmi-task-id"
+    DRAG_MIME = "application/x-rask-task-id"
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, task: Task, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.task = task
@@ -114,12 +115,14 @@ class KanbanCard(QFrame):
 
         layout.addStretch()
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self.cardClicked.emit(str(self.task.id))
             self._drag_start = event.position().toPoint()
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if event.buttons() & Qt.LeftButton and hasattr(self, "_drag_start"):
             delta = event.position().toPoint() - self._drag_start
@@ -138,6 +141,7 @@ class KanbanCard(QFrame):
                 drag.exec_(Qt.MoveAction)
         super().mouseMoveEvent(event)
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self.cardDoubleClicked.emit(str(self.task.id))
@@ -148,6 +152,7 @@ class KanbanColumn(QFrame):
     """A vertical column of cards for one status."""
     cardDropped = Signal(str, str)  # task_id, target_status
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, status: TaskStatus, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.status = status
@@ -190,6 +195,7 @@ class KanbanColumn(QFrame):
         layout.addLayout(self.cards_layout)
         layout.addStretch()
 
+    # پردازش ورود عمل کشیدن
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         if event.mimeData().hasFormat(KanbanCard.DRAG_MIME):
             event.acceptProposedAction()
@@ -203,6 +209,7 @@ class KanbanColumn(QFrame):
         else:
             event.ignore()
 
+    # پردازش خروج عمل کشیدن
     def dragLeaveEvent(self, event) -> None:
         self.setStyleSheet(f"""
             QFrame#kanbanColumn {{
@@ -213,6 +220,7 @@ class KanbanColumn(QFrame):
         """)
         super().dragLeaveEvent(event)
 
+    # پردازش رها کردن عمل کشیدن
     def dropEvent(self, event: QDropEvent) -> None:
         mime = event.mimeData()
         if mime.hasFormat(KanbanCard.DRAG_MIME):
@@ -227,6 +235,7 @@ class KanbanColumn(QFrame):
             }}
         """)
 
+    # مجموعه cards
     def set_cards(self, cards: list[KanbanCard]) -> None:
         # Clear old
         while self.cards_layout.count():
@@ -243,6 +252,7 @@ class KanbanView(QScrollArea):
 
     taskDoubleClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -271,9 +281,16 @@ class KanbanView(QScrollArea):
 
         self._rebuild()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         self._rebuild()
 
+    # rebuild
+    # rebuild
+    # rebuild
+    # rebuild
+
+    # بازسازی عناصر
     def _rebuild(self) -> None:
         for status in STATUS_ORDER:
             tasks = [t for t in self.project.tasks() if t.status == status]
@@ -283,6 +300,7 @@ class KanbanView(QScrollArea):
                 card.cardDoubleClicked.connect(self.taskDoubleClicked.emit)
             self._columns[status].set_cards(cards)
 
+    # پاسخ به card dropped
     def _on_card_dropped(self, task_id_str: str, new_status_str: str) -> None:
         new_status = TaskStatus(new_status_str)
         self.task_service.change_status(TaskId(task_id_str), new_status)

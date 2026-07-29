@@ -1,17 +1,4 @@
-"""
-YearView — 12-month overview for the RASK! calendar.
-
-Renders a 4×3 grid of mini-month calendars with:
-  - Persian month names and weekday headers
-  - Day numbers in Persian digits
-  - Event indicator dots
-  - Today highlight (gold circle)
-  - Selected day highlight
-  - Hover effect on individual days
-  - Click → select + jump to month view
-  - Double-click → jump to day view
-  - Cached event data for fast repaints
-"""
+# نمای سال — نمای کلی ۱۲ ماهه شمسی با نشانگر رویداد
 from __future__ import annotations
 
 from typing import Optional
@@ -102,6 +89,7 @@ class YearView(QWidget):
 
     # ──────────────────────────── Constructor ────────────────────────────────
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None):
         super().__init__(parent)
 
@@ -132,6 +120,7 @@ class YearView(QWidget):
 
     # ──────────────────────────── Public API ─────────────────────────────────
 
+    # تنظیم سال نمایشی
     def set_year(self, year: int) -> None:
         """Set the displayed Shamsi year and rebuild the grid."""
         if self._year == year:
@@ -141,6 +130,7 @@ class YearView(QWidget):
         self._load_event_cache()
         self.update()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         """Reload events from the model and repaint."""
         self._load_event_cache()
@@ -148,11 +138,13 @@ class YearView(QWidget):
 
     # ──────────────────────────── Size Hints ─────────────────────────────────
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:                                # noqa: N802
         return self._compute_ideal_size()
 
     # ──────────────────────────── Paint ──────────────────────────────────────
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:                       # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -173,6 +165,7 @@ class YearView(QWidget):
 
     # ──────────────────────────── Mouse Events ───────────────────────────────
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, ev) -> None:                     # noqa: N802
         if ev.button() != Qt.LeftButton:
             return
@@ -187,6 +180,7 @@ class YearView(QWidget):
         self.month_activated.emit(sd.year, sd.month)
         self.update()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, ev) -> None:               # noqa: N802
         if ev.button() != Qt.LeftButton:
             return
@@ -200,6 +194,7 @@ class YearView(QWidget):
         self._sel.selected_date = sd
         self.day_activated.emit(sd)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, ev) -> None:                      # noqa: N802
         cell = self._cell_at(ev.position().toPoint())
         if cell == self._hover:
@@ -226,6 +221,7 @@ class YearView(QWidget):
         else:
             QToolTip.hideText()
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, ev) -> None:                           # noqa: N802
         if self._hover is not None:
             self._hover = None
@@ -234,12 +230,14 @@ class YearView(QWidget):
 
     # ──────────────────────── Internal: Grid Data ────────────────────────────
 
+    # بازسازی شبکه‌های ماهانه
     def _rebuild_grids(self) -> None:
         """Recompute the 6×7 grids for all 12 months."""
         self._grids = [
             shamsi_month_grid(self._year, m) for m in range(1, 13)
         ]
 
+    # بارگذاری حافظه نهان رویدادها
     def _load_event_cache(self) -> None:
         """
         Load event data for all 12 months from the model.
@@ -300,6 +298,7 @@ class YearView(QWidget):
 
             self._event_cache[mi] = day_map
 
+    # پاسخ به تغییر تاریخ ناوبری
     def _on_date_changed(self) -> None:
         """Respond to navigation date changes from the controller."""
         nav = self._ctrl.nav_date
@@ -310,12 +309,14 @@ class YearView(QWidget):
 
     # ──────────────────────── Internal: Layout ───────────────────────────────
 
+    # محاسبه اندازه ماه مینیاتوری
     def _mini_month_size(self) -> tuple[float, float]:
         """Return (width, height) of one mini-month block."""
         w = _WEEK_DAYS * _CELL + 2 * _MONTH_PAD
         h = _MONTH_NAME_H + _WKDAY_H + _GRID_ROWS * _CELL + 2 * _MONTH_PAD
         return w, h
 
+    # محاسبه مستطیل ماه مینیاتوری
     def _month_rect(self, month_index: int) -> QRectF:
         """QRectF for the mini-month at *month_index* (0=Farvardin … 11=Esfand)."""
         mw, mh = self._mini_month_size()
@@ -331,12 +332,14 @@ class YearView(QWidget):
 
         return QRectF(x, y, mw, mh)
 
+    # محاسبه مستطیل خانه
     def _cell_rect(self, month_rect: QRectF, row: int, col: int) -> QRectF:
         """QRectF for a single day cell inside a mini-month."""
         x = month_rect.x() + _MONTH_PAD + col * _CELL
         y = month_rect.y() + _MONTH_PAD + _MONTH_NAME_H + _WKDAY_H + row * _CELL
         return QRectF(x, y, _CELL, _CELL)
 
+    # یافتن خانه در موقعیت ماوس
     def _cell_at(self, pos) -> Optional[tuple[int, int, int]]:
         """
         Determine which (month_index, grid_row, grid_col) the point falls on.
@@ -362,6 +365,7 @@ class YearView(QWidget):
             return (mi, row, col)
         return None
 
+    # دریافت تاریخ شمسی در خانه شبکه
     def _shamsi_at(self, mi: int, row: int, col: int) -> Optional[ShamsiDate]:
         """Return the ShamsiDate at a grid cell, or None if it's empty."""
         if 0 <= mi < len(self._grids):
@@ -370,17 +374,20 @@ class YearView(QWidget):
                 return grid[row][col]
         return None
 
+    # محاسبه حداقل اندازه
     def _compute_min_size(self) -> QSize:
         mw, mh = self._mini_month_size()
         total_w = int(_COLS * mw + (_COLS + 1) * _MONTH_PAD)
         total_h = int(_YEAR_HEADER_H + _ROWS * mh + (_ROWS + 1) * _MONTH_PAD)
         return QSize(total_w, total_h)
 
+    # محاسبه اندازه ایده‌آل
     def _compute_ideal_size(self) -> QSize:
         return self._compute_min_size()
 
     # ──────────────────────── Internal: Painting ─────────────────────────────
 
+    # رسم سربرگ سال
     def _paint_year_header(self, p: QPainter) -> None:
         """Paint the year number at the top."""
         font = font_header()
@@ -393,6 +400,7 @@ class YearView(QWidget):
         x = (self.width() - tw) / 2
         p.drawText(QRectF(x, 0, tw, _YEAR_HEADER_H), Qt.AlignCenter, year_text)
 
+    # رسم یک ماه مینیاتوری
     def _paint_mini_month(self, p: QPainter, rect: QRectF,
                           year: int, month: int, mi: int) -> None:
         """Paint one mini-month inside *rect*."""

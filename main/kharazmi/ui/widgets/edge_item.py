@@ -1,17 +1,4 @@
-"""
-EdgeItem — the QGraphicsItem that renders a dependency between two
-task nodes.
-
-Edges are curved bezier lines. The style depends on the dependency
-type:
-  - FS: solid line, arrow at end
-  - FF: dashed line, arrow at end
-  - SS: dotted line, arrow at start
-  - SF: dash-dot line
-
-Critical-path edges are rendered in gold; others are muted gray.
-A small badge in the middle shows the dependency type label.
-"""
+# آیتم یال — نمایش یال اتصال بین گره‌ها
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QRectF, QPointF, QLineF
@@ -38,6 +25,7 @@ class EdgeItem(QGraphicsObject):
     Tracks the source and target nodes; recomputes its path whenever
     either moves.
     """
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, dependency: Dependency,
                  source_item, target_item,
                  is_critical: bool = False,
@@ -69,9 +57,17 @@ class EdgeItem(QGraphicsObject):
 
         self._recompute_path()
 
+    # boundingRect
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         return self._path.boundingRect().adjusted(-10, -10, 10, 10)
 
+    # شکل
     def shape(self) -> QPainterPath:
         # Wider hit area for easier selection
         stroker = QPainterPath()
@@ -81,6 +77,7 @@ class EdgeItem(QGraphicsObject):
         ps.setWidth(10)
         return ps.createStroke(self._path)
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -130,6 +127,7 @@ class EdgeItem(QGraphicsObject):
         # Type badge
         self._draw_badge(painter, color=base_color)
 
+    # رسم arrow
     def _draw_arrow(self, painter: QPainter, path: QPainterPath,
                     at_end: bool, color: QColor) -> None:
         # Sample the path to get tangent direction at the tip
@@ -166,6 +164,7 @@ class EdgeItem(QGraphicsObject):
         except Exception:
             pass
 
+    # رسم badge
     def _draw_badge(self, painter: QPainter, color: QColor) -> None:
         try:
             mid = self._path.pointAtPercent(0.5)
@@ -185,6 +184,7 @@ class EdgeItem(QGraphicsObject):
         except Exception:
             pass
 
+    # recompute مسیر
     def _recompute_path(self) -> None:
         if self.source_item is None or self.target_item is None:
             return
@@ -220,6 +220,7 @@ class EdgeItem(QGraphicsObject):
         self.prepareGeometryChange()
         self.update()
 
+    # مجموعه critical
     def set_critical(self, critical: bool) -> None:
         if self._is_critical != critical:
             self._is_critical = critical

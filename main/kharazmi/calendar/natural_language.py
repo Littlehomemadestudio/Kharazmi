@@ -1,19 +1,4 @@
-"""
-Natural-language event parser.
-
-Parses strings like:
-  "Lunch with Sarah tomorrow at 1 PM"
-  "Meeting every Monday at 10am"
-  "Doctor appointment next Friday 3pm"
-  "Call mom today at 6pm"
-  "Vacation from July 1 to July 14"
-
-Returns a structured dict the UI can use to pre-fill the event editor.
-
-The parser is intentionally lightweight — no ML, just regex patterns
-and keyword matching. It handles the common cases Google Calendar's
-own NL input handles.
-"""
+# تجزیه‌گر زبان طبیعی رویدادها
 from __future__ import annotations
 
 import re
@@ -128,6 +113,7 @@ class ParsedEvent:
     confidence: float = 0.0  # 0..1, how confident we are in the parse
 
 
+# تجزیه توصیف متنی رویداد به ساختار
 def parse(text: str, now: Optional[datetime] = None) -> ParsedEvent:
     """
     Parse a natural-language event description.
@@ -262,6 +248,7 @@ def parse(text: str, now: Optional[datetime] = None) -> ParsedEvent:
 
 # ---- Time handlers ----
 
+# تجزیه ساعت ۱۲ ساعته (AM/PM)
 def _parse_12h(m: re.Match) -> tuple[int, int]:
     hour = int(m.group(1))
     minute = int(m.group(2)) if m.group(2) else 0
@@ -273,12 +260,14 @@ def _parse_12h(m: re.Match) -> tuple[int, int]:
     return hour, minute
 
 
+# تجزیه ساعت ۲۴ ساعته
 def _parse_24h(m: re.Match) -> tuple[int, int]:
     hour = int(m.group(1))
     minute = int(m.group(2))
     return hour, minute
 
 
+# تجزیه ساعت نظامی
 def _parse_military(m: re.Match) -> Optional[tuple[int, int]]:
     val = int(m.group(1))
     if val < 100 or val > 2359:
@@ -290,40 +279,49 @@ def _parse_military(m: re.Match) -> Optional[tuple[int, int]]:
     return hour, minute
 
 
+# تجزیه ظهر
 def _parse_noon(m: re.Match) -> tuple[int, int]:
     return 12, 0
 
 
+# تجزیه نیمه‌شب
 def _parse_midnight(m: re.Match) -> tuple[int, int]:
     return 0, 0
 
 
+# تجزیه صبح (۹ صبح)
 def _parse_morning(m: re.Match) -> tuple[int, int]:
     return 9, 0
 
 
+# تجزیه بعدازظهر (۲ ظهر)
 def _parse_afternoon(m: re.Match) -> tuple[int, int]:
     return 14, 0
 
 
+# تجزیه عصر (۶ عصر)
 def _parse_evening(m: re.Match) -> tuple[int, int]:
     return 18, 0
 
 
 # ---- Date handlers ----
 
+# تجزیه امروز
 def _date_today(m: re.Match, base: ShamsiDate, now: datetime) -> ShamsiDate:
     return base
 
 
+# تجزیه فردا
 def _date_tomorrow(m: re.Match, base: ShamsiDate, now: datetime) -> ShamsiDate:
     return base.add_days(1)
 
 
+# تجزیه امشب
 def _date_tonight(m: re.Match, base: ShamsiDate, now: datetime) -> ShamsiDate:
     return base
 
 
+# تجزیه بعدی (هفته/ماه/سال آینده)
 def _date_next(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     word = m.group(1).lower()
     weekdays = {
@@ -346,6 +344,7 @@ def _date_next(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiD
     return None
 
 
+# تجزیه این (این هفته/ماه)
 def _date_this(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     word = m.group(1).lower()
     weekdays = {
@@ -360,6 +359,7 @@ def _date_this(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiD
     return None
 
 
+# تجزیه در N روز/هفته/ماه آینده
 def _date_in(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     amount = int(m.group(1))
     unit = m.group(2).lower()
@@ -374,6 +374,7 @@ def _date_in(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDat
     return None
 
 
+# تجزیه نام روز هفته
 def _date_weekday(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     word = m.group(1).lower()
     weekdays = {
@@ -388,6 +389,7 @@ def _date_weekday(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[Sham
     return base.add_days(days_ahead)
 
 
+# تجزیه تاریخ شمسی
 def _date_shamsi(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     try:
         return ShamsiDate(int(m.group(1)), int(m.group(2)), int(m.group(3)))
@@ -395,6 +397,7 @@ def _date_shamsi(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[Shams
         return None
 
 
+# تجزیه تاریخ میلادی ماه/روز
 def _date_month_day(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[ShamsiDate]:
     """Parse 'July 14' as a Gregorian month/day; convert to Shamsi."""
     month_names = {
@@ -423,6 +426,7 @@ def _date_month_day(m: re.Match, base: ShamsiDate, now: datetime) -> Optional[Sh
 
 # ---- Duration handlers ----
 
+# تجزیه مدت زمان
 def _parse_duration(m: re.Match):
     amount = int(m.group(1))
     unit = m.group(2).lower()
@@ -433,5 +437,6 @@ def _parse_duration(m: re.Match):
     return None
 
 
+# تجزیه تمام‌روز
 def _parse_all_day(m: re.Match):
     return "all_day"

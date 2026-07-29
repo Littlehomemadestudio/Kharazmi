@@ -1,4 +1,4 @@
-"""TimelineView — chronological list of tasks with bars showing duration."""
+# نمای خط زمانی — نمایش ترتیبی رویدادها در محور زمان
 from __future__ import annotations
 
 from datetime import datetime
@@ -27,6 +27,7 @@ class TimelineView(QTreeWidget):
     """
     taskDoubleClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -46,9 +47,16 @@ class TimelineView(QTreeWidget):
         self.itemDoubleClicked.connect(self._on_double_clicked)
         self._rebuild()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         self._rebuild()
 
+    # rebuild
+    # rebuild
+    # rebuild
+    # rebuild
+
+    # بازسازی عناصر
     def _rebuild(self) -> None:
         self.clear()
         # Group tasks by ISO week of early_start
@@ -135,6 +143,7 @@ class TimelineView(QTreeWidget):
                 ])
             self.expandItem(parent)
 
+    # پاسخ به دابل clicked
     def _on_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
         # Only emit for leaf items (tasks), not week groupings
         if item.parent() is None:

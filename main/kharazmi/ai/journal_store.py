@@ -1,14 +1,4 @@
-"""
-JournalStore — persists AI-generated routes as a searchable journal.
-
-Each entry records:
-  - The user's original goal
-  - The clarifying questions asked and the user's answers
-  - The complete generated Route
-  - Optional notes the user added later
-
-Stored as a single JSON file (~/.rask/journal.json) for simplicity.
-"""
+# مخزن روزانه — ذخیره مسیرهای تولیدشده توسط هوش مصنوعی
 from __future__ import annotations
 
 import json
@@ -26,11 +16,13 @@ JOURNAL_PATH = Path.home() / ".rask" / "journal.json"
 class JournalStore:
     """File-backed store of journal entries."""
 
+    # مقداردهی اولیه مخزن روزانه
     def __init__(self, path: Optional[Path] = None) -> None:
         self.path = Path(path) if path else JOURNAL_PATH
         self._entries: list[JournalEntry] = []
         self._load()
 
+    # بارگذازی ورودی‌ها از دیسک
     def _load(self) -> None:
         if not self.path.exists():
             return
@@ -44,6 +36,7 @@ class JournalStore:
         except Exception:
             self._entries = []
 
+    # ذخیره‌سازی اتمی ورودی‌ها روی دیسک
     def _save(self) -> None:
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,6 +52,7 @@ class JournalStore:
             import logging
             logging.getLogger(__name__).warning("JournalStore save failed: %s", exc)
 
+    # افزودن ورودی جدید به روزانه
     def add(self, goal: str, clarifying_qa: list[tuple[str, str]],
             route: Optional[Route], notes: str = "") -> JournalEntry:
         """Create a new journal entry and persist it."""
@@ -75,6 +69,7 @@ class JournalStore:
         self._save()
         return entry
 
+    # بروزرسانی یادداشت ورودی
     def update_notes(self, entry_id: str, notes: str) -> None:
         for e in self._entries:
             if e.id == entry_id:
@@ -82,6 +77,7 @@ class JournalStore:
                 self._save()
                 return
 
+    # بروزرسانی مسیر ورودی
     def update_route(self, entry_id: str, route: Route) -> None:
         """Update the route of a journal entry and persist to disk."""
         for e in self._entries:
@@ -90,26 +86,31 @@ class JournalStore:
                 self._save()
                 return
 
+    # ذخیره تمام ورودی‌ها روی دیسک
     def save(self) -> None:
         """Persist all entries to disk. Call after any in-memory modification."""
         self._save()
 
+    # حذف ورودی روزانه
     def delete(self, entry_id: str) -> None:
         self._entries = [e for e in self._entries if e.id != entry_id]
         self._save()
 
+    # دریافت ورودی بر اساس شناسه
     def get(self, entry_id: str) -> Optional[JournalEntry]:
         for e in self._entries:
             if e.id == entry_id:
                 return e
         return None
 
+    # دریافت تمام ورودی‌ها (جدیدترین اول)
     def all(self) -> list[JournalEntry]:
         """Return all entries, newest first."""
         return sorted(self._entries,
                        key=lambda e: e.timestamp,
                        reverse=True)
 
+    # جستجو در ورودی‌های روزانه
     def search(self, query: str) -> list[JournalEntry]:
         """Search entries by goal text or notes."""
         q = query.lower().strip()
@@ -121,8 +122,10 @@ class JournalStore:
             or (e.route and q in e.route.summary.lower())
         ]
 
+    # تکرارگر ورودی‌ها
     def __iter__(self) -> Iterator[JournalEntry]:
         return iter(self.all())
 
+    # تعداد ورودی‌ها
     def __len__(self) -> int:
         return len(self._entries)

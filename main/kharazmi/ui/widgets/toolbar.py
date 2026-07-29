@@ -1,9 +1,4 @@
-"""
-Toolbar — the main toolbar above the workspace.
-
-Provides quick access to: New Task, Delete, Undo, Redo, Layout, Run
-Schedule, Run Monte Carlo, View switcher.
-"""
+# نوارابزار — دکمه‌ها و ابزارهای اصلی بالای صفحه
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QSize
@@ -35,6 +30,7 @@ class MainToolbar(QToolBar):
     commandPaletteRequested = Signal()
     advisorRequested = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__("Main", parent)
         self.setMovable(False)
@@ -100,6 +96,7 @@ class MainToolbar(QToolBar):
                 btn.setChecked(True)
                 break
 
+    # افزودن عملکرد
     def _add_action(self, icon_name: str, label: str,
                     signal: Signal, tooltip: str) -> QAction:
         action = QAction(get_icon(icon_name), label, self)
@@ -108,6 +105,7 @@ class MainToolbar(QToolBar):
         self.addAction(action)
         return action
 
+    # بروزرسانی undo redo
     def update_undo_redo(self, can_undo: bool, can_redo: bool,
                          undo_name: str = "", redo_name: str = "") -> None:
         self._undo_action.setEnabled(can_undo)
@@ -121,6 +119,7 @@ class MainToolbar(QToolBar):
         else:
             self._redo_action.setToolTip("Nothing to redo")
 
+    # مجموعه فعال نما
     def set_active_view(self, view_kind: str) -> None:
         for btn in self._view_group.buttons():
             if btn.property("view_kind") == view_kind:

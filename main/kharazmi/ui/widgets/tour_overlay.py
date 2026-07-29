@@ -1,14 +1,4 @@
-"""
-Guided Tour — an overlay that walks the user through the application.
-
-Renders a semi-transparent overlay over the entire window with a
-spotlight cutout around the target widget, plus a tooltip-style
-popup with the current step's description and Next/Prev/Skip buttons.
-
-Steps are defined as data — each step targets a widget by an
-object-name (or callable that returns a widget) and provides a title
-and body.
-"""
+# روی تور — راهنمای تعاملی و معرفی ویژگی‌ها
 from __future__ import annotations
 
 import math
@@ -56,11 +46,22 @@ class Tour:
 
 # ---- Helpers for building tour steps that switch tabs ----
 
+# win
+# win
+# win
+# win
+
+
+
+# win
+# win
 def _win(overlay: "TourOverlay"):
     """Return the overlay's parent window."""
     return overlay.parent()
 
 
+# switch tab
+# switch تب
 def _switch_tab(overlay: "TourOverlay", tab_index: int) -> None:
     """Switch the main tab widget to the given index and process events."""
     win = _win(overlay)
@@ -69,6 +70,7 @@ def _switch_tab(overlay: "TourOverlay", tab_index: int) -> None:
         QApplication.processEvents()
 
 
+# یافتن tab bar
 def _find_tab_bar(overlay: "TourOverlay") -> Optional[QWidget]:
     """Find the tab bar of the main window."""
     win = _win(overlay)
@@ -77,6 +79,7 @@ def _find_tab_bar(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن dashboard
 def _find_dashboard(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "dashboard_view"):
@@ -85,6 +88,7 @@ def _find_dashboard(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن تقویم
 def _find_calendar(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "calendar_view"):
@@ -93,6 +97,7 @@ def _find_calendar(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن تقویم نوارابزار
 def _find_calendar_toolbar(overlay: "TourOverlay") -> Optional[QWidget]:
     """Find the calendar toolbar (which contains the AI Schedule button)."""
     win = _win(overlay)
@@ -104,6 +109,7 @@ def _find_calendar_toolbar(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن ai schedule btn
 def _find_ai_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     """Find the 'AI Schedule' button inside the calendar toolbar."""
     win = _win(overlay)
@@ -118,6 +124,7 @@ def _find_ai_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن planner
 def _find_planner(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "ai_planner_view"):
@@ -126,6 +133,7 @@ def _find_planner(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن goal input
 def _find_goal_input(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "ai_planner_view"):
@@ -136,6 +144,7 @@ def _find_goal_input(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن طرح btn
 def _find_plan_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "ai_planner_view"):
@@ -146,6 +155,7 @@ def _find_plan_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن schedule btn
 def _find_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "ai_planner_view"):
@@ -156,6 +166,7 @@ def _find_schedule_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن خروجی btn
 def _find_export_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "ai_planner_view"):
@@ -169,6 +180,7 @@ def _find_export_btn(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن graphs
 def _find_graphs(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "graphs_view"):
@@ -177,6 +189,7 @@ def _find_graphs(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن simulation
 def _find_simulation(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "simulation_view"):
@@ -185,6 +198,7 @@ def _find_simulation(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن journal
 def _find_journal(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "journal_view"):
@@ -193,6 +207,7 @@ def _find_journal(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن statusbar
 def _find_statusbar(overlay: "TourOverlay") -> Optional[QWidget]:
     win = _win(overlay)
     if win is not None and hasattr(win, "statusbar"):
@@ -200,6 +215,7 @@ def _find_statusbar(overlay: "TourOverlay") -> Optional[QWidget]:
     return None
 
 
+# یافتن central
 def _find_central(overlay: "TourOverlay") -> Optional[QWidget]:
     """Fallback: return the central widget of the window."""
     win = _win(overlay)
@@ -400,6 +416,7 @@ BASIC_TOUR = RASK_TOUR
 class TourOverlay(QWidget):
     """Full-window overlay that highlights one widget at a time."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, tour: Tour, parent: QWidget) -> None:
         super().__init__(parent)
         self.tour = tour
@@ -500,6 +517,12 @@ class TourOverlay(QWidget):
         parent.installEventFilter(self)
 
     # ---- Event filter for parent resize ----
+    # eventFilter
+    # eventFilter
+    # eventFilter
+
+    # eventFilter
+    # eventFilter
     def eventFilter(self, obj, event):
         """Track parent resize events to keep the overlay covering the window."""
         if obj is self.parent() and event.type() == QEvent.Type.Resize:
@@ -508,6 +531,7 @@ class TourOverlay(QWidget):
                 self._reposition_for_current_step()
         return super().eventFilter(obj, event)
 
+    # reposition برای فعلی step
     def _reposition_for_current_step(self) -> None:
         """Recompute spotlight rect and popup position after a resize."""
         if 0 <= self._step_index < len(self.tour.steps):
@@ -529,6 +553,7 @@ class TourOverlay(QWidget):
             self.update()
 
     # ---- Show / hide ----
+    # شروع
     def start(self) -> None:
         parent = self.parent()
         if parent is None:
@@ -539,6 +564,13 @@ class TourOverlay(QWidget):
         self.setFocus()
         self._show_step()
 
+    # skip
+    # skip
+    # skip
+    # skip
+
+    # skip
+    # skip
     def _skip(self) -> None:
         # Remove event filter before closing
         parent = self.parent()
@@ -547,6 +579,7 @@ class TourOverlay(QWidget):
         self.close()
         self.deleteLater()
 
+    # بعدی
     def _next(self) -> None:
         if self._step_index < len(self.tour.steps) - 1:
             self._step_index += 1
@@ -554,11 +587,13 @@ class TourOverlay(QWidget):
         else:
             self._skip()
 
+    # قبلی
     def _prev(self) -> None:
         if self._step_index > 0:
             self._step_index -= 1
             self._show_step()
 
+    # نمایش step
     def _show_step(self) -> None:
         step = self.tour.steps[self._step_index]
         self._counter_label.setText(
@@ -609,6 +644,7 @@ class TourOverlay(QWidget):
         self._popup.raise_()
         self.update()
 
+    # یافتن target
     def _find_target(self, step: TourStep) -> Optional[QWidget]:
         parent = self.parent()
         if parent is None:
@@ -622,6 +658,7 @@ class TourOverlay(QWidget):
             return parent.findChild(QWidget, step.target_name)
         return None
 
+    # موقعیت پاپ‌آپ
     def _position_popup(self, placement: str) -> None:
         if self.parent() is None:
             return
@@ -680,6 +717,12 @@ class TourOverlay(QWidget):
         self._popup.move(int(x), int(y))
 
     # ---- Painting the overlay ----
+    # paintEvent
+    # paintEvent
+    # paintEvent
+
+    # paintEvent
+    # paintEvent
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -734,6 +777,7 @@ class TourOverlay(QWidget):
         finally:
             p.end()
 
+    # محاسبه arrow
     def _compute_arrow(self, src: QRectF, dst: QRectF) -> Optional[QPolygonF]:
         """Compute a small arrow polygon from src to dst."""
         # Find the closest edges
@@ -770,6 +814,11 @@ class TourOverlay(QWidget):
         return QPolygonF([tip, base1, base2])
 
     # ---- Keyboard ----
+    # keyPressEvent
+    # keyPressEvent
+    # keyPressEvent
+
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event) -> None:
         key = event.key()
         if key == Qt.Key_Escape:
@@ -786,6 +835,7 @@ class TourOverlay(QWidget):
 
 # ---- Convenience entry points ----
 
+# شروع tour
 def start_tour(parent: QWidget, plan: str = "rask") -> TourOverlay:
     """Start the appropriate tour for the given plan.
 

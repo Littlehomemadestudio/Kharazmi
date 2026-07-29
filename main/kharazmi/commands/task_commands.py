@@ -1,4 +1,4 @@
-"""Commands that operate on tasks."""
+# فرمان‌های عملیات وظایف
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,6 +22,7 @@ class CreateTaskCommand(Command):
 
     name: str = "Create Task"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         task = Task(
             id=TaskId.generate(),
@@ -33,6 +34,7 @@ class CreateTaskCommand(Command):
         project.add_task(task)
         self._created_id = task.id.value
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         if self._created_id:
             project.delete_task(TaskId(self._created_id))
@@ -46,6 +48,7 @@ class DeleteTaskCommand(Command):
 
     name: str = "Delete Task"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -56,6 +59,7 @@ class DeleteTaskCommand(Command):
                      list(project.dependents_of(self.task_id))
         project.delete_task(self.task_id)
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         if self._snapshot is None:
             return
@@ -77,6 +81,7 @@ class UpdateTaskCommand(Command):
 
     name: str = "Update Task"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -88,6 +93,7 @@ class UpdateTaskCommand(Command):
             setattr(task, k, v)
         task.touch()
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -108,6 +114,7 @@ class MoveTaskCommand(Command):
 
     name: str = "Move Task"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -118,6 +125,7 @@ class MoveTaskCommand(Command):
         task.y = self.new_y
         task.touch()
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -135,6 +143,7 @@ class ChangeStatusCommand(Command):
 
     name: str = "Change Status"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None:
@@ -142,6 +151,7 @@ class ChangeStatusCommand(Command):
         self._old_status = task.status
         task.advance(self.new_status)
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         task = project.get_task(self.task_id)
         if task is None or self._old_status is None:
@@ -161,6 +171,7 @@ class AddDependencyCommand(Command):
 
     name: str = "Add Dependency"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         try:
             project.add_dependency(Dependency(
@@ -174,6 +185,7 @@ class AddDependencyCommand(Command):
             # Cycle / invalid — silently fail so the UI doesn't crash
             self._executed = False
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         if not self._executed:
             return
@@ -190,12 +202,14 @@ class RemoveDependencyCommand(Command):
 
     name: str = "Remove Dependency"
 
+    # اجرای فرمان
     def execute(self, project: Project) -> None:
         key = (self.predecessor_id.value, self.successor_id.value, self.dep_type.value)
         if key in project._deps:
             self._existed = True
             project.remove_dependency(self.predecessor_id, self.successor_id, self.dep_type)
 
+    # برگرداندن فرمان
     def undo(self, project: Project) -> None:
         if not self._existed:
             return

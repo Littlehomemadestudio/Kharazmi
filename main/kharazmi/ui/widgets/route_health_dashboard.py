@@ -1,11 +1,4 @@
-"""
-RouteHealthDashboard — A visually stunning health dashboard for Kharazmi AI Planner routes.
-
-Shows overall health gauge, score breakdown, bottleneck alerts, recommendations,
-Monte Carlo simulation results, and action buttons.
-
-Uses the gold-on-dark theme from Palette and custom QPainter gauges.
-"""
+# داشبورد سلامت مسیر — نمایش وضعیت و سلامت مسیرها
 from __future__ import annotations
 
 import math
@@ -39,6 +32,7 @@ class _CircularGauge(QWidget):
 
     MIN_SIZE = 220
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._score: float = 0.0
@@ -47,6 +41,7 @@ class _CircularGauge(QWidget):
         self.setFixedSize(self.MIN_SIZE, self.MIN_SIZE)
 
     # ── public ──
+    # تنظیم score
     def set_score(self, score: float, grade: str) -> None:
         self._score = max(0.0, min(100.0, score))
         self._grade = grade
@@ -55,6 +50,12 @@ class _CircularGauge(QWidget):
         self.update()
 
     # ── painting ──
+    # paintEvent
+    # paintEvent
+    # paintEvent
+
+    # paintEvent
+    # paintEvent
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -130,6 +131,7 @@ class _CircularGauge(QWidget):
         finally:
             p.end()
 
+    # grade رنگ
     def _grade_color(self) -> QColor:
         m = {
             "A+": "#27AE60", "A": "#2ECC71",
@@ -146,6 +148,7 @@ class _CircularGauge(QWidget):
 class _MiniHistogram(QWidget):
     """Small histogram showing Monte Carlo completion-time distribution."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._bins: list[dict] = []
@@ -154,11 +157,13 @@ class _MiniHistogram(QWidget):
         self.setMinimumWidth(200)
         self.setSizePolicy(SP.Expanding, SP.Fixed)
 
+    # مجموعه distribution
     def set_distribution(self, bins: list[dict]) -> None:
         self._bins = bins or []
         self._max_count = max((b.get("count", 0) for b in self._bins), default=1) or 1
         self.update()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -237,6 +242,7 @@ class _MiniHistogram(QWidget):
 class _SubCard(QFrame):
     """A small card with background and border consistent with the theme."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setStyleSheet(f"""
@@ -256,6 +262,7 @@ class _SubCard(QFrame):
 class _ScoreBar(QWidget):
     """A single metric bar: label | progress-bar | score/max."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, label: str, max_val: float,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -301,6 +308,7 @@ class _ScoreBar(QWidget):
         )
         lay.addWidget(self._score_lbl)
 
+    # تنظیم مقدار
     def set_value(self, value: float) -> None:
         self._value = max(0.0, min(self._max_val, value))
         self._bar.setValue(int(self._value * 10))
@@ -337,6 +345,7 @@ class _ScoreBar(QWidget):
 class _BottleneckCard(QFrame):
     """Card showing a single bottleneck step."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, step_id: str, title: str, reason: str,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -411,6 +420,7 @@ class RouteHealthDashboard(QFrame):
     simulationRequested = Signal()
     replanRequested = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._health: Optional[RouteHealthReport] = None
@@ -479,6 +489,7 @@ class RouteHealthDashboard(QFrame):
 
     # ──────────── Section builders ────────────
 
+    # بخش عنوان
     def _section_title(self, text: str, icon: str = "") -> QLabel:
         lbl = QLabel(f"{icon}  {text}" if icon else text)
         lbl.setStyleSheet(
@@ -488,6 +499,7 @@ class RouteHealthDashboard(QFrame):
         )
         return lbl
 
+    # ساخت سربرگ
     def _build_header(self) -> None:
         hdr = QHBoxLayout()
         hdr.setSpacing(8)
@@ -511,6 +523,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addLayout(hdr)
 
+    # نسخه ساخت gauge بخش
     def _build_gauge_section(self) -> None:
         row = QHBoxLayout()
         row.setSpacing(24)
@@ -548,6 +561,7 @@ class RouteHealthDashboard(QFrame):
         self._main_layout.addWidget(self._section_title("Overall Health", "\U0001F3AF"))
         self._main_layout.addLayout(row)
 
+    # نسخه ساخت breakdown بخش
     def _build_breakdown_section(self) -> None:
         self._main_layout.addWidget(self._section_title("Score Breakdown", "\U0001F4CA"))
 
@@ -580,6 +594,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addWidget(breakdown_card)
 
+    # نسخه ساخت bottleneck بخش
     def _build_bottleneck_section(self) -> None:
         self._bottleneck_title = self._section_title("Bottleneck Alerts", "\U0001F6A8")
         self._main_layout.addWidget(self._bottleneck_title)
@@ -595,6 +610,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addLayout(self._bottleneck_container)
 
+    # نسخه ساخت recommendations بخش
     def _build_recommendations_section(self) -> None:
         self._main_layout.addWidget(self._section_title("Recommendations", "\U0001F4A1"))
 
@@ -619,6 +635,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addWidget(self._rec_card)
 
+    # نسخه ساخت simulation بخش
     def _build_simulation_section(self) -> None:
         self._main_layout.addWidget(self._section_title("Monte Carlo Simulation", "\U0001F3B2"))
 
@@ -671,6 +688,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addWidget(sim_card)
 
+    # make stat برچسب
     def _make_stat_label(self, title: str, value: str) -> tuple[QLabel, QLabel]:
         """Return (title_label, value_label) for a stat box."""
         t = QLabel(title)
@@ -687,6 +705,7 @@ class RouteHealthDashboard(QFrame):
         )
         return t, v
 
+    # نسخه ساخت عملکرد buttons
     def _build_action_buttons(self) -> None:
         self._main_layout.addWidget(self._section_title("Actions", "\u2699\uFE0F"))
 
@@ -723,6 +742,7 @@ class RouteHealthDashboard(QFrame):
 
         self._main_layout.addLayout(btn_row)
 
+    # make عملکرد button
     def _make_action_button(self, text: str, primary: bool = False) -> QPushButton:
         btn = QPushButton(text)
         btn.setFixedHeight(38)
@@ -754,6 +774,7 @@ class RouteHealthDashboard(QFrame):
 
     # ──────────── Public API ────────────
 
+    # تنظیم مسیر
     def set_route(self, route: Route) -> None:
         """Set the current route for context."""
         self._route = route
@@ -765,6 +786,7 @@ class RouteHealthDashboard(QFrame):
         else:
             self._route_goal_lbl.setText("")
 
+    # بروزرسانی health
     def update_health(self, health: RouteHealthReport) -> None:
         """Refresh the entire dashboard from a health report."""
         self._health = health
@@ -805,6 +827,7 @@ class RouteHealthDashboard(QFrame):
         # ── Recommendations ──
         self._rebuild_recommendations(health.recommendations)
 
+    # بروزرسانی simulation
     def update_simulation(self, result: SimulationResult) -> None:
         """Show Monte Carlo simulation results."""
         self._simulation = result
@@ -849,6 +872,14 @@ class RouteHealthDashboard(QFrame):
 
     # ──────────── Internals ────────────
 
+    # describe score
+    # describe score
+    # describe score
+    # describe score
+
+
+    # describe score
+    # describe score
     def _describe_score(self, score: float) -> str:
         if score >= 90:
             return "Excellent — route is robust and well-structured"
@@ -863,6 +894,12 @@ class RouteHealthDashboard(QFrame):
         else:
             return "Critical — route is likely to fail"
 
+    # rebuild bottlenecks
+    # rebuild bottlenecks
+    # rebuild bottlenecks
+    # rebuild bottlenecks
+
+    # بازسازی bottlenecks
     def _rebuild_bottlenecks(self, health: RouteHealthReport) -> None:
         # Remove old bottleneck widgets
         while self._bottleneck_container.count():
@@ -912,6 +949,12 @@ class RouteHealthDashboard(QFrame):
             card = _BottleneckCard(bn_id, title, reason_text)
             self._bottleneck_container.addWidget(card)
 
+    # rebuild recommendations
+    # rebuild recommendations
+    # rebuild recommendations
+    # rebuild recommendations
+
+    # بازسازی recommendations
     def _rebuild_recommendations(self, recommendations: list[str]) -> None:
         # Remove old rec widgets
         while self._rec_lay.count():
@@ -938,8 +981,10 @@ class RouteHealthDashboard(QFrame):
             )
             self._rec_lay.addWidget(bullet)
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:  # noqa: N802
         return QSize(520, 900)
 
+    # حداقل اندازه پیشنهادی ویجت
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         return QSize(400, 600)

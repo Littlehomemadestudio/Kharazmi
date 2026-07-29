@@ -1,10 +1,4 @@
-"""
-MinimapOverlay — a tiny overview of the entire node graph shown in
-the corner of the node graph view.
-
-Shows the entire scene as a small rectangle and highlights the
-current viewport. Clicking on the minimap scrolls the view.
-"""
+# نقشه مینیاتوری — نمای کلی کوچک از گراف
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal, QSize
@@ -19,6 +13,7 @@ from ..theme import Palette
 class MinimapOverlay(QWidget):
     """A small overview map overlay."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, view, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._view = view
@@ -33,9 +28,11 @@ class MinimapOverlay(QWidget):
         """)
         self.setCursor(Qt.PointingHandCursor)
 
+    # بروزرسانی minimap
     def update_minimap(self) -> None:
         self.update()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -56,6 +53,7 @@ class MinimapOverlay(QWidget):
             s = min(sx, sy)
 
             # Map items_rect to local
+            # تبدیل به local
             def to_local(pt: QPointF) -> QPointF:
                 x = margin + (pt.x() - items_rect.left()) * s
                 y = margin + (pt.y() - items_rect.top()) * s
@@ -88,15 +86,18 @@ class MinimapOverlay(QWidget):
         finally:
             p.end()
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:
         self._navigate_to(event.position())
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if event.buttons() & Qt.LeftButton:
             self._navigate_to(event.position())
         super().mouseMoveEvent(event)
 
+    # navigate تبدیل به
     def _navigate_to(self, pos: QPointF) -> None:
         scene = self._view.scene()
         if scene is None:

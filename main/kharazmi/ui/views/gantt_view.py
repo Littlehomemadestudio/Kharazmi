@@ -1,4 +1,4 @@
-"""GanttView — time-scaled bar chart of tasks."""
+# نمای گانت — نمودار گانت زمانی پروژه
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -33,6 +33,7 @@ class GanttView(QGraphicsView):
 
     taskDoubleClicked = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  parent: QWidget = None) -> None:
         super().__init__(parent)
@@ -54,9 +55,11 @@ class GanttView(QGraphicsView):
 
         self._rebuild()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         self._rebuild()
 
+    # محاسبه window
     def _compute_window(self) -> None:
         starts = [t.early_start for t in self.project.tasks() if t.early_start]
         ends = [t.early_finish for t in self.project.tasks() if t.early_finish]
@@ -68,6 +71,12 @@ class GanttView(QGraphicsView):
         self._start_date = min(starts).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
         self._end_date = max(ends).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=2)
 
+    # rebuild
+    # rebuild
+    # rebuild
+    # rebuild
+
+    # بازسازی عناصر
     def _rebuild(self) -> None:
         self._scene.clear()
         self._compute_window()
@@ -95,6 +104,7 @@ class GanttView(QGraphicsView):
         # Draw rows
         self._draw_rows(tasks, total_days)
 
+    # رسم سربرگ
     def _draw_header(self, total_days: int) -> None:
         # Background bar
         bg = QGraphicsRectItem(0, 0, LEFT_PANEL_WIDTH + total_days * DAY_WIDTH, HEADER_HEIGHT)
@@ -142,6 +152,7 @@ class GanttView(QGraphicsView):
             line.setPen(Qt.NoPen)
             self._scene.addItem(line)
 
+    # رسم چپ پنل
     def _draw_left_panel(self, tasks: list[Task]) -> None:
         for i, task in enumerate(tasks):
             y = HEADER_HEIGHT + i * ROW_HEIGHT
@@ -169,6 +180,7 @@ class GanttView(QGraphicsView):
             sep.setPen(Qt.NoPen)
             self._scene.addItem(sep)
 
+    # رسم rows
     def _draw_rows(self, tasks: list[Task], total_days: int) -> None:
         for i, task in enumerate(tasks):
             y = HEADER_HEIGHT + i * ROW_HEIGHT
@@ -209,9 +221,11 @@ class GanttView(QGraphicsView):
                         slack.setZValue(2)
                         self._scene.addItem(slack)
 
+    # پاسخ به تغییر انتخاب
     def _on_selection_changed(self) -> None:
         pass
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         item = self.itemAt(event.position().toPoint())
         if isinstance(item, GanttBar):
@@ -222,6 +236,7 @@ class GanttView(QGraphicsView):
 class GanttBar(QGraphicsRectItem):
     """A clickable task bar in the Gantt chart."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, task: Task, rect: QRectF) -> None:
         super().__init__(rect)
         self.task = task
@@ -230,6 +245,7 @@ class GanttBar(QGraphicsRectItem):
         self.setZValue(3)
         self._refresh_brush()
 
+    # بازخوانی brush
     def _refresh_brush(self) -> None:
         if self.task.is_critical:
             color = QColor(Palette.GOLD_BRIGHT)
@@ -245,6 +261,7 @@ class GanttBar(QGraphicsRectItem):
         self.setBrush(QBrush(grad))
         self.setPen(QPen(color.darker(150), 1))
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget=None) -> None:
         super().paint(painter, option, widget)
         # Progress overlay
@@ -262,6 +279,12 @@ class GanttBar(QGraphicsRectItem):
                              Qt.AlignLeft | Qt.AlignVCenter,
                              self._elide(self.task.title, r.width() - 12))
 
+    # elide
+    # elide
+    # elide
+    # elide
+
+    # کوتاه کردن متن با سه‌نقطه
     def _elide(self, text: str, max_w: float) -> str:
         from PySide6.QtGui import QFontMetrics
         fm = QFontMetrics(QFont("Inter", 8, QFont.DemiBold))
@@ -271,6 +294,12 @@ class GanttBar(QGraphicsRectItem):
             text = text[:-1]
         return text + "…" if text else "…"
 
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event):
         self.setZValue(10)
         self.setToolTip(
@@ -282,10 +311,17 @@ class GanttBar(QGraphicsRectItem):
         )
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event):
         self.setZValue(3)
         super().hoverLeaveEvent(event)
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event):
         # Let the view handle it
         super().mouseDoubleClickEvent(event)

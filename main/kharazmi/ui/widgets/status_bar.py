@@ -1,4 +1,4 @@
-"""StatusBar — bottom status bar showing project info and alerts."""
+# نوار وضعیت — نمایش اطلاعات وضعیت پایین صفحه
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QTimer
@@ -13,6 +13,7 @@ from ..icons import get_icon
 
 
 class StatusBar(QStatusBar):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setSizeGripEnabled(False)
@@ -58,16 +59,19 @@ class StatusBar(QStatusBar):
         self._message_timer.setSingleShot(True)
         self._message_timer.timeout.connect(lambda: self._message_label.setText(""))
 
+    # بروزرسانی پروژه
     def update_project(self, project: Project) -> None:
         self._project_label.setText(
             f"  ◆  {project.name.upper()}   "
             f"({project.task_count} tasks · {project.dependency_count} deps)"
         )
 
+    # بروزرسانی پروژه named
     def update_project_named(self, text: str) -> None:
         """Set the project label to an arbitrary string (for Basic plan)."""
         self._project_label.setText(text)
 
+    # بروزرسانی آمار
     def update_stats(self, total: int, done: int, active: int,
                      blocked: int, critical: int, completion: float) -> None:
         self._stats_label.setText(
@@ -75,11 +79,13 @@ class StatusBar(QStatusBar):
             f"·  Critical: {critical}  ·  Completion: {completion:.1f}%"
         )
 
+    # بروزرسانی schedule
     def update_schedule(self, duration_str: str, critical_count: int) -> None:
         self._schedule_label.setText(
             f"⏱  Project span: {duration_str}   ·   Critical tasks: {critical_count}"
         )
 
+    # نمایش message
     def show_message(self, text: str, timeout_ms: int = 4000) -> None:
         self._message_label.setText(text)
         if timeout_ms > 0:

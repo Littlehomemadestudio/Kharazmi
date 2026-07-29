@@ -1,21 +1,4 @@
-"""
-Sidebar — Mini month picker + calendar list + NL input for the RASK! calendar.
-
-Layout:
-  ┌──────────────────┐
-  │  Mini Month Grid  │
-  │  (click to pick)  │
-  ├──────────────────┤
-  │  Calendars:       │
-  │  ☑ Personal  🟡   │
-  │  ☑ Work      🔵   │
-  │  ☐ Holidays  🔴   │
-  │  [+ Add Calendar] │
-  ├──────────────────┤
-  │  🔍 Quick add...  │
-  │  (NL input bar)   │
-  └──────────────────┘
-"""
+# نوار کناری — تقویم مینیاتوری، فهرست تقویم‌ها و ورودی سریع
 from __future__ import annotations
 
 from typing import Optional
@@ -51,6 +34,7 @@ class MiniMonthWidget(QWidget):
     """Compact month grid for the sidebar — click a day to navigate."""
     date_clicked = Signal(object)   # ShamsiDate
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
         self._ctrl = controller
@@ -64,9 +48,11 @@ class MiniMonthWidget(QWidget):
         self.setCursor(Qt.PointingHandCursor)
         self._load_grid()
 
+    # بارگذاری شبکه ماهانه
     def _load_grid(self) -> None:
         self._grid = shamsi_month_grid(self._year, self._month)
 
+    # تنظیم ماه نمایشی
     def set_month(self, year: int, month: int) -> None:
         if self._year != year or self._month != month:
             self._year = year
@@ -77,10 +63,12 @@ class MiniMonthWidget(QWidget):
 
     # ── Geometry ──
 
+    # محاسبه اندازه خانه
     def _cell_size(self) -> int:
         w = self.width() - 12  # 6px margin each side
         return w // 7
 
+    # محاسبه مستطیل خانه
     def _cell_rect(self, row: int, col: int) -> QRectF:
         cs = self._cell_size()
         x = 6 + col * cs
@@ -91,6 +79,7 @@ class MiniMonthWidget(QWidget):
 
     # ── Paint ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -154,6 +143,7 @@ class MiniMonthWidget(QWidget):
 
     # ── Mouse ──
 
+    # یافتن خانه در موقعیت ماوس
     def _cell_at(self, pos: QPoint) -> Optional[tuple[int, int]]:
         cs = self._cell_size()
         col = (pos.x() - 4) // cs
@@ -163,6 +153,7 @@ class MiniMonthWidget(QWidget):
             return (row, col)
         return None
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         cell = self._cell_at(event.pos())
         if cell:
@@ -170,12 +161,14 @@ class MiniMonthWidget(QWidget):
             if sd:
                 self.date_clicked.emit(sd)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event) -> None:
         cell = self._cell_at(event.pos())
         if cell != self._hovered_cell:
             self._hovered_cell = cell
             self.update()
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:
         self._hovered_cell = None
         self.update()
@@ -188,12 +181,14 @@ class CalendarListWidget(QWidget):
     calendar_toggled = Signal(str, bool)   # calendar_id, visible
     add_calendar_requested = Signal()
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, model: CalendarModel, parent=None) -> None:
         super().__init__(parent)
         self._model = model
         self._rows: list[_CalendarRow] = []
         self._build()
 
+    # ساخت عناصر رابط کاربری
     def _build(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -237,6 +232,7 @@ class CalendarListWidget(QWidget):
         layout.addStretch()
         self.refresh()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         # Clear old rows
         for row in self._rows:
@@ -254,6 +250,7 @@ class CalendarListWidget(QWidget):
 class _CalendarRow(QWidget):
     toggled = Signal(bool)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, calendar: Calendar, parent=None) -> None:
         super().__init__(parent)
         self._cal = calendar
@@ -310,6 +307,7 @@ class QuickAddInput(QLineEdit):
     """Natural-language event creation input bar."""
     event_created = Signal(str)  # event title
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
         self._ctrl = controller
@@ -331,6 +329,7 @@ class QuickAddInput(QLineEdit):
         """)
         self.returnPressed.connect(self._on_return)
 
+    # پاسخ به فشردن کلید Enter
     def _on_return(self) -> None:
         text = self.text().strip()
         if not text:
@@ -350,6 +349,7 @@ class CalendarSidebar(QWidget):
     add_calendar_requested = Signal()
     event_created = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
         self._ctrl = controller
@@ -388,9 +388,11 @@ class CalendarSidebar(QWidget):
         self._nl_input.event_created.connect(self.event_created.emit)
         layout.addWidget(self._nl_input)
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         self._mini_month.set_month(self._ctrl.nav_date.year, self._ctrl.nav_date.month)
         self._cal_list.refresh()
 
+    # بروزرسانی تقویم مینیاتوری
     def update_mini_month(self) -> None:
         self._mini_month.set_month(self._ctrl.nav_date.year, self._ctrl.nav_date.month)

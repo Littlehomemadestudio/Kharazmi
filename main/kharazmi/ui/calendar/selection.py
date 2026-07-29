@@ -1,15 +1,4 @@
-"""
-SelectionManager — Keyboard navigation and selection for the calendar.
-
-Manages:
-  - Current selected date (Shamsi)
-  - Current selected event ID
-  - Multi-date selection (Shift+Click, Shift+Arrow)
-  - Keyboard navigation (arrows, page up/down, Home, End)
-  - Focus tracking (which view has focus)
-
-Emits signals that views listen to for repaints.
-"""
+# مدیریت انتخاب — ناوبری صفحه‌کلید و انتخاب تاریخ/رویداد
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -28,6 +17,7 @@ class SelectionManager(QObject):
     date_activated = Signal(object)       # double-click / Enter on a date
     event_activated = Signal(str)         # double-click / Enter on an event
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self) -> None:
         super().__init__()
         self._selected_date: ShamsiDate = ShamsiDate.today()
@@ -38,48 +28,58 @@ class SelectionManager(QObject):
 
     # ── Properties ──
 
+    # دسترسی به تاریخ انتخاب‌شده
     @property
     def selected_date(self) -> ShamsiDate:
         return self._selected_date
 
+    # دسترسی به تاریخ انتخاب‌شده
     @selected_date.setter
     def selected_date(self, d: ShamsiDate) -> None:
         if self._selected_date != d:
             self._selected_date = d
             self.selection_changed.emit()
 
+    # دسترسی به تاریخ لنگر
     @property
     def anchor_date(self) -> Optional[ShamsiDate]:
         return self._anchor_date
 
+    # دسترسی به شناسه رویداد انتخاب‌شده
     @property
     def selected_event_id(self) -> Optional[str]:
         return self._selected_event_id
 
+    # دسترسی به شناسه رویداد انتخاب‌شده
     @selected_event_id.setter
     def selected_event_id(self, eid: Optional[str]) -> None:
         if self._selected_event_id != eid:
             self._selected_event_id = eid
             self.selection_changed.emit()
 
+    # دسترسی به تاریخ شناور
     @property
     def hovered_date(self) -> Optional[ShamsiDate]:
         return self._hovered_date
 
+    # دسترسی به تاریخ شناور
     @hovered_date.setter
     def hovered_date(self, d: Optional[ShamsiDate]) -> None:
         self._hovered_date = d
 
+    # دسترسی به شناسه رویداد شناور
     @property
     def hovered_event_id(self) -> Optional[str]:
         return self._hovered_event_id
 
+    # دسترسی به شناسه رویداد شناور
     @hovered_event_id.setter
     def hovered_event_id(self, eid: Optional[str]) -> None:
         self._hovered_event_id = eid
 
     # ── Range Selection ──
 
+    # دریافت بازه انتخاب‌شده
     def selection_range(self) -> Optional[tuple[ShamsiDate, ShamsiDate]]:
         """Return (start, end) if a range is selected via Shift, else None."""
         if self._anchor_date and self._anchor_date != self._selected_date:
@@ -91,16 +91,19 @@ class SelectionManager(QObject):
                 return (self._selected_date, self._anchor_date)
         return None
 
+    # شروع انتخاب بازه‌ای
     def start_range(self) -> None:
         """Begin a shift-selection (anchor = current date)."""
         self._anchor_date = self._selected_date
 
+    # پایان انتخاب بازه‌ای
     def end_range(self) -> None:
         """End a shift-selection."""
         self._anchor_date = None
 
     # ── Keyboard Navigation ──
 
+    # جابجایی انتخاب در جهت مشخص
     def move(self, direction: str, extend: bool = False) -> None:
         """
         Move selection in the given direction.
@@ -142,6 +145,7 @@ class SelectionManager(QObject):
         self._selected_date = new
         self.selection_changed.emit()
 
+    # رفتن به تاریخ امروز
     def go_to_today(self) -> None:
         self._anchor_date = None
         self._selected_date = ShamsiDate.today()
@@ -149,11 +153,13 @@ class SelectionManager(QObject):
 
     # ── Date Activation ──
 
+    # فعال‌سازی تاریخ با دابل‌کلیک
     def activate_date(self, d: ShamsiDate) -> None:
         """User double-clicked / pressed Enter on a date."""
         self._selected_date = d
         self.date_activated.emit(d)
 
+    # فعال‌سازی رویداد با دابل‌کلیک
     def activate_event(self, event_id: str) -> None:
         """User double-clicked / pressed Enter on an event."""
         self._selected_event_id = event_id

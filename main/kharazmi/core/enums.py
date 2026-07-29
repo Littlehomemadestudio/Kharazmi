@@ -1,9 +1,4 @@
-"""Enumerations for the Rask domain model.
-
-These are the only legal values for the corresponding fields — the
-"serious logic" of the application. Anything that does not fit one of
-these enumerations is rejected at the entity boundary.
-"""
+# شمارش‌های دامنه — مقادیر مجاز فیلدها
 from __future__ import annotations
 
 from enum import Enum, IntEnum, unique

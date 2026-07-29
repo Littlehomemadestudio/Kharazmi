@@ -1,28 +1,4 @@
-"""
-The Rask Theme System — supports both Light and Dark modes.
-
-Two visual languages sharing the same Gold accent family:
-
-  Light mode (default): clean white surfaces with warm gold accents.
-  Dark mode:            deep near-black surfaces with bright gold accents.
-
-The Palette class is dynamically updated when the theme switches —
-all code that reads `Palette.TEXT_PRIMARY` etc. gets the current
-theme's value automatically.  Inline f-string stylesheets are
-evaluated once at widget creation, so a theme switch requires
-calling `_reapply_theme()` on the main window to rebuild key
-inline styles.
-
-Usage:
-    from .theme import Palette, QSS, build_qpalette, set_theme
-
-    # At startup, theme is already "light" (default).
-    # To switch:
-    set_theme("dark")
-    app.setStyleSheet(QSS)
-    app.setPalette(build_qpalette())
-    window._reapply_theme()
-"""
+# سیستم تم RASK — پشتیبانی از حالت روشن و تیره
 from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
@@ -155,6 +131,8 @@ for _k, _v in _LIGHT.items():
     setattr(Palette, _k, _v)
 
 
+# بازگرداندن رنگ متناسب با وضعیت وظیفه
+
 def status_color(status_value: str) -> str:
     return {
         "draft":     Palette.STATUS_DRAFT,
@@ -167,6 +145,8 @@ def status_color(status_value: str) -> str:
     }.get(status_value, Palette.STATUS_DRAFT)
 
 
+# بازگرداندن رنگ متناسب با سطح ریسک
+
 def risk_color(risk_value: str) -> str:
     return {
         "negligible": Palette.RISK_NEGLIGIBLE,
@@ -176,6 +156,8 @@ def risk_color(risk_value: str) -> str:
         "severe":     Palette.RISK_SEVERE,
     }.get(risk_value, Palette.RISK_LOW)
 
+
+# تبدیل اولویت عددی به وزن بصری (۱ تا ۵)
 
 def priority_weight(p: int) -> int:
     """Visual weight 1..5 for a Priority int (0..4)."""
@@ -189,10 +171,14 @@ def priority_weight(p: int) -> int:
 _current_mode: str = "light"
 
 
+# بازگرداندن حالت فعلی تم ('light' یا 'dark')
+
 def current_mode() -> str:
     """Return the current theme mode ('light' or 'dark')."""
     return _current_mode
 
+
+# تغییر تم سراسری به حالت روشن یا تیره و ذخیره ترجیح
 
 def set_theme(mode: str) -> None:
     """Switch the global palette to 'light' or 'dark'.
@@ -225,6 +211,8 @@ def set_theme(mode: str) -> None:
         pass
 
 
+# بارگذاری ترجیح ذخیره‌شده تم از فایل پیکربندی
+
 def load_theme_preference() -> str:
     """Load saved theme preference from ~/.rask/theme.json."""
     try:
@@ -243,6 +231,8 @@ def load_theme_preference() -> str:
 #  QSS stylesheet generator
 # ──────────────────────────────────────────────────────────────
 
+# ساخت شیوه‌نامه کامل QSS از پالت فعلی
+
 def _build_qss() -> str:
     """Build the complete QSS stylesheet from the current Palette."""
     pal = Palette
@@ -252,7 +242,7 @@ QWidget {{
     background-color: {pal.BG_PRIMARY};
     color: {pal.TEXT_PRIMARY};
     font-family: "Inter", "SF Pro Display", "Segoe UI", "DejaVu Sans", sans-serif;
-    font-size: 13px;
+    font-size: 16px;
 }}
 
 QWidget:disabled {{
@@ -266,7 +256,7 @@ QToolTip {{
     border: 1px solid {pal.BORDER_GOLD};
     border-radius: 4px;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 14px;
 }}
 
 /* ===== Main window background ===== */
@@ -280,7 +270,7 @@ QMenuBar {{
     color: {pal.TEXT_PRIMARY};
     border-bottom: 1px solid {pal.BORDER_SUBTLE};
     padding: 2px 4px;
-    font-size: 13px;
+    font-size: 15px;
 }}
 QMenuBar::item {{
     background: transparent;
@@ -316,7 +306,7 @@ QStatusBar {{
     background-color: {pal.BG_SECONDARY};
     color: {pal.TEXT_SECONDARY};
     border-top: 1px solid {pal.BORDER_SUBTLE};
-    font-size: 12px;
+    font-size: 14px;
     padding: 2px 8px;
 }}
 QStatusBar::item {{ border: none; }}
@@ -340,7 +330,7 @@ QToolButton {{
     border: 1px solid transparent;
     border-radius: 4px;
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: 15px;
 }}
 QToolButton:hover {{
     background-color: {pal.BG_HOVER};
@@ -360,7 +350,7 @@ QPushButton {{
     border: 1px solid {pal.BORDER_NORMAL};
     border-radius: 4px;
     padding: 7px 16px;
-    font-size: 13px;
+    font-size: 15px;
 }}
 QPushButton:hover {{
     background-color: {pal.BG_ELEVATED};
@@ -470,7 +460,7 @@ QHeaderView::section {{
     border-right: 1px solid {pal.BORDER_SUBTLE};
     border-bottom: 1px solid {pal.BORDER_NORMAL};
     font-weight: 600;
-    font-size: 12px;
+    font-size: 14px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }}
@@ -529,7 +519,7 @@ QGroupBox {{
     border-radius: 6px;
     margin-top: 14px;
     padding-top: 10px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     color: {pal.TEXT_SECONDARY};
     text-transform: uppercase;
@@ -563,7 +553,7 @@ QTabBar::tab {{
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     margin-right: 2px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -586,7 +576,7 @@ QProgressBar {{
     border-radius: 3px;
     text-align: center;
     color: {pal.TEXT_PRIMARY};
-    font-size: 11px;
+    font-size: 13px;
     height: 14px;
 }}
 QProgressBar::chunk {{
@@ -619,19 +609,19 @@ QCheckBox::indicator:hover, QRadioButton::indicator:hover {{
 /* ===== Labels ===== */
 QLabel {{ background: transparent; }}
 QLabel[variant="title"] {{
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 700;
     color: {pal.GOLD_BRIGHT};
     letter-spacing: 0.5px;
 }}
 QLabel[variant="subtitle"] {{
-    font-size: 11px;
+    font-size: 13px;
     color: {pal.TEXT_TERTIARY};
     text-transform: uppercase;
     letter-spacing: 1px;
 }}
 QLabel[variant="section"] {{
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: {pal.GOLD_PRIMARY};
     text-transform: uppercase;
@@ -657,7 +647,7 @@ QDockWidget::title {{
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    font-size: 11px;
+    font-size: 13px;
 }}
 
 /* ===== Graphics view (node graph) ===== */
@@ -676,6 +666,8 @@ QSS = _build_qss()
 # ──────────────────────────────────────────────────────────────
 #  Qt palette builder
 # ──────────────────────────────────────────────────────────────
+
+# ساخت پالت رنگی Qt از مقادیر فعلی پالت
 
 def build_qpalette() -> QPalette:
     """Build a QPalette from the current Palette values.
@@ -705,6 +697,8 @@ def build_qpalette() -> QPalette:
 #  Helpers
 # ──────────────────────────────────────────────────────────────
 
+# ساخت QColor از رشته هگز با شفافیت مشخص
+
 def with_alpha(hex_str: str, alpha: int) -> QColor:
     """Create a QColor from a hex string with the given alpha (0-255)."""
     c = QColor(hex_str)
@@ -712,19 +706,23 @@ def with_alpha(hex_str: str, alpha: int) -> QColor:
     return c
 
 
+# بازگرداندن قلم پیش‌فرض برنامه
+
 def default_font() -> QFont:
-    f = QFont("Inter", 10)
+    f = QFont("Inter", 13)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 
+# بازگرداندن قلم هم‌عرض (monospace) پیش‌فرض
+
 def mono_font() -> QFont:
-    f = QFont("JetBrains Mono", 10)
+    f = QFont("JetBrains Mono", 13)
     if not f.exactMatch():
-        f = QFont("Menlo", 10)
+        f = QFont("Menlo", 13)
         if not f.exactMatch():
-            f = QFont("Consolas", 10)
+            f = QFont("Consolas", 13)
             if not f.exactMatch():
-                f = QFont("DejaVu Sans Mono", 10)
+                f = QFont("DejaVu Sans Mono", 13)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f

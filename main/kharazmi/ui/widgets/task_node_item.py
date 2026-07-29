@@ -1,17 +1,4 @@
-"""
-TaskNodeItem — the QGraphicsItem that renders a single task in the
-node-graph view.
-
-Each node is a rounded rectangle showing:
-  - Title (top)
-  - Status indicator dot
-  - Duration bar
-  - Priority stripes
-  - Progress bar
-  - Critical-path glow (if applicable)
-
-Nodes are draggable, selectable, and emit signals when interacted with.
-"""
+# آیتم گره وظیفه — نمایش گره وظیفه در گراف
 from __future__ import annotations
 
 from PySide6.QtCore import (
@@ -45,6 +32,7 @@ class TaskNodeItem(QGraphicsObject):
     nodeDoubleClicked = Signal(str)
     nodeMoved = Signal(str, float, float)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, task: Task, parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
         self.task = task
@@ -60,18 +48,26 @@ class TaskNodeItem(QGraphicsObject):
         self.setZValue(10)
 
     # ---- Geometry ----
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         # Expand slightly for the critical-path glow
         if self.task.is_critical:
             return QRectF(-6, -6, NODE_WIDTH + 12, NODE_HEIGHT + 12)
         return QRectF(0, 0, NODE_WIDTH, NODE_HEIGHT)
 
+    # شکل
     def shape(self) -> QPainterPath:
         path = QPainterPath()
         path.addRoundedRect(0, 0, NODE_WIDTH, NODE_HEIGHT, 8, 8)
         return path
 
     # ---- Painting ----
+    # رسم
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -189,6 +185,7 @@ class TaskNodeItem(QGraphicsObject):
                 painter.setPen(Qt.NoPen)
                 painter.drawEllipse(QPointF(bar_x + 2 + i * 8, bar_y - 8), 2, 2)
 
+    # elide متن
     def _elide_text(self, text: str, max_width: float, font: QFont) -> str:
         fm = QFontMetrics(font)
         if fm.horizontalAdvance(text) <= max_width:
@@ -199,28 +196,42 @@ class TaskNodeItem(QGraphicsObject):
         return elided + "…" if elided else "…"
 
     # ---- Interaction ----
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(20)
         self.update()
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(10 if not self.isSelected() else 15)
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_started_pos = self.pos()
         super().mousePressEvent(event)
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self.nodeDoubleClicked.emit(str(self.task.id))
         super().mouseDoubleClickEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
         if self._drag_started_pos is not None:
@@ -232,6 +243,13 @@ class TaskNodeItem(QGraphicsObject):
                 self.nodeMoved.emit(str(self.task.id), new_pos.x(), new_pos.y())
             self._drag_started_pos = None
 
+    # itemChange
+    # itemChange
+    # itemChange
+    # itemChange
+
+    # itemChange
+    # itemChange
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemSelectedHasChanged:
             self.setZValue(15 if self.isSelected() else 10)
@@ -239,24 +257,29 @@ class TaskNodeItem(QGraphicsObject):
         return super().itemChange(change, value)
 
     # ---- Public API ----
+    # بازخوانی ساخت از وظیفه
     def refresh_from_task(self) -> None:
         """Re-read task data (in case it changed externally) and repaint."""
         self.update()
 
+    # anchor در
     @property
     def anchor_in(self) -> QPointF:
         """Anchor point for incoming edges (left side)."""
         return self.mapToScene(QPointF(0, NODE_HEIGHT / 2))
 
+    # anchor خارج
     @property
     def anchor_out(self) -> QPointF:
         """Anchor point for outgoing edges (right side)."""
         return self.mapToScene(QPointF(NODE_WIDTH, NODE_HEIGHT / 2))
 
+    # anchor بالا
     @property
     def anchor_top(self) -> QPointF:
         return self.mapToScene(QPointF(NODE_WIDTH / 2, 0))
 
+    # anchor پایین
     @property
     def anchor_bottom(self) -> QPointF:
         return self.mapToScene(QPointF(NODE_WIDTH / 2, NODE_HEIGHT))

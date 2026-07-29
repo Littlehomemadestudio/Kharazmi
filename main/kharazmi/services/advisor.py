@@ -1,13 +1,4 @@
-"""
-Local rule-based advisor.
-
-Replaces the previous Ollama-based "AI" — which was a fragile external
-dependency. The advisor uses deterministic rules to:
-  - Suggest task breakdowns for vague tasks
-  - Infer likely dependencies between tasks
-  - Detect schedule conflicts and near-critical tasks
-  - Recommend priority adjustments
-"""
+# مشاور محلی — تحلیل قانون‌محور پروژه
 from __future__ import annotations
 
 import re
@@ -31,6 +22,8 @@ class LocalAdvisor:
     Deterministic advisor that scans the project and produces a list of
     Advice items. No external services, no surprises.
     """
+
+    # تحلیل کامل پروژه و تولید توصیه‌ها
     def analyze(self, project: Project) -> list[Advice]:
         out: list[Advice] = []
         out.extend(self._suggest_breakdowns(project))
@@ -47,6 +40,7 @@ class LocalAdvisor:
         re.IGNORECASE,
     )
 
+    # پیشنهاد تفکیک وظایف بزرگ
     def _suggest_breakdowns(self, project: Project) -> list[Advice]:
         out: list[Advice] = []
         for t in project.tasks():

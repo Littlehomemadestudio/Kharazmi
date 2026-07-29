@@ -1,14 +1,4 @@
-"""
-The Event entity — the central object of the calendar subsystem.
-
-An Event is anything that appears on the calendar: a meeting, an
-appointment, a birthday, a focus-time block, an out-of-office block,
-a task with a due date, etc.
-
-Events may be one-off or recurring (via a RecurrenceRule). When
-recurring, the UI expands the rule into virtual "occurrences" for
-display, but the underlying storage is a single Event.
-"""
+# موجودیت رویداد — شیء مرکزی زیرسیستم تقویم
 from __future__ import annotations
 
 import uuid
@@ -68,6 +58,7 @@ class Event:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
+    # اعتبارسنجی و اصلاح زمان رویداد
     def __post_init__(self) -> None:
         if not self.id:
             self.id = f"evt-{uuid.uuid4().hex[:12]}"
@@ -78,6 +69,7 @@ class Event:
     def touch(self) -> None:
         self.updated_at = datetime.utcnow()
 
+    # تنظیم زمان شروع و پایان رویداد
     def set_time(self, start: datetime, end: datetime) -> None:
         if end < start:
             raise ValueError("Event end precedes start")
@@ -85,6 +77,7 @@ class Event:
         self.end = end
         self.touch()
 
+    # جابجایی رویداد به زمان شروع جدید
     def move_to(self, new_start: datetime) -> None:
         """Move the event to start at new_start, preserving duration."""
         duration = self.end - self.start
@@ -92,10 +85,12 @@ class Event:
         self.end = new_start + duration
         self.touch()
 
+    # تنظیم مدت زمان رویداد
     def set_duration(self, minutes: int) -> None:
         self.end = self.start + timedelta(minutes=minutes)
         self.touch()
 
+    # افزودن شرکت‌کننده به رویداد
     def add_attendee(self, attendee: Attendee) -> None:
         # Replace existing with same email
         self.attendees = [
@@ -105,6 +100,7 @@ class Event:
         self.attendees.append(attendee)
         self.touch()
 
+    # حذف شرکت‌کننده از رویداد
     def remove_attendee(self, email_or_name: str) -> None:
         self.attendees = [
             a for a in self.attendees
@@ -112,6 +108,7 @@ class Event:
         ]
         self.touch()
 
+    # افزودن یادآور به رویداد
     def add_reminder(self, reminder: Reminder) -> None:
         # Replace existing with same minutes_before
         self.reminders = [
@@ -120,6 +117,7 @@ class Event:
         self.reminders.append(reminder)
         self.touch()
 
+    # علامت‌گذاری رویداد وظیفه‌ای به عنوان تکمیل
     def complete(self) -> None:
         """Mark a TASK-type event as completed."""
         self.completed = True
@@ -127,34 +125,42 @@ class Event:
         self.touch()
 
     # ---- Derived properties ----
+    # مدت زمان رویداد
     @property
     def duration(self) -> timedelta:
         return self.end - self.start
 
+    # مدت زمان رویداد
     @property
     def duration_minutes(self) -> int:
         return int(self.duration.total_seconds() // 60)
 
+    # آیا رویداد تکرارشونده است
     @property
     def is_recurring(self) -> bool:
         return self.recurrence is not None
 
+    # آیا رویداد از نوع وظیفه است
     @property
     def is_task(self) -> bool:
         return self.event_type == EventType.TASK
 
+    # آیا رویداد تمام‌روز است
     @property
     def is_all_day(self) -> bool:
         return self.all_day
 
+    # آیا رویداد جلسه است
     @property
     def is_meeting(self) -> bool:
         return self.event_type == EventType.MEETING or bool(self.attendees)
 
+    # رنگ موثر رویداد
     @property
     def effective_color(self, calendar_color: str = "#D4AF37") -> str:
         return self.color if self.color else calendar_color
 
+    # بررسی تداخل با بازه زمانی
     def overlaps(self, other_start: datetime, other_end: datetime) -> bool:
         return self.start < other_end and other_start < self.end
 
@@ -184,6 +190,7 @@ class Event:
             "updated_at": self.updated_at.isoformat(),
         }
 
+    # بازسازی رویداد از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Event":
         recurrence = None
@@ -216,6 +223,7 @@ class Event:
             updated_at=_parse_dt(data.get("updated_at")) or datetime.utcnow(),
         )
 
+    # ساخت رویداد جدید با شناسه خودکار
     @classmethod
     def create(cls, calendar_id: str, title: str,
                start: datetime, end: Optional[datetime] = None,
@@ -232,6 +240,7 @@ class Event:
         )
 
 
+# تجزیه رشته به datetime
 def _parse_dt(value) -> Optional[datetime]:
     if not value:
         return None

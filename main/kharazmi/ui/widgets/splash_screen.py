@@ -1,19 +1,4 @@
-"""
-RaskSplashScreen — Animated branded splash screen with gold particles
-and a live compilation-log console.
-
-Shows when the app launches:
-  - Dark background with animated gold particle field
-  - RASK! logo text with gold gradient
-  - "Kharazmi" subtitle with fade-in
-  - Loading progress bar with gold shimmer
-  - Status text ("Loading calendar...", "Initializing AI...", etc.)
-  - Live log console showing the last 4 initialization messages
-  - Smooth fade-out transition when loading completes
-
-This creates a powerful first impression — referees see a premium
-loading experience, not a blank window.
-"""
+# صفحه ورود — نمایش اولیه برنامه با لوگو
 from __future__ import annotations
 
 import math
@@ -35,6 +20,7 @@ class _SplashParticle:
     """A gold particle for the splash background."""
     __slots__ = ('x', 'y', 'vx', 'vy', 'size', 'opacity', 'phase', 'speed')
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, x: float, y: float) -> None:
         self.x = x
         self.y = y
@@ -64,6 +50,7 @@ class RaskSplashScreen(QWidget):
 
     _MAX_LOG_LINES = 4
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowFlags(
@@ -101,6 +88,7 @@ class RaskSplashScreen(QWidget):
 
     # ── Public API ──
 
+    # تنظیم پیشرفت
     def set_progress(self, value: int, status: str = "") -> None:
         """Update the progress bar (0-100) and optional status text."""
         self._progress = max(0, min(100, value))
@@ -108,6 +96,7 @@ class RaskSplashScreen(QWidget):
             self._status_text = status
         self.update()
 
+    # افزودن log
     def add_log(self, line: str) -> None:
         """
         Push a log line into the console area.
@@ -123,6 +112,7 @@ class RaskSplashScreen(QWidget):
             self._log_timestamps.pop(0)
         self.update()
 
+    # پایان
     def finish(self) -> None:
         """Start the fade-out animation and close when done."""
         self._finishing = True
@@ -136,6 +126,7 @@ class RaskSplashScreen(QWidget):
 
     # ── Tick ──
 
+    # پاسخ به tick
     def _on_tick(self) -> None:
         self._tick += 1
         w, h = self.width(), self.height()
@@ -156,6 +147,7 @@ class RaskSplashScreen(QWidget):
 
     # ── Paint ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -217,7 +209,7 @@ class RaskSplashScreen(QWidget):
             logo_rect = QRectF(0, h / 2 - 100, w, 80)
             p.drawText(logo_rect, Qt.AlignCenter, "RASK!")
 
-            # ── Subtitle: KHARAZMI ──
+            # ── Subtitle: RASK ──
             sub_font = QFont("Segoe UI", 14)
             sub_font.setLetterSpacing(QFont.AbsoluteSpacing, 8)
             p.setFont(sub_font)
@@ -225,7 +217,7 @@ class RaskSplashScreen(QWidget):
             sub_alpha = min(255, int(self._tick * 3))
             p.setPen(QPen(QColor(168, 162, 148, sub_alpha)))
             sub_rect = QRectF(0, h / 2 - 15, w, 30)
-            p.drawText(sub_rect, Qt.AlignCenter, "K H A R A Z M I")
+            p.drawText(sub_rect, Qt.AlignCenter, "R A S K")
 
             # ── Progress bar ──
             bar_y = h - 130

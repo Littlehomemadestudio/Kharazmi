@@ -1,28 +1,4 @@
-"""
-Recurrence rules — modeled on RFC 5545 RRULE but simplified.
-
-A RecurrenceRule describes how an event repeats. It is parsed into a
-series of concrete datetimes by `expand()`.
-
-Supported parts (subset of RRULE):
-  FREQ        = DAILY | WEEKLY | MONTHLY | YEARLY
-  INTERVAL    = N (default 1)
-  COUNT       = N (mutually exclusive with UNTIL)
-  UNTIL       = datetime
-  BYDAY       = list of weekday tokens (MO, TU, WE, TH, FR, SA, SU)
-                with optional ordinal prefix (e.g. 1MO = first Monday,
-                -1FR = last Friday)
-  BYMONTHDAY  = list of day-of-month numbers (1..31, or -1..-31)
-
-Examples:
-  Every weekday:  FREQ=WEEKLY; BYDAY=MO,TU,WE,TH,FR
-  Every 2 weeks:  FREQ=WEEKLY; INTERVAL=2
-  Monthly on 15th: FREQ=MONTHLY; BYMONTHDAY=15
-  Last Friday of month: FREQ=MONTHLY; BYDAY=-1FR
-  Yearly (birthday): FREQ=YEARLY
-  10 occurrences: FREQ=DAILY; COUNT=10
-  Until a date: FREQ=WEEKLY; UNTIL=20260101T000000Z
-"""
+# قواعد تکرار — مدل‌سازی ساده‌شده RRULE
 from __future__ import annotations
 
 import re
@@ -51,6 +27,7 @@ class ByDay:
     weekday: Weekday
     ordinal: Optional[int] = None  # None=any, 1=first, 2=second, -1=last, etc.
 
+    # نمایش رشته‌ای روز هفته با ترتیب
     def __str__(self) -> str:
         if self.ordinal is None:
             return self.weekday.name[:2]
@@ -67,6 +44,7 @@ class RecurrenceRule:
     by_day: tuple[ByDay, ...] = ()
     by_month_day: tuple[int, ...] = ()
 
+    # اعتبارسنجی قانون تکرار
     def __post_init__(self) -> None:
         if self.interval < 1:
             raise ValueError("interval must be >= 1")
@@ -75,6 +53,7 @@ class RecurrenceRule:
         if self.count is not None and self.until is not None:
             raise ValueError("count and until are mutually exclusive")
 
+    # تبدیل به رشته RRULE
     def to_rrule_str(self) -> str:
         parts = [f"FREQ={self.freq.value.upper()}"]
         if self.interval != 1:
@@ -89,6 +68,7 @@ class RecurrenceRule:
             parts.append(f"BYMONTHDAY={','.join(str(d) for d in self.by_month_day)}")
         return ";".join(parts)
 
+    # تجزیه رشته RRULE به شیء
     @classmethod
     def from_rrule_str(cls, s: str) -> "RecurrenceRule":
         parts = {}
@@ -131,11 +111,13 @@ class RecurrenceRule:
             by_day=by_day, by_month_day=by_month_day,
         )
 
+    # سریال‌سازی قانون تکرار
     def to_dict(self) -> dict:
         return {
             "rrule": self.to_rrule_str(),
         }
 
+    # بازسازی قانون تکرار از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "RecurrenceRule":
         if "rrule" not in data:
@@ -189,6 +171,7 @@ class RecurrenceRule:
             if current is None:
                 return
 
+    # تولید نامزدهای تاریخ در هر گام
     def _candidates_at_step(self, seed: datetime, current: datetime) -> list[datetime]:
         """Generate candidate datetimes at the current step."""
         if self.freq == RecurrenceFrequency.DAILY:
@@ -254,6 +237,7 @@ class RecurrenceRule:
                 return []
         return [current]
 
+    # پیشروی به گام بعدی تکرار
     def _advance_step(self, seed: datetime, current: datetime) -> Optional[datetime]:
         """Advance `current` by one interval of the recurrence frequency."""
         if self.freq == RecurrenceFrequency.DAILY:
@@ -276,12 +260,14 @@ class RecurrenceRule:
                 return None
         return None
 
+    # شماره روز هفته ایرانی (شنبه=۰)
     @staticmethod
     def _iranian_weekday_of(dt: datetime) -> int:
         """Saturday=0 ... Friday=6."""
         py_wd = dt.weekday()  # Mon=0..Sun=6
         return (py_wd + 2) % 7
 
+    # یافتن Nاُمین روز هفته ماه
     @staticmethod
     def _nth_weekday_of_month(sd: ShamsiDate, bd: ByDay) -> Optional[ShamsiDate]:
         """Find the Nth weekday of the month (e.g. 2nd Monday)."""

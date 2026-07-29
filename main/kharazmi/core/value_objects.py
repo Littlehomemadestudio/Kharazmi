@@ -1,4 +1,4 @@
-"""Value objects — immutable, identity-less domain primitives."""
+# اشیاء ارزشی — پایه‌های تغییرناپذیر و بدون هویت دامنه
 from __future__ import annotations
 
 import re
@@ -18,14 +18,17 @@ class TaskId:
     """Strongly-typed task identifier. Always a non-empty string."""
     value: str
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not self.value or not _ID_RE.match(self.value):
             raise ValueError(f"Invalid TaskId: {self.value!r}")
 
+    # تولید شناسه تصادفی وظیفه
     @classmethod
     def generate(cls, prefix: str = "T") -> "TaskId":
         return cls(f"{prefix}{uuid.uuid4().hex[:8].upper()}")
 
+    # نمایش رشته‌ای شناسه
     def __str__(self) -> str:
         return self.value
 
@@ -38,10 +41,12 @@ class Duration:
     """
     minutes: int
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if self.minutes < 0:
             raise ValueError("Duration cannot be negative")
 
+    # ساخت Duration از مقدار و واحد
     @classmethod
     def of(cls, amount: float, unit: DurationUnit) -> "Duration":
         if unit == DurationUnit.MINUTE:
@@ -56,18 +61,22 @@ class Duration:
             raise ValueError(f"Unknown unit: {unit}")
         return cls(m)
 
+    # تبدیل به ساعت
     @property
     def hours(self) -> float:
         return self.minutes / 60.0
 
+    # تبدیل به روز کاری
     @property
     def days(self) -> float:
         return self.minutes / (60.0 * 8)
 
+    # تبدیل به هفته کاری
     @property
     def weeks(self) -> float:
         return self.minutes / (60.0 * 8 * 5)
 
+    # تبدیل به واحد مشخص
     def to_unit(self, unit: DurationUnit) -> float:
         if unit == DurationUnit.MINUTE:
             return float(self.minutes)
@@ -77,15 +86,19 @@ class Duration:
             return self.days
         return self.weeks
 
+    # تبدیل به timedelta
     def as_timedelta(self) -> timedelta:
         return timedelta(minutes=self.minutes)
 
+    # جمع مدت زمان‌ها
     def __add__(self, other: "Duration") -> "Duration":
         return Duration(self.minutes + other.minutes)
 
+    # تفریق مدت زمان‌ها
     def __sub__(self, other: "Duration") -> "Duration":
         return Duration(max(0, self.minutes - other.minutes))
 
+    # نمایش خوانای مدت زمان
     def humanize(self) -> str:
         if self.minutes < 60:
             return f"{self.minutes}m"
@@ -105,18 +118,22 @@ class TimeWindow:
     start: datetime
     end: datetime
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if self.end < self.start:
             raise ValueError("TimeWindow end precedes start")
 
+    # محاسبه مدت پنجره زمانی
     @property
     def duration(self) -> Duration:
         delta = self.end - self.start
         return Duration(int(delta.total_seconds() // 60))
 
+    # بررسی تداخل دو پنجره زمانی
     def overlaps(self, other: "TimeWindow") -> bool:
         return self.start < other.end and other.start < self.end
 
+    # بررسی شامل بودن لحظه در پنجره
     def contains(self, moment: datetime) -> bool:
         return self.start <= moment < self.end
 
@@ -132,10 +149,12 @@ class Slack:
     total_slack: Duration
     free_slack: Duration
 
+    # آیا زمان شل صفر است (بحرانی)
     @property
     def is_critical(self) -> bool:
         return self.total_slack.minutes == 0
 
+    # آیا نزدیک مسیر بحرانی است
     @property
     def is_near_critical(self) -> bool:
         # Within 5% of project duration or 1 day, whichever is smaller
@@ -155,19 +174,23 @@ class PertEstimate:
     most_likely: Duration
     pessimistic: Duration
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not (self.optimistic.minutes <= self.most_likely.minutes <= self.pessimistic.minutes):
             raise ValueError("PERT requires optimistic <= most_likely <= pessimistic")
 
+    # محاسبه مدت مورد انتظار PERT
     @property
     def expected(self) -> Duration:
         o, m, p = self.optimistic.minutes, self.most_likely.minutes, self.pessimistic.minutes
         return Duration(int(round((o + 4 * m + p) / 6)))
 
+    # انحراف معیار PERT
     @property
     def std_dev(self) -> float:
         return (self.pessimistic.minutes - self.optimistic.minutes) / 6.0
 
+    # واریانس PERT
     @property
     def variance(self) -> float:
         return self.std_dev ** 2
@@ -178,10 +201,12 @@ class Tag:
     """A simple immutable tag/label."""
     name: str
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not self.name or not _ID_RE.match(self.name):
             raise ValueError(f"Invalid Tag name: {self.name!r}")
 
+    # نمایش رشته‌ای شناسه
     def __str__(self) -> str:
         return self.name
 
@@ -192,6 +217,7 @@ class Resource:
     name: str
     capacity_per_day: float = 1.0  # 1.0 = full-time, 0.5 = half-time, etc.
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not self.name:
             raise ValueError("Resource name is required")
@@ -205,6 +231,7 @@ class ResourceAllocation:
     resource: Resource
     load: float  # 0..capacity_per_day
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not (0 < self.load <= self.resource.capacity_per_day):
             raise ValueError(
@@ -217,14 +244,17 @@ class Progress:
     """Completion percentage, clamped to [0, 100]."""
     percent: int
 
+    # اعتبارسنجی پس از ساخت
     def __post_init__(self) -> None:
         if not (0 <= self.percent <= 100):
             raise ValueError("Progress must be 0..100")
 
+    # آیا پیشرفت ۱۰۰٪ است
     @property
     def is_complete(self) -> bool:
         return self.percent >= 100
 
+    # کسر باقیمانده پیشرفت
     @property
     def remaining_fraction(self) -> float:
         return (100 - self.percent) / 100.0

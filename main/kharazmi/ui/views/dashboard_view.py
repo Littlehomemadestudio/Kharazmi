@@ -1,16 +1,4 @@
-"""
-DashboardView — Revamped premium home/dashboard view for RASK!
-
-A stunning, fully Persian dashboard that serves as the app's landing experience:
-  - Hero section: Shamsi date in centered Persian typography with animated glow
-  - Stat cards in 2x2 grid with Persian labels and left-border color accents
-  - Quick action buttons in Persian
-  - Upcoming events list with colored indicators
-  - Productivity section with thicker progress rings and Persian labels
-  - Gold particle background
-
-All rendered with QPainter for maximum visual control.
-"""
+# نمای داشبورد — صفحه اصلی برنامه با تاریخ شمسی و آمار
 from __future__ import annotations
 
 import math
@@ -37,6 +25,8 @@ from ..widgets.particle_background import GoldParticleBackground
 
 # ──────────────────────────── Helper ────────────────────────────
 
+# بازگرداندن سلام فارسی بر اساس ساعت روز
+
 def _greeting_fa() -> str:
     """Return a Persian greeting based on the current hour."""
     hour = datetime.now().hour
@@ -55,20 +45,23 @@ def _greeting_fa() -> str:
 class _HeroWidget(QWidget):
     """Custom-painted hero section with centered Shamsi date, greeting, and glow."""
 
+    # ساخت ویجت قهرمان با تاریخ شمسی و سلام
     def __init__(self, today: ShamsiDate, parent=None) -> None:
         super().__init__(parent)
         self._today = today
-        self.setFixedHeight(220)
+        self.setFixedHeight(280)
         self._tick = 0
         self._timer = QTimer(self)
         self._timer.setInterval(50)
         self._timer.timeout.connect(self._on_tick)
         self._timer.start()
 
+    # به‌روزرسانی تیک انیمیشن
     def _on_tick(self) -> None:
         self._tick += 1
         self.update()
 
+    # رسم بخش قهرمان با تاریخ شمسی و درخشش طلایی
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -78,7 +71,7 @@ class _HeroWidget(QWidget):
             # ── Animated glow behind the date ──
             pulse = 0.5 + 0.5 * math.sin(self._tick * 0.04)
             glow_alpha = int(18 + 12 * pulse)
-            glow_r = 140 + 20 * pulse
+            glow_r = h * 0.5 + 20 * pulse
             glow_grad = QRadialGradient(QPointF(w / 2, h / 2 - 10), glow_r)
             glow_grad.setColorAt(0, QColor(212, 175, 55, glow_alpha))
             glow_grad.setColorAt(0.6, QColor(212, 175, 55, glow_alpha // 3))
@@ -89,13 +82,13 @@ class _HeroWidget(QWidget):
 
             # ── "امروز" badge ──
             badge_text = "امروز"
-            badge_font = QFont("Segoe UI", 10)
+            badge_font = QFont("Segoe UI", 13)
             p.setFont(badge_font)
             fm = QFontMetrics(badge_font)
             badge_w = fm.horizontalAdvance(badge_text) + 20
             badge_h = 24
             badge_x = (w - badge_w) / 2
-            badge_y = 14
+            badge_y = 16
 
             badge_path = QPainterPath()
             badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 12, 12)
@@ -122,35 +115,35 @@ class _HeroWidget(QWidget):
             weekday_text = self._today.weekday_fa
 
             # Big centered day number with gold gradient
-            day_font = QFont("Segoe UI", 80, QFont.Bold)
+            day_font = QFont("Segoe UI", 90, QFont.Bold)
             p.setFont(day_font)
 
-            day_grad = QLinearGradient(0, 40, 0, 140)
+            day_grad = QLinearGradient(0, 44, 0, 154)
             day_grad.setColorAt(0, QColor(245, 200, 66))
             day_grad.setColorAt(0.5, QColor(212, 175, 55))
             day_grad.setColorAt(1, QColor(140, 112, 18))
             p.setPen(QPen(QBrush(day_grad), 1))
-            p.drawText(QRectF(0, 38, w, 100), Qt.AlignHCenter | Qt.AlignTop, day_text)
+            p.drawText(QRectF(0, 44, w, 110), Qt.AlignHCenter | Qt.AlignTop, day_text)
 
             # Month name centered below day
-            month_font = QFont("Segoe UI", 28, QFont.Bold)
+            month_font = QFont("Segoe UI", 34, QFont.Bold)
             p.setFont(month_font)
             p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-            p.drawText(QRectF(0, 130, w, 40), Qt.AlignHCenter, month_text)
+            p.drawText(QRectF(0, 148, w, 42), Qt.AlignHCenter, month_text)
 
             # Year + Weekday on one line
-            year_week_font = QFont("Segoe UI", 13)
+            year_week_font = QFont("Segoe UI", 16)
             p.setFont(year_week_font)
             year_weekday = f"{year_text}  ·  {weekday_text}"
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            p.drawText(QRectF(0, 170, w, 24), Qt.AlignHCenter, year_weekday)
+            p.drawText(QRectF(0, 192, w, 24), Qt.AlignHCenter, year_weekday)
 
             # ── Greeting ──
             greeting = _greeting_fa()
-            greet_font = QFont("Segoe UI", 12)
+            greet_font = QFont("Segoe UI", 15)
             p.setFont(greet_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(QRectF(0, 194, w, 20), Qt.AlignHCenter, greeting)
+            p.drawText(QRectF(0, 220, w, 28), Qt.AlignHCenter, greeting)
 
             # ── Subtle divider ──
             div_grad = QLinearGradient(0, 0, w, 0)
@@ -171,6 +164,7 @@ class _HeroWidget(QWidget):
 class _StatCard(QWidget):
     """A stat card with left-border accent, QPainter-drawn icon, and Persian label."""
 
+    # ساخت کارت آماری با حاشیه رنگی و آیکون
     def __init__(self, target: int, label: str, icon_type: str, color: str,
                  parent=None) -> None:
         super().__init__(parent)
@@ -179,12 +173,13 @@ class _StatCard(QWidget):
         self._label = label
         self._icon_type = icon_type  # "calendar", "checkmark", "star", "book"
         self._color = color
-        self.setFixedSize(200, 120)
+        self.setFixedSize(220, 140)
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(30)
         self._anim_timer.timeout.connect(self._tick)
         self._anim_timer.start()
 
+    # انیمیشن شمارش اعداد کارت آماری
     def _tick(self) -> None:
         if self._current < self._target:
             step = max(1, (self._target - self._current) // 8)
@@ -193,6 +188,7 @@ class _StatCard(QWidget):
         else:
             self._anim_timer.stop()
 
+    # رسم کارت آماری با آیکون و عدد فارسی
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -215,7 +211,7 @@ class _StatCard(QWidget):
             p.drawPath(accent_path)
 
             # ── Draw icon ──
-            icon_x, icon_y = 170, 18
+            icon_x, icon_y = 190, 20
             p.setPen(Qt.NoPen)
             p.setBrush(QBrush(QColor(self._color).lighter(130)))
 
@@ -281,16 +277,16 @@ class _StatCard(QWidget):
 
             # ── Number (Persian digits) ──
             num_text = to_persian_digits(str(self._current))
-            num_font = QFont("Segoe UI", 28, QFont.Bold)
+            num_font = QFont("Segoe UI", 34, QFont.Bold)
             p.setFont(num_font)
             p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
-            p.drawText(QRectF(20, 20, 140, 50), Qt.AlignLeft | Qt.AlignVCenter, num_text)
+            p.drawText(QRectF(20, 22, 150, 56), Qt.AlignLeft | Qt.AlignVCenter, num_text)
 
             # ── Label ──
-            label_font = QFont("Segoe UI", 10)
+            label_font = QFont("Segoe UI", 14)
             p.setFont(label_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(QRectF(20, 75, 160, 24), Qt.AlignLeft | Qt.AlignVCenter, self._label)
+            p.drawText(QRectF(20, 90, 170, 28), Qt.AlignLeft | Qt.AlignVCenter, self._label)
         finally:
             p.end()
 
@@ -300,6 +296,7 @@ class _StatCard(QWidget):
 class _EventRow(QWidget):
     """A single upcoming event row with color indicator and Persian layout."""
 
+    # ساخت ردیف رویداد با عنوان و زمان و رنگ
     def __init__(self, title: str, time_str: str, color: str, parent=None) -> None:
         super().__init__(parent)
         self._title = title
@@ -307,6 +304,7 @@ class _EventRow(QWidget):
         self._color = color
         self.setFixedHeight(44)
 
+    # رسم ردیف رویداد با نقطه رنگی و چیدمان فارسی
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -319,14 +317,14 @@ class _EventRow(QWidget):
             p.drawEllipse(QPointF(w - 14, h / 2), 5, 5)
 
             # Title (right-aligned for RTL)
-            title_font = QFont("Segoe UI", 12)
+            title_font = QFont("Segoe UI", 15)
             p.setFont(title_font)
             p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
             p.drawText(QRectF(0, 0, w - 30, h),
                         Qt.AlignRight | Qt.AlignVCenter, self._title)
 
             # Time (left side)
-            time_font = QFont("Segoe UI", 11)
+            time_font = QFont("Segoe UI", 14)
             p.setFont(time_font)
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
             p.drawText(QRectF(10, 0, 120, h),
@@ -344,6 +342,7 @@ class _EventRow(QWidget):
 class _ProgressRing(QWidget):
     """Circular progress indicator with thicker ring and Persian label."""
 
+    # ساخت حلقه پیشرفت دایره‌ای با برچسب فارسی
     def __init__(self, value: int, maximum: int, color: str, label: str,
                  parent=None) -> None:
         super().__init__(parent)
@@ -353,6 +352,7 @@ class _ProgressRing(QWidget):
         self._label = label
         self.setFixedSize(90, 100)
 
+    # رسم حلقه پیشرفت دایره‌ای با درصد فارسی
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -377,12 +377,12 @@ class _ProgressRing(QWidget):
 
             # Percentage text — Persian digits
             pct = to_persian_digits(str(pct_val)) + "٪"
-            p.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            p.setFont(QFont("Segoe UI", 15, QFont.Bold))
             p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
             p.drawText(QRectF(0, 18, 90, 44), Qt.AlignCenter, pct)
 
             # Label below
-            p.setFont(QFont("Segoe UI", 9))
+            p.setFont(QFont("Segoe UI", 13))
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
             p.drawText(QRectF(0, 78, 90, 20), Qt.AlignCenter, self._label)
         finally:
@@ -394,12 +394,14 @@ class _ProgressRing(QWidget):
 class _SectionHeader(QWidget):
     """A section header with Persian title and optional badge."""
 
+    # ساخت سربرگ بخش با عنوان و نشان اختیاری
     def __init__(self, title: str, badge_text: str = "", parent=None) -> None:
         super().__init__(parent)
         self._title = title
         self._badge = badge_text
         self.setFixedHeight(36)
 
+    # رسم سربرگ بخش با خط طلایی زیر عنوان
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -407,7 +409,7 @@ class _SectionHeader(QWidget):
             w = self.width()
 
             # Title
-            title_font = QFont("Segoe UI", 12, QFont.Bold)
+            title_font = QFont("Segoe UI", 16, QFont.Bold)
             p.setFont(title_font)
             p.setPen(QPen(QColor(Palette.GOLD_PRIMARY)))
             title_rect = QRectF(0, 4, w - 60, 28)
@@ -415,7 +417,7 @@ class _SectionHeader(QWidget):
 
             # Badge
             if self._badge:
-                badge_font = QFont("Segoe UI", 9, QFont.Bold)
+                badge_font = QFont("Segoe UI", 13, QFont.Bold)
                 p.setFont(badge_font)
                 fm = QFontMetrics(badge_font)
                 bw = max(fm.horizontalAdvance(self._badge) + 14, 24)
@@ -466,6 +468,7 @@ class DashboardView(QWidget):
     plannerTabRequested = Signal()
     newEventRequested = Signal()
 
+    # ساخت نمای داشبورد با فروشگاه تقویم و یادداشت و پروژه
     def __init__(self, calendar_store: CalendarStore,
                  journal_store: JournalStore,
                  project: Project,
@@ -485,6 +488,7 @@ class DashboardView(QWidget):
         self._refresh_timer.timeout.connect(self._refresh)
         self._refresh_timer.start()
 
+    # ساخت رابط کاربری داشبورد
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -561,11 +565,13 @@ class DashboardView(QWidget):
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
+    # ساخت بخش قهرمان با تاریخ شمسی مرکزی
     def _build_hero(self) -> None:
         """Build the hero section with centered Shamsi date."""
         self._hero_widget = _HeroWidget(self._today, self)
         self._content_layout.addWidget(self._hero_widget)
 
+    # ساخت کارت‌های آماری در شبکه ۲×۲
     def _build_stat_cards(self) -> None:
         """Build stat cards in a 2x2 grid."""
         grid_widget = QWidget()
@@ -599,6 +605,7 @@ class DashboardView(QWidget):
 
         self._content_layout.addWidget(grid_widget)
 
+    # ساخت دکمه‌های عملیات سریع فارسی
     def _build_quick_actions(self) -> None:
         """Build quick action buttons in Persian."""
         row = QWidget()
@@ -615,9 +622,9 @@ class DashboardView(QWidget):
 
         for label, callback, color in actions:
             btn = QPushButton(label)
-            btn.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            btn.setFont(QFont("Segoe UI", 15, QFont.Bold))
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(48)
+            btn.setFixedHeight(56)
             btn.setMinimumWidth(140)
             btn.setStyleSheet(f"""
                 QPushButton {{
@@ -643,6 +650,7 @@ class DashboardView(QWidget):
 
         self._content_layout.addWidget(row)
 
+    # ساخت بخش رویدادهای آینده با سربرگ فارسی
     def _build_upcoming_events(self) -> None:
         """Build upcoming events section with Persian header."""
         # Get upcoming events
@@ -673,7 +681,7 @@ class DashboardView(QWidget):
         else:
             # Empty state
             empty = QLabel("هیچ رویدادی در هفته آینده ندارید")
-            empty.setFont(QFont("Segoe UI", 11))
+            empty.setFont(QFont("Segoe UI", 14))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet(
                 f"color: {Palette.TEXT_TERTIARY}; background: transparent; padding: 16px 0;"
@@ -682,6 +690,7 @@ class DashboardView(QWidget):
 
         self._content_layout.addWidget(card)
 
+    # ساخت بخش بهره‌وری با حلقه‌های پیشرفت
     def _build_productivity(self) -> None:
         """Build productivity insights section with progress rings."""
         header = _SectionHeader("بهره‌وری", "", self)
@@ -721,7 +730,7 @@ class DashboardView(QWidget):
         tip_layout.setSpacing(6)
 
         tip_title = QLabel("نکته روز")
-        tip_title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        tip_title.setFont(QFont("Segoe UI", 16, QFont.Bold))
         tip_title.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; background: transparent;"
         )
@@ -732,7 +741,7 @@ class DashboardView(QWidget):
             "برنامه‌ریزی روزانه خود را با هوش مصنوعی در ۳۰ ثانیه انجام دهید "
             "— اهداف را به گام‌های عملی تقسیم کنید."
         )
-        tip_text.setFont(QFont("Segoe UI", 11))
+        tip_text.setFont(QFont("Segoe UI", 14))
         tip_text.setWordWrap(True)
         tip_text.setAlignment(Qt.AlignRight)
         tip_text.setStyleSheet(
@@ -744,10 +753,12 @@ class DashboardView(QWidget):
 
         self._content_layout.addWidget(card)
 
+    # به‌روزرسانی داشبورد
     def _refresh(self) -> None:
         self._today = ShamsiDate.today()
         self.update()
 
+    # تنظیم موقعیت ذرات پس‌زمینه هنگام تغییر اندازه
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._particles.setGeometry(self.rect())

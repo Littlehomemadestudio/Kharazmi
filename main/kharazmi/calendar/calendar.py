@@ -1,9 +1,4 @@
-"""
-The Calendar entity.
-
-A user can own multiple calendars (Personal, Work, Family, Fitness,
-Holidays, etc.) — each with its own color and visibility toggle.
-"""
+# موجودیت تقویم — تقویم‌های رنگی با رویدادها
 from __future__ import annotations
 
 import uuid
@@ -28,10 +23,12 @@ class Calendar:
     is_readonly: bool = False       # true for built-in holiday calendars
     owner: str = "me"
 
+    # تولید شناسه خودکار در صورت خالی بودن
     def __post_init__(self) -> None:
         if not self.id:
             self.id = f"cal-{uuid.uuid4().hex[:8]}"
 
+    # سریال‌سازی تقویم به دیکشنری
     def to_dict(self) -> dict:
         return {
             "id": self.id,
@@ -44,6 +41,7 @@ class Calendar:
             "owner": self.owner,
         }
 
+    # بازسازی تقویم از دیکشنری
     @classmethod
     def from_dict(cls, data: dict) -> "Calendar":
         return cls(
@@ -57,6 +55,7 @@ class Calendar:
             owner=data.get("owner", "me"),
         )
 
+    # ساخت تقویم جدید با شناسه خودکار
     @classmethod
     def create(cls, name: str, color: str = "#D4AF37",
                description: str = "") -> "Calendar":

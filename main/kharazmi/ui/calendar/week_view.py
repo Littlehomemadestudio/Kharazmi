@@ -1,21 +1,4 @@
-"""
-WeekView — 7-day week view for the RASK! calendar.
-
-Renders a Google-Calendar-style week view with:
-  - All-day event area at top (collapsible rows)
-  - 7 day columns with 24-hour time grid
-  - Time ruler on the left
-  - Current time red line
-  - Hour / half-hour grid lines
-  - Event blocks positioned absolutely by time
-  - Overlapping event layout (side-by-side columns)
-  - Drag-to-create events
-  - Drag-to-move / drag-to-resize via EventWidget
-  - Click to select date / event
-  - Double-click to create event
-  - Smooth scrolling
-  - Auto-scroll to current time on load
-"""
+# نمای هفته — نمایش هفت‌روزه با خط زمانی ۲۴ ساعته و رویدادها
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -59,6 +42,7 @@ _SCROLL_STEP   = Metrics.SCROLL_STEP
 
 # ──────────────────────────────── Helpers ──────────────────────────────────
 
+# iranian هفته offset
 def _iranian_week_offset(containing: ShamsiDate) -> list[ShamsiDate]:
     """Return 7 ShamsiDates for Saturday..Friday of the week containing *containing*."""
     py_wd = containing.to_gregorian().weekday()
@@ -95,6 +79,7 @@ class WeekView(QWidget):
 
     # ── Construction ──────────────────────────────────────────────────────
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None):
         super().__init__(parent)
         self._ctrl  = controller
@@ -134,6 +119,7 @@ class WeekView(QWidget):
 
     # ── UI construction ───────────────────────────────────────────────────
 
+    # ساخت رابط کاربری
     def _build_ui(self) -> None:
         self.setStyleSheet(f"background-color: {Surface.CANVAS};")
 
@@ -188,6 +174,7 @@ class WeekView(QWidget):
 
     # ── Public API ────────────────────────────────────────────────────────
 
+    # تنظیم هفته نمایشی
     def set_week(self, containing: ShamsiDate) -> None:
         """Display the Iranian week (Sat–Fri) that contains *containing*."""
         self._week_dates = _iranian_week_offset(containing)
@@ -199,6 +186,7 @@ class WeekView(QWidget):
         self._sync_column_alignment()
         self.update()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         """Reload events from the model and reposition everything."""
         self._layout_events()
@@ -208,6 +196,7 @@ class WeekView(QWidget):
         self._sync_column_alignment()
         self.update()
 
+    # پیمایش تبدیل به فعلی زمان
     def scroll_to_current_time(self) -> None:
         """Auto-scroll so the current time marker is visible."""
         now = datetime.now()
@@ -218,6 +207,7 @@ class WeekView(QWidget):
 
     # ── Event layout (collision detection) ────────────────────────────────
 
+    # چیدمان رویدادها
     def _layout_events(self) -> None:
         """Compute DayEvents with timed_layout for each day of the week."""
         self._day_events = []
@@ -228,6 +218,7 @@ class WeekView(QWidget):
 
     # ── Event widget lifecycle ────────────────────────────────────────────
 
+    # ایجاد رویداد widgets
     def _create_event_widgets(self) -> None:
         """Destroy old EventWidgets and create fresh ones from layout data."""
         # Teardown
@@ -270,6 +261,7 @@ class WeekView(QWidget):
         if sel_id and sel_id in self._evt_widgets:
             self._evt_widgets[sel_id].set_selected(True)
 
+    # موقعیت رویداد widgets
     def _position_event_widgets(self) -> None:
         """Place every EventWidget at its correct pixel position."""
         col_w = self._grid.col_width()
@@ -295,6 +287,7 @@ class WeekView(QWidget):
 
     # ── Column alignment sync ─────────────────────────────────────────────
 
+    # sync ستون تراز
     def _sync_column_alignment(self) -> None:
         """Ensure header & all-day widths match the grid viewport width."""
         # The scroll-area viewport width may differ from the outer widget
@@ -308,6 +301,7 @@ class WeekView(QWidget):
 
     # ── EventWidget signal handlers ───────────────────────────────────────
 
+    # روز اندیس برای رویداد
     def _day_index_for_event(self, event_id: str) -> int:
         for idx, de in enumerate(self._day_events):
             for layout in de.timed_layout:
@@ -315,18 +309,21 @@ class WeekView(QWidget):
                     return idx
         return -1
 
+    # پاسخ به evt clicked
     def _on_evt_clicked(self, event_id: str) -> None:
         idx = self._day_index_for_event(event_id)
         self._sel.selected_event_id = event_id
         if 0 <= idx < len(self._week_dates):
             self._sel.selected_date = self._week_dates[idx]
 
+    # پاسخ به evt دابل clicked
     def _on_evt_double_clicked(self, event_id: str) -> None:
         self._sel.selected_event_id = event_id
         self.event_activated.emit(event_id)
 
     # ── Drag-move ──
 
+    # پاسخ به evt کشیدن started
     def _on_evt_drag_started(self, event_id: str) -> None:
         w = self._evt_widgets.get(event_id)
         if w is None:
@@ -337,6 +334,7 @@ class WeekView(QWidget):
         self._drag_move_origin_col[event_id]   = self._day_index_for_event(event_id)
         w.raise_()
 
+    # پاسخ به evt کشیدن moved
     def _on_evt_drag_moved(self, event_id: str, delta_minutes: int) -> None:
         self._drag_move_last_delta[event_id] = delta_minutes
         origin = self._drag_move_origin_start.get(event_id)
@@ -372,6 +370,7 @@ class WeekView(QWidget):
         else:
             w.move(w.x(), int(new_y))
 
+    # پاسخ به evt کشیدن ended
     def _on_evt_drag_ended(self, event_id: str) -> None:
         w = self._evt_widgets.get(event_id)
         delta = self._drag_move_last_delta.get(event_id, 0)
@@ -400,6 +399,7 @@ class WeekView(QWidget):
 
     # ── Drag-resize ──
 
+    # پاسخ به evt تغییر اندازه started
     def _on_evt_resize_started(self, event_id: str) -> None:
         w = self._evt_widgets.get(event_id)
         if w is None:
@@ -407,6 +407,7 @@ class WeekView(QWidget):
         self._drag_resize_origin_end[event_id] = w.event.end
         self._drag_resize_last_delta[event_id] = 0
 
+    # پاسخ به evt تغییر اندازه moved
     def _on_evt_resize_moved(self, event_id: str, delta_minutes: int) -> None:
         self._drag_resize_last_delta[event_id] = delta_minutes
         origin_end = self._drag_resize_origin_end.get(event_id)
@@ -428,6 +429,7 @@ class WeekView(QWidget):
 
         w.resize(w.width(), int(new_h))
 
+    # پاسخ به evt تغییر اندازه ended
     def _on_evt_resize_ended(self, event_id: str) -> None:
         w = self._evt_widgets.get(event_id)
         delta = self._drag_resize_last_delta.get(event_id, 0)
@@ -443,9 +445,11 @@ class WeekView(QWidget):
 
     # ── Controller signal handlers ────────────────────────────────────────
 
+    # پاسخ به تغییر تاریخ ناوبری
     def _on_date_changed(self) -> None:
         self.set_week(self._ctrl.nav_date)
 
+    # پاسخ به تغییر انتخاب
     def _on_selection_changed(self) -> None:
         sel_id = self._sel.selected_event_id
         for eid, w in self._evt_widgets.items():
@@ -455,11 +459,14 @@ class WeekView(QWidget):
 
     # ── Now-line tick ─────────────────────────────────────────────────────
 
+    # tick now
+    # بروزرسانی خط زمان فعلی
     def _tick_now(self) -> None:
         self._grid.update()
 
     # ── Resize ────────────────────────────────────────────────────────────
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._position_event_widgets()
@@ -475,6 +482,7 @@ class WeekView(QWidget):
 
 class _DayHeaderBar(QWidget):
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None):
         super().__init__(parent)
         self._ctrl = controller
@@ -482,10 +490,12 @@ class _DayHeaderBar(QWidget):
         self._right_margin: int = 0
         self.setFixedHeight(_DAY_HEADER_H)
 
+    # مجموعه dates
     def set_dates(self, dates: list[ShamsiDate]) -> None:
         self._dates = dates
         self.update()
 
+    # مجموعه راست حاشیه
     def set_right_margin(self, margin: int) -> None:
         if self._right_margin != margin:
             self._right_margin = margin
@@ -493,12 +503,14 @@ class _DayHeaderBar(QWidget):
 
     # ── Geometry ──
 
+    # col عرض
     def _col_width(self) -> float:
         usable = self.width() - _RULER_W - self._right_margin
         return max(usable / 7.0, 1.0)
 
     # ── Paint ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -507,6 +519,7 @@ class _DayHeaderBar(QWidget):
         finally:
             p.end()
 
+    # رسم
     def _paint(self, p: QPainter) -> None:
         w = self.width() - self._right_margin
         h = self.height()
@@ -596,6 +609,7 @@ class _DayHeaderBar(QWidget):
 
 class _AllDayArea(QWidget):
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None):
         super().__init__(parent)
         self._ctrl  = controller
@@ -606,17 +620,20 @@ class _AllDayArea(QWidget):
         self._hovered_event_id: Optional[str] = None
         self.setMouseTracking(True)
 
+    # تنظیم داده‌ها
     def set_data(self, dates: list[ShamsiDate], day_events: list[DayEvents]) -> None:
         self._dates = dates
         self._day_events = day_events
         self._adjust_height()
         self.update()
 
+    # مجموعه راست حاشیه
     def set_right_margin(self, margin: int) -> None:
         if self._right_margin != margin:
             self._right_margin = margin
             self.update()
 
+    # adjust ارتفاع
     def _adjust_height(self) -> None:
         max_rows = 0
         for de in self._day_events:
@@ -626,12 +643,14 @@ class _AllDayArea(QWidget):
 
     # ── Geometry ──
 
+    # col عرض
     def _col_width(self) -> float:
         usable = self.width() - _RULER_W - self._right_margin
         return max(usable / 7.0, 1.0)
 
     # ── Paint ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -640,6 +659,7 @@ class _AllDayArea(QWidget):
         finally:
             p.end()
 
+    # رسم
     def _paint(self, p: QPainter) -> None:
         w = self.width() - self._right_margin
         h = self.height()
@@ -696,6 +716,7 @@ class _AllDayArea(QWidget):
 
     # ── Hit testing ──
 
+    # hit آزمون
     def _hit_test(self, pos: QPoint) -> tuple[int, int]:
         """Return (col_index, row_index). (-1, -1) if outside."""
         if pos.x() < _RULER_W:
@@ -707,6 +728,7 @@ class _AllDayArea(QWidget):
 
     # ── Mouse ──
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() != Qt.LeftButton:
             return
@@ -722,6 +744,7 @@ class _AllDayArea(QWidget):
                 self._ctrl.selection.selected_event_id = None
         self.update()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event) -> None:
         if event.button() != Qt.LeftButton:
             return
@@ -743,6 +766,7 @@ class _AllDayArea(QWidget):
                         parent.create_event_requested.emit(start_dt)
         self.update()
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event) -> None:
         col, row = self._hit_test(event.position().toPoint())
         new_hovered: Optional[str] = None
@@ -754,6 +778,7 @@ class _AllDayArea(QWidget):
             self._hovered_event_id = new_hovered
             self.update()
 
+    # یافتن هفته نما
     def _find_week_view(self) -> Optional[WeekView]:
         w = self.parent()
         while w is not None:
@@ -779,6 +804,7 @@ class _TimeGrid(QWidget):
       - Click + drag     → drag-to-create with custom duration
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None):
         super().__init__(parent)
         self._ctrl  = controller
@@ -801,6 +827,7 @@ class _TimeGrid(QWidget):
         self.setMinimumWidth(400)
         self.setMouseTracking(True)
 
+    # تنظیم داده‌ها
     def set_data(self, dates: list[ShamsiDate], day_events: list[DayEvents]) -> None:
         self._dates = dates
         self._day_events = day_events
@@ -808,12 +835,15 @@ class _TimeGrid(QWidget):
 
     # ── Geometry helpers (public — used by WeekView too) ──────────────────
 
+    # col عرض
     def col_width(self) -> float:
         return max((self.width() - _RULER_W) / 7.0, 1.0)
 
+    # col چپ
     def col_left(self, col: int) -> float:
         return _RULER_W + col * self.col_width()
 
+    # ستون در
     def column_at(self, pos: QPoint) -> int:
         """Day-column index for a point, or -1 if in the ruler area."""
         if pos.x() < _RULER_W:
@@ -821,13 +851,16 @@ class _TimeGrid(QWidget):
         c = int((pos.x() - _RULER_W) / self.col_width())
         return max(0, min(c, 6))
 
+    # snap min
     @staticmethod
+    # چسباندن به حداقل
     def snap_min(m: int) -> int:
         """Snap to the nearest 15-minute increment."""
         return round(m / _SNAP) * _SNAP
 
     # ── Painting ──────────────────────────────────────────────────────────
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -842,6 +875,7 @@ class _TimeGrid(QWidget):
 
     # Background
 
+    # رسم bg
     def _paint_bg(self, p: QPainter) -> None:
         p.fillRect(self.rect(), qcolor(Surface.CANVAS))
 
@@ -864,6 +898,7 @@ class _TimeGrid(QWidget):
 
     # Grid lines
 
+    # رسم شبکه
     def _paint_grid(self, p: QPainter) -> None:
         w = self.width()
         h = self.height()
@@ -892,6 +927,7 @@ class _TimeGrid(QWidget):
 
     # Time ruler
 
+    # رسم خط‌کش
     def _paint_ruler(self, p: QPainter) -> None:
         p.fillRect(QRectF(0, 0, _RULER_W, self.height()), qcolor(Surface.CANVAS))
 
@@ -909,6 +945,7 @@ class _TimeGrid(QWidget):
 
     # Current-time red line
 
+    # رسم خط زمان فعلی
     def _paint_now_line(self, p: QPainter) -> None:
         today = ShamsiDate.today()
         # Only draw when today is in the displayed week
@@ -930,6 +967,7 @@ class _TimeGrid(QWidget):
 
     # Drag-to-create preview
 
+    # رسم کشیدن preview
     def _paint_drag_preview(self, p: QPainter) -> None:
         if not self._drag_creating or self._create_col < 0:
             return
@@ -971,6 +1009,7 @@ class _TimeGrid(QWidget):
 
     # ── Mouse events ──────────────────────────────────────────────────────
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:
         if event.button() != Qt.LeftButton:
             event.ignore()
@@ -999,6 +1038,7 @@ class _TimeGrid(QWidget):
 
         event.accept()
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event) -> None:
         pos = event.position().toPoint()
 
@@ -1026,6 +1066,7 @@ class _TimeGrid(QWidget):
                 QCursor(Qt.CrossCursor) if col >= 0 else QCursor(Qt.ArrowCursor)
             )
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event) -> None:
         if event.button() != Qt.LeftButton or self._press_pos is None:
             event.ignore()
@@ -1044,6 +1085,7 @@ class _TimeGrid(QWidget):
         self.update()
         event.accept()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event) -> None:
         if event.button() != Qt.LeftButton:
             event.ignore()
@@ -1065,6 +1107,7 @@ class _TimeGrid(QWidget):
             parent.create_event_requested.emit(start)
         event.accept()
 
+    # پایان کشیدن ایجاد
     def _finish_drag_create(self) -> None:
         """Compute start/end datetimes from the drag and emit creation signal."""
         col = self._create_col
@@ -1087,6 +1130,7 @@ class _TimeGrid(QWidget):
         if parent:
             parent.create_event_requested.emit(start)
 
+    # یافتن هفته نما
     def _find_week_view(self) -> Optional[WeekView]:
         w = self.parent()
         while w is not None:
@@ -1097,6 +1141,7 @@ class _TimeGrid(QWidget):
 
     # ── Wheel forwarding ──────────────────────────────────────────────────
 
+    # پردازش رویداد چرخ ماوس
     def wheelEvent(self, event) -> None:
         # Forward to the QScrollArea so the grid scrolls
         w = self.parent()

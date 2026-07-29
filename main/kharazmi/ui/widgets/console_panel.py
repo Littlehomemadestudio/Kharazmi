@@ -1,24 +1,4 @@
-"""
-ConsolePanel — a command-line interface inside the app.
-
-Supports commands like:
-  add <title> [dur:<num><unit>] [p:<priority>]
-  del <task_id>
-  link <predecessor> <successor> [type:FS|FF|SS|SF]
-  unlink <predecessor> <successor> [type]
-  list [filter]
-  status <task_id> <new_status>
-  pert <task_id> <opt> <likely> <pess>
-  schedule
-  mc [iterations]
-  layout
-  stats
-  save [name]
-  load <name>
-  export <json|csv|mermaid> <path>
-  help
-  clear
-"""
+# پنل کنسول — خروجی و لاگ‌های برنامه
 from __future__ import annotations
 
 import shlex
@@ -44,6 +24,7 @@ from ..icons import get_icon
 
 
 class ConsoleOutput(QPlainTextEdit):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setReadOnly(True)
@@ -57,6 +38,13 @@ class ConsoleOutput(QPlainTextEdit):
             }}
         """)
 
+    # append
+    # append
+    # append
+    # append
+
+    # append
+    # append
     def append(self, text: str, color: str = Palette.TEXT_PRIMARY) -> None:
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -69,6 +57,7 @@ class ConsoleOutput(QPlainTextEdit):
 
 
 class ConsoleInput(QLineEdit):
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setPlaceholderText("type a command and press Enter  •  type 'help' for help")
@@ -94,6 +83,7 @@ class ConsoleInput(QLineEdit):
 class ConsolePanel(QWidget):
     """The integrated command console."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, project: Project, task_service: TaskService,
                  scheduling: SchedulingService, export_service: ExportService,
                  parent: QWidget = None) -> None:
@@ -128,20 +118,34 @@ class ConsolePanel(QWidget):
 
         self._print_banner()
 
+    # print banner
+    # print banner
+    # print banner
+    # print banner
+
+    # print banner
+    # print banner
     def _print_banner(self) -> None:
         self._output.append("╔══════════════════════════════════════════════╗", Palette.GOLD_DEEP)
-        self._output.append("║   KHARAZMI CONSOLE  •  type 'help' for help  ║", Palette.GOLD_PRIMARY)
+        self._output.append("║   RASK کنسول  •  type 'help' for help  ║", Palette.GOLD_PRIMARY)
         self._output.append("╚══════════════════════════════════════════════╝", Palette.GOLD_DEEP)
         self._output.append("")
 
+    # تمرکز
     def focus(self) -> None:
         self._input.setFocus()
 
     # ---- Input handling ----
+    # keyPressEvent
+    # keyPressEvent
+    # keyPressEvent
+
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
         # Forward to input
         super().keyPressEvent(event)
 
+    # اجرای
     def _execute(self) -> None:
         text = self._input.text().strip()
         if not text:
@@ -156,6 +160,13 @@ class ConsolePanel(QWidget):
             self._output.append(f"  ERROR: {e}", Palette.STATUS_BLOCKED)
         self._output.append("")
 
+    # dispatch
+    # dispatch
+    # dispatch
+    # dispatch
+
+    # dispatch
+    # dispatch
     def _dispatch(self, line: str) -> None:
         try:
             parts = shlex.split(line)
@@ -174,6 +185,12 @@ class ConsolePanel(QWidget):
         handler(args)
 
     # ---- Commands ----
+    # cmd help
+    # cmd help
+    # cmd help
+
+    # cmd help
+    # cmd help
     def _cmd_help(self, args: list[str]) -> None:
         self._output.append("Available commands:", Palette.GOLD_PRIMARY)
         commands = [
@@ -198,10 +215,12 @@ class ConsolePanel(QWidget):
         for cmd, desc in commands:
             self._output.append(f"  {cmd:50s}  {desc}", Palette.TEXT_PRIMARY)
 
+    # cmd پاک کردن
     def _cmd_clear(self, args: list[str]) -> None:
         self._output.clear()
         self._print_banner()
 
+    # cmd افزودن
     def _cmd_add(self, args: list[str]) -> None:
         if not args:
             self._output.append("  usage: add <title> [dur:Nh|Nd|Nw] [p:0-4] [t:tag1,tag2]",
@@ -247,6 +266,13 @@ class ConsolePanel(QWidget):
         self._output.append(f"  created {tid}  '{title}'  ({dur_minutes}m, {priority.name})",
                             Palette.GOLD_BRIGHT)
 
+    # cmd del
+    # cmd del
+    # cmd del
+    # cmd del
+
+    # cmd del
+    # cmd del
     def _cmd_del(self, args: list[str]) -> None:
         if not args:
             self._output.append("  usage: del <task_id>", Palette.STATUS_BLOCKED)
@@ -255,6 +281,7 @@ class ConsolePanel(QWidget):
         self.task_service.delete_task(tid)
         self._output.append(f"  deleted {tid}", Palette.GOLD_BRIGHT)
 
+    # cmd فهرست
     def _cmd_list(self, args: list[str]) -> None:
         query = args[0] if args else ""
         tasks = self.task_service.search(query) if query else list(self.project.tasks())
@@ -271,6 +298,7 @@ class ConsolePanel(QWidget):
                 Palette.GOLD_BRIGHT if t.is_critical else Palette.TEXT_PRIMARY
             )
 
+    # cmd پیوند
     def _cmd_link(self, args: list[str]) -> None:
         if len(args) < 2:
             self._output.append("  usage: link <pre> <suc> [type:FS|FF|SS|SF]",
@@ -292,6 +320,13 @@ class ConsolePanel(QWidget):
         else:
             self._output.append(f"  refused: would create cycle", Palette.STATUS_BLOCKED)
 
+    # cmd unlink
+    # cmd unlink
+    # cmd unlink
+    # cmd unlink
+
+    # cmd unlink
+    # cmd unlink
     def _cmd_unlink(self, args: list[str]) -> None:
         if len(args) < 2:
             self._output.append("  usage: unlink <pre> <suc> [type]", Palette.STATUS_BLOCKED)
@@ -307,6 +342,7 @@ class ConsolePanel(QWidget):
         self.task_service.remove_dependency(pre, suc, dep_type)
         self._output.append(f"  unlinked {pre} → {suc}", Palette.GOLD_BRIGHT)
 
+    # cmd وضعیت
     def _cmd_status(self, args: list[str]) -> None:
         if len(args) < 2:
             self._output.append("  usage: status <task_id> <new_status>", Palette.STATUS_BLOCKED)
@@ -320,6 +356,7 @@ class ConsolePanel(QWidget):
         self.task_service.change_status(tid, new_status)
         self._output.append(f"  {tid} → {new_status.value}", Palette.GOLD_BRIGHT)
 
+    # cmd جابجایی
     def _cmd_move(self, args: list[str]) -> None:
         if len(args) < 3:
             self._output.append("  usage: move <task_id> <x> <y>", Palette.STATUS_BLOCKED)
@@ -330,6 +367,12 @@ class ConsolePanel(QWidget):
         self.task_service.move_task(tid, x, y, recalc=False)
         self._output.append(f"  moved {tid} to ({x}, {y})", Palette.GOLD_BRIGHT)
 
+    # cmd pert
+    # cmd pert
+    # cmd pert
+    # cmd pert
+
+    # cmd پرت
     def _cmd_pert(self, args: list[str]) -> None:
         if len(args) < 4:
             self._output.append("  usage: pert <task_id> <opt> <likely> <pess> [unit]",
@@ -361,6 +404,8 @@ class ConsolePanel(QWidget):
         except ValueError as e:
             self._output.append(f"  error: {e}", Palette.STATUS_BLOCKED)
 
+    # cmd schedule
+    # cmd برنامه‌ریزی
     def _cmd_schedule(self, args: list[str]) -> None:
         result = self.scheduling.recalculate()
         if not result.ok:
@@ -376,6 +421,13 @@ class ConsolePanel(QWidget):
             Palette.GOLD_PRIMARY
         )
 
+    # cmd mc
+    # cmd mc
+    # cmd mc
+    # cmd mc
+
+    # cmd mc
+    # cmd mc
     def _cmd_mc(self, args: list[str]) -> None:
         iterations = int(args[0]) if args and args[0].isdigit() else 500
         self._output.append(f"  running {iterations} iterations...", Palette.TEXT_SECONDARY)
@@ -389,11 +441,18 @@ class ConsolePanel(QWidget):
             Palette.GOLD_BRIGHT
         )
 
+    # cmd چیدمان
     def _cmd_layout(self, args: list[str]) -> None:
         # The view handles the actual layout; emit a signal instead
         self._output.append("  use Ctrl+L in the graph view to auto-layout",
                             Palette.TEXT_TERTIARY)
 
+    # cmd stats
+    # cmd stats
+    # cmd stats
+    # cmd stats
+
+    # cmd آمار
     def _cmd_stats(self, args: list[str]) -> None:
         s = self.task_service.statistics()
         self._output.append(f"  Total tasks:     {s['total']}", Palette.TEXT_PRIMARY)
@@ -404,6 +463,7 @@ class ConsolePanel(QWidget):
         self._output.append(f"  Completion:      {s['completion_pct']:.1f}%", Palette.GOLD_PRIMARY)
         self._output.append(f"  Total duration:  {s['total_minutes']}m", Palette.TEXT_SECONDARY)
 
+    # cmd ذخیره
     def _cmd_save(self, args: list[str]) -> None:
         name = args[0] if args else self.project.name
         self.project.name = name
@@ -412,6 +472,7 @@ class ConsolePanel(QWidget):
         sid = self._repo.save_snapshot(self.project, kind="manual")
         self._output.append(f"  saved snapshot #{sid} for '{name}'", Palette.GOLD_BRIGHT)
 
+    # cmd بارگذاری
     def _cmd_load(self, args: list[str]) -> None:
         if not args:
             self._output.append("  usage: load <name>", Palette.STATUS_BLOCKED)
@@ -434,6 +495,7 @@ class ConsolePanel(QWidget):
         self._output.append(f"  loaded '{proj.name}' ({proj.task_count} tasks)",
                             Palette.GOLD_BRIGHT)
 
+    # cmd خروجی
     def _cmd_export(self, args: list[str]) -> None:
         if len(args) < 2:
             self._output.append("  usage: export <json|csv|mermaid> <path>",
@@ -456,6 +518,8 @@ class ConsolePanel(QWidget):
         except Exception as e:
             self._output.append(f"  export failed: {e}", Palette.STATUS_BLOCKED)
 
+    # parse duration
+    # تجزیه مدت
     def _parse_duration(self, s: str) -> int:
         if not s:
             return 60
@@ -473,5 +537,6 @@ class ConsolePanel(QWidget):
         return int(val)  # minutes
 
     # ---- External hooks ----
+    # تنظیم repository
     def set_repository(self, repo: SQLiteRepository) -> None:
         self._repo = repo

@@ -1,7 +1,4 @@
-"""
-TaskService — high-level task operations that combine Project mutations
-with the undo stack and emit a recalculated schedule.
-"""
+# سرویس وظایف — عملیات سطح بالا با پشته برگشت
 from __future__ import annotations
 
 from datetime import datetime
@@ -26,6 +23,8 @@ class TaskService:
     Every mutating method goes through the UndoStack so the user can
     undo/redo. After mutations, the schedule is recalculated.
     """
+
+    # مقداردهی اولیه سرویس وظایف
     def __init__(self, project: Project, undo_stack: UndoStack,
                  scheduling: SchedulingService) -> None:
         self.project = project
@@ -51,6 +50,7 @@ class TaskService:
         # Find the task we just created (cmd stores _created_id)
         return TaskId(cmd._created_id) if cmd._created_id else None
 
+    # حذف وظیفه با پشته برگشت
     def delete_task(self, task_id: TaskId, recalc: bool = True) -> None:
         cmd = DeleteTaskCommand(task_id=task_id)
         cmd.execute(self.project)
@@ -58,6 +58,7 @@ class TaskService:
         if recalc:
             self.scheduling.recalculate()
 
+    # بروزرسانی وظیفه با پشته برگشت
     def update_task(self, task_id: TaskId, recalc: bool = True, **changes) -> None:
         cmd = UpdateTaskCommand(task_id=task_id, changes=changes)
         cmd.execute(self.project)
@@ -65,6 +66,7 @@ class TaskService:
         if recalc:
             self.scheduling.recalculate()
 
+    # جابجایی وظیفه در گراف
     def move_task(self, task_id: TaskId, x: float, y: float,
                   recalc: bool = False) -> None:
         """Move in the graph — doesn't affect schedule, so no recalc by default."""
@@ -75,6 +77,7 @@ class TaskService:
         # diagramming apps like draw.io do.
         self.undo.push(cmd)
 
+    # تغییر وضعیت وظیفه
     def change_status(self, task_id: TaskId, new_status: TaskStatus,
                       recalc: bool = True) -> None:
         cmd = ChangeStatusCommand(task_id=task_id, new_status=new_status)
@@ -102,6 +105,7 @@ class TaskService:
             return True
         return False
 
+    # حذف وابستگی
     def remove_dependency(self, predecessor_id: TaskId, successor_id: TaskId,
                           dep_type: DependencyType = DependencyType.FINISH_START,
                           recalc: bool = True) -> None:
@@ -140,6 +144,7 @@ class TaskService:
             tasks.sort(key=lambda t: -t.duration.minutes)
         return tasks
 
+    # جستجوی وظایف
     def search(self, query: str) -> list[Task]:
         q = query.lower().strip()
         if not q:
@@ -150,6 +155,7 @@ class TaskService:
             or any(q in str(tag).lower() for tag in t.tags)
         ]
 
+    # آمار پروژه
     def statistics(self) -> dict:
         tasks = list(self.project.tasks())
         if not tasks:

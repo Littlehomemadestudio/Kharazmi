@@ -1,10 +1,4 @@
-"""
-NewNodeDialog — modal dialog for manually creating new nodes on the canvas.
-
-Provides a node-type card selector at the top (action, decision, milestone,
-wait, checkpoint) and a complete form for all RouteStep fields below.
-Returns a new RouteStep via get_step() after accepted().
-"""
+# دیالوگ گره جدید — ایجاد گره جدید در گراف
 from __future__ import annotations
 
 import uuid
@@ -74,6 +68,7 @@ _NODE_TYPES: list[dict] = [
 class _TypeCard(QFrame):
     """A single clickable card in the node-type selector row."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, info: dict, parent=None) -> None:
         super().__init__(parent)
         self.info = info
@@ -103,10 +98,12 @@ class _TypeCard(QFrame):
 
         self._apply_style()
 
+    # مجموعه انتخاب‌شده
     def set_selected(self, selected: bool) -> None:
         self.selected = selected
         self._apply_style()
 
+    # اعمال سبک بصری
     def _apply_style(self) -> None:
         info = self.info
         if self.selected:
@@ -125,6 +122,7 @@ class _TypeCard(QFrame):
             f"}}"
         )
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event) -> None:  # noqa: N802
         # Emit custom selection via parent dialog; handled below
         super().mousePressEvent(event)
@@ -137,6 +135,7 @@ class NewNodeDialog(QDialog):
     After dialog is accepted, call get_step() to retrieve the new RouteStep.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._selected_kind: str = "action"
@@ -348,6 +347,7 @@ class NewNodeDialog(QDialog):
     # Helpers (same pattern as NodeEditDialog)
     # ------------------------------------------------------------------
 
+    # برچسب
     def _label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
@@ -357,6 +357,7 @@ class NewNodeDialog(QDialog):
         )
         return lbl
 
+    # input سبک
     def _input_style(self, large: bool = False) -> str:
         font_size = "13px" if large else "11px"
         font_weight = "bold" if large else "normal"
@@ -381,6 +382,7 @@ class NewNodeDialog(QDialog):
     # Type-card selection
     # ------------------------------------------------------------------
 
+    # انتخاب نوع
     def _select_type(self, card: _TypeCard) -> None:
         self._selected_kind = card.info["kind"]
         for c in self._type_cards:
@@ -390,6 +392,7 @@ class NewNodeDialog(QDialog):
     # Create action
     # ------------------------------------------------------------------
 
+    # پاسخ به ایجاد
     def _on_create(self) -> None:
         title = self._title.text().strip()
         if not title:
@@ -413,6 +416,7 @@ class NewNodeDialog(QDialog):
         )
         self.accept()
 
+    # دریافت step
     def get_step(self) -> RouteStep | None:
         """Return the newly created RouteStep after dialog is accepted, or None."""
         return self._step

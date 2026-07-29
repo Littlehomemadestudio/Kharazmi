@@ -1,23 +1,4 @@
-"""
-MonthView — Custom-painted month grid for the RASK! calendar.
-
-Renders a full month as a 6×7 grid (Saturday through Friday — Iranian week)
-using QPainter. Each cell shows the Shamsi day number, event chips rendered
-via EventRenderer.paint_month_chip(), and an overflow indicator ("+N more").
-
-Features:
-  - Today highlight (gold ring around day number)
-  - Weekend highlight (Friday = distinct background tint)
-  - Selected date highlight (gold left border + active bg)
-  - Hover effects on cells
-  - Infinite month navigation via CalendarController
-  - Animated transitions between months (PageTransition)
-  - Drag-and-drop event movement
-  - Double-click to create event
-  - Right-click context menu on events and cells
-  - Keyboard navigation (arrows, Page Up/Down, Home, End)
-  - Zoom support (Ctrl+wheel to change max visible event chips)
-"""
+# نمای ماه — شبکه ماهانه شمسی با رویدادها و ناوبری
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -79,6 +60,7 @@ class MonthView(QWidget):
 
     # ── Constructor ──
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
 
@@ -142,6 +124,7 @@ class MonthView(QWidget):
 
     # ── Public API ──
 
+    # تنظیم ماه نمایشی
     def set_month(self, year: int, month: int) -> None:
         """Set the displayed Shamsi month and reload data."""
         if self._year == year and self._month == month:
@@ -160,12 +143,14 @@ class MonthView(QWidget):
         self._animate_transition(direction)
         self.update()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         """Reload events from the model and repaint."""
         self._today = ShamsiDate.today()
         self._load_grid()
         self.update()
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:  # noqa: N802
         """Preferred size based on cell metrics."""
         w = _COLS * 130
@@ -174,6 +159,7 @@ class MonthView(QWidget):
 
     # ── Data Loading ──
 
+    # بارگذاری شبکه ماهانه
     def _load_grid(self) -> None:
         """Compute the 6×7 grid and fetch events for every cell."""
         self._grid = shamsi_month_grid(self._year, self._month)
@@ -214,6 +200,8 @@ class MonthView(QWidget):
 
     # ── Transition Animation ──
 
+    # animate transition
+    # انیمیشن انتقال بین ماه‌ها
     def _animate_transition(self, direction: str) -> None:
         """Animate a month-change transition (fade)."""
         from PySide6.QtCore import QAbstractAnimation, QVariantAnimation, QEasingCurve
@@ -233,6 +221,8 @@ class MonthView(QWidget):
         anim.setDuration(Metrics.ANIM_DURATION_MS)
         anim.setEasingCurve(QEasingCurve(QEasingCurve.OutCubic))
 
+        # tick
+        # بروزرسانی تیک انیمیشن
         def _tick(v: float) -> None:
             self._transition_opacity = v
             self.update()
@@ -243,17 +233,20 @@ class MonthView(QWidget):
 
     # ── Controller Signal Handlers ──
 
+    # پاسخ به تغییر تاریخ ناوبری
     def _on_date_changed(self) -> None:
         """Navigation date changed — update displayed month."""
         nav = self._controller.nav_date
         self.set_month(nav.year, nav.month)
 
+    # پاسخ به تغییر انتخاب
     def _on_selection_changed(self) -> None:
         """Selection changed — repaint to show new selected date."""
         self.update()
 
     # ── Layout Computation ──
 
+    # recompute چیدمان
     def _recompute_layout(self) -> None:
         """Recompute cell dimensions from the current widget size."""
         w = self.width()
@@ -264,10 +257,12 @@ class MonthView(QWidget):
         available_h = h - self._header_height
         self._cell_height = max(available_h / _ROWS, Metrics.MONTH_CELL_MIN_HEIGHT)
 
+    # سربرگ rect
     def _header_rect(self) -> QRectF:
         """Bounding rect for the weekday header row."""
         return QRectF(0, 0, self.width(), self._header_height)
 
+    # محاسبه مستطیل خانه
     def _cell_rect(self, row: int, col: int) -> QRectF:
         """Bounding rect for the cell at (row, col)."""
         x = col * self._cell_width
@@ -276,6 +271,7 @@ class MonthView(QWidget):
 
     # ── Hit Testing ──
 
+    # یافتن خانه در موقعیت ماوس
     def _cell_at(self, pos: QPoint | QPointF) -> Optional[tuple[int, int]]:
         """Return (row, col) for the given position, or None."""
         if isinstance(pos, QPointF):
@@ -293,6 +289,7 @@ class MonthView(QWidget):
             return (row, col)
         return None
 
+    # تاریخ در
     def _date_at(self, pos: QPoint | QPointF) -> Optional[ShamsiDate]:
         """Return the ShamsiDate at the given position, or None."""
         cell = self._cell_at(pos)
@@ -303,6 +300,7 @@ class MonthView(QWidget):
             return self._grid[row][col]
         return None
 
+    # رویداد در
     def _event_at(self, pos: QPoint | QPointF) -> Optional[str]:
         """Return the event_id at the given position, or None."""
         cell = self._cell_at(pos)
@@ -339,12 +337,14 @@ class MonthView(QWidget):
             return events[chip_index][0].id
         return None
 
+    # snap تبدیل به شبکه
     def _snap_to_grid(self, pos: QPoint | QPointF) -> Optional[tuple[int, int]]:
         """Snap a position to the nearest cell (row, col)."""
         return self._cell_at(pos)
 
     # ── Painting ──
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802
         self._recompute_layout()
 
@@ -378,12 +378,14 @@ class MonthView(QWidget):
         finally:
             painter.end()
 
+    # رسم پس‌زمینه
     def _paint_background(self, painter: QPainter) -> None:
         """Fill the entire widget with the canvas background."""
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(qcolor(Surface.CANVAS)))
         painter.drawRect(self.rect())
 
+    # رسم سربرگ
     def _paint_header(self, painter: QPainter) -> None:
         """Paint the weekday header row (Saturday through Friday)."""
         header_rect = self._header_rect()
@@ -415,6 +417,7 @@ class MonthView(QWidget):
             painter.setPen(QPen(color))
             painter.drawText(text_rect, Qt.AlignCenter, label)
 
+    # رسم خانه
     def _paint_cell(self, painter: QPainter, rect: QRectF,
                     shamsi_date: Optional[ShamsiDate],
                     row: int, col: int) -> None:
@@ -506,6 +509,7 @@ class MonthView(QWidget):
         events = self._cell_events.get((row, col), [])
         self._paint_events_in_cell(painter, rect, events, shamsi_date, row, col)
 
+    # رسم امروز badge
     def _paint_today_badge(self, painter: QPainter, rect: QRectF,
                            shamsi_date: ShamsiDate) -> None:
         """Paint the today indicator: gold circle behind the day number."""
@@ -532,6 +536,7 @@ class MonthView(QWidget):
         badge_text_rect = QRectF(cx - badge_r, cy - badge_r, badge_r * 2, badge_r * 2)
         painter.drawText(badge_text_rect, Qt.AlignCenter, day_text)
 
+    # رسم رویدادها در خانه
     def _paint_events_in_cell(self, painter: QPainter, cell_rect: QRectF,
                               events: list[tuple[Event, str]],
                               shamsi_date: ShamsiDate,
@@ -597,6 +602,7 @@ class MonthView(QWidget):
             overflow_text = to_persian_digits(f"+{overflow_count}") + " more"
             painter.drawText(overflow_rect, Qt.AlignLeft | Qt.AlignVCenter, overflow_text)
 
+    # رسم شبکه lines
     def _paint_grid_lines(self, painter: QPainter) -> None:
         """Paint grid lines between cells."""
         painter.setPen(QPen(qcolor(Border.SUBTLE), 1))
@@ -625,6 +631,7 @@ class MonthView(QWidget):
             QPointF(w, self._header_height),
         )
 
+    # رسم کشیدن ghost
     def _paint_drag_ghost(self, painter: QPainter) -> None:
         """Paint the semi-transparent drag ghost at cursor position."""
         if self._drag_event_id is None or self._drag_ghost_pos is None:
@@ -657,6 +664,7 @@ class MonthView(QWidget):
 
     # ── Mouse Events ──
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             pos = event.position()
@@ -683,6 +691,7 @@ class MonthView(QWidget):
         else:
             event.ignore()
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         pos = event.position()
 
@@ -714,6 +723,7 @@ class MonthView(QWidget):
 
         event.accept()
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             if self._drag_state == _DRAG_ACTIVE:
@@ -741,6 +751,7 @@ class MonthView(QWidget):
         else:
             event.ignore()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             pos = event.position()
@@ -765,6 +776,7 @@ class MonthView(QWidget):
 
     # ── Context Menu ──
 
+    # پردازش رویداد منوی زمینه
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:  # noqa: N802
         pos = event.pos()
         event_id = self._event_at(pos)
@@ -819,6 +831,7 @@ class MonthView(QWidget):
 
         event.ignore()
 
+    # منو stylesheet
     @staticmethod
     def _menu_stylesheet() -> str:
         """Dark-themed stylesheet for context menus."""
@@ -846,6 +859,7 @@ class MonthView(QWidget):
 
     # ── Keyboard Navigation ──
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
         key = event.key()
         modifiers = event.modifiers()
@@ -926,6 +940,7 @@ class MonthView(QWidget):
 
         super().keyPressEvent(event)
 
+    # ensure انتخاب‌شده قابل مشاهده
     def _ensure_selected_visible(self) -> None:
         """If the selected date is outside the current month, navigate to it."""
         sel = self._selection.selected_date
@@ -936,6 +951,7 @@ class MonthView(QWidget):
 
     # ── Zoom (Wheel Event) ──
 
+    # پردازش رویداد چرخ ماوس
     def wheelEvent(self, event: QWheelEvent) -> None:  # noqa: N802
         modifiers = event.modifiers()
 
@@ -960,6 +976,7 @@ class MonthView(QWidget):
 
     # ── Resize ──
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:  # noqa: N802
         """Recalculate layout on resize."""
         self._recompute_layout()
@@ -968,10 +985,12 @@ class MonthView(QWidget):
 
     # ── Focus ──
 
+    # پردازش دریافت تمرکز
     def focusInEvent(self, event) -> None:  # noqa: N802
         self.update()
         super().focusInEvent(event)
 
+    # پردازش از دست دادن تمرکز
     def focusOutEvent(self, event) -> None:  # noqa: N802
         self.update()
         super().focusOutEvent(event)

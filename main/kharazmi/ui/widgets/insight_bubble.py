@@ -1,23 +1,4 @@
-"""
-InsightBubble — a floating overlay box that appears around the route graph.
-
-Shows AI-generated insights (alternatives, breakthroughs, questions,
-warnings, improvements) as rounded, color-coded boxes that float on
-top of the canvas near relevant nodes.
-
-Each bubble is:
-  - Draggable (user can reposition)
-  - Selectable
-  - Color-coded by kind:
-    alternative → blue
-    breakthrough → bright gold
-    question → teal
-    warning → red
-    improvement → muted gold
-
-Bubbles can be anchored to a specific step (then float near its node)
-or positioned freely on the canvas.
-"""
+# حباب بینش — نمایش نکات و پیشنهادهای هوشمند
 from __future__ import annotations
 
 import math
@@ -70,6 +51,7 @@ class InsightBubble(QGraphicsObject):
     bubbleClicked = Signal(str)  # insight id (we use a generated one)
     bubbleMoved = Signal(str, float, float)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, insight: Insight, bubble_id: str,
                  parent: QGraphicsItem = None) -> None:
         super().__init__(parent)
@@ -88,6 +70,7 @@ class InsightBubble(QGraphicsObject):
 
         self._compute_size()
 
+    # محاسبه اندازه
     def _compute_size(self) -> None:
         title_font = QFont("Inter", 10, QFont.DemiBold)
         body_font = QFont("Inter", 9)
@@ -113,6 +96,13 @@ class InsightBubble(QGraphicsObject):
         body_lines = min(body_lines, 4)
         self._height = 38 + body_lines * 16 + 12  # header + body + padding
 
+    # wrap count
+    # wrap count
+    # wrap count
+    # wrap count
+
+    # wrap count
+    # wrap count
     def _wrap_count(self, text: str, max_width: float, font: QFont) -> int:
         fm = QFontMetrics(font)
         words = text.split()
@@ -129,15 +119,23 @@ class InsightBubble(QGraphicsObject):
         return lines
 
     # ---- Geometry ----
+    # boundingRect
+    # boundingRect
+    # boundingRect
+
+    # boundingRect
+    # boundingRect
     def boundingRect(self) -> QRectF:
         return QRectF(-4, -4, self._width + 8, self._height + 8)
 
+    # شکل
     def shape(self) -> QPainterPath:
         path = QPainterPath()
         path.addRoundedRect(0, 0, self._width, self._height, 12, 12)
         return path
 
     # ---- Painting ----
+    # رسم
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem,
               widget: QWidget = None) -> None:
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -198,6 +196,7 @@ class InsightBubble(QGraphicsObject):
         painter.drawText(QRectF(12, 44, self._width - 24, self._height - 50),
                          Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap, body)
 
+    # elide متن
     def _elide_text(self, text: str, max_width: float, font: QFont) -> str:
         fm = QFontMetrics(font)
         if fm.horizontalAdvance(text) <= max_width:
@@ -207,6 +206,7 @@ class InsightBubble(QGraphicsObject):
             elided = elided[:-1]
         return elided + "…" if elided else "…"
 
+    # wrap متن
     def _wrap_text(self, text: str, max_width: float, font: QFont,
                    max_lines: int = 4) -> str:
         fm = QFontMetrics(font)
@@ -236,6 +236,11 @@ class InsightBubble(QGraphicsObject):
         return "\n".join(lines)
 
     # ---- Interaction ----
+    # hoverEnterEvent
+    # hoverEnterEvent
+    # hoverEnterEvent
+
+    # پردازش ورود حالت شناور
     def hoverEnterEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = True
         self.setZValue(40)
@@ -247,18 +252,26 @@ class InsightBubble(QGraphicsObject):
         )
         super().hoverEnterEvent(event)
 
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+    # hoverLeaveEvent
+
+    # پردازش خروج حالت شناور
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent) -> None:
         self._hovered = False
         self.setZValue(30)
         self.update()
         super().hoverLeaveEvent(event)
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_started_pos = self.pos()
             self.bubbleClicked.emit(self.bubble_id)
         super().mousePressEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
         if self._drag_started_pos is not None:

@@ -1,16 +1,4 @@
-"""
-CalendarAIPanel — a compact, collapsible AI chat panel for the Calendar view.
-
-Features:
-  - Floating/dockable panel that sits on the right side of the calendar
-  - Collapsible: toggle button with ✦ icon
-  - When collapsed: just a small ✦ button in the bottom-right corner
-  - When expanded: a chat panel ~320px wide, full height
-  - Context-aware: auto-includes Shamsi date, current view, events
-  - Pre-built quick question chips (bilingual)
-  - Streaming responses via AIService.calendar_chat_streaming()
-  - Compact message bubbles (QLabel-based)
-"""
+# پنل هوش مصنوعی تقویم — دستیار هوشمند تقویم
 from __future__ import annotations
 
 import uuid
@@ -34,6 +22,7 @@ from ..theme import Palette
 
 # ---- RTL detection ----
 
+# بررسی rtl
 def _is_rtl(text: str) -> bool:
     """Detect if text is primarily RTL (Persian/Arabic)."""
     rtl_count = sum(
@@ -50,6 +39,7 @@ def _is_rtl(text: str) -> bool:
 class _MessageBubble(QFrame):
     """A compact chat message bubble using QTextEdit for rich text."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, role: str = "assistant", parent: QWidget = None) -> None:
         super().__init__(parent)
         self.role = role
@@ -126,16 +116,19 @@ class _MessageBubble(QFrame):
 
         self._body.document().contentsChanged.connect(self._adjust_height)
 
+    # adjust ارتفاع
     def _adjust_height(self) -> None:
         doc_height = self._body.document().size().height()
         self._body.setFixedHeight(int(doc_height) + 6)
 
+    # append متن
     def append_text(self, text: str) -> None:
         cursor = self._body.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self._body.setTextCursor(cursor)
 
+    # تنظیم متن
     def set_text(self, text: str) -> None:
         self._body.setPlainText(text)
         if _is_rtl(text):
@@ -143,6 +136,7 @@ class _MessageBubble(QFrame):
         else:
             self._body.setLayoutDirection(Qt.LeftToRight)
 
+    # دریافت متن
     def get_text(self) -> str:
         return self._body.toPlainText()
 
@@ -154,6 +148,7 @@ class _QuickChip(QPushButton):
 
     clicked_with_text = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, text: str, parent: QWidget = None) -> None:
         super().__init__(text, parent)
         self._text = text
@@ -186,6 +181,7 @@ class _ChatInput(QPlainTextEdit):
 
     sendMessage = Signal(str)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setPlaceholderText(
@@ -208,6 +204,7 @@ class _ChatInput(QPlainTextEdit):
         self.setMinimumHeight(32)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key_Return and not (event.modifiers() & Qt.ShiftModifier):
             text = self.toPlainText().strip()
@@ -236,6 +233,7 @@ class CalendarAIPanel(QWidget):
         ("Suggest a study plan", "یک برنامه پیشنهاد بده"),
     ]
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(
         self,
         calendar_store: Any,
@@ -261,6 +259,7 @@ class CalendarAIPanel(QWidget):
 
     # ---- UI Setup ----
 
+    # ساخت رابط کاربری
     def _setup_ui(self) -> None:
         self.setStyleSheet(f"background-color: transparent;")
 
@@ -497,6 +496,7 @@ class CalendarAIPanel(QWidget):
 
     # ---- Public API ----
 
+    # تنظیم بافت و زمینه
     def set_context(
         self,
         current_date: str,
@@ -520,6 +520,7 @@ class CalendarAIPanel(QWidget):
         self._today_events = self._serialize_events(today_events)
         self._upcoming_events = self._serialize_events(upcoming_events)
 
+    # تغییر وضعیت visibility
     def toggle_visibility(self) -> None:
         """Toggle between collapsed (just button) and expanded (full panel)."""
         self._expanded = not self._expanded
@@ -532,16 +533,19 @@ class CalendarAIPanel(QWidget):
             self._panel.hide()
             self._toggle_btn.show()
 
+    # بررسی expanded
     def is_expanded(self) -> bool:
         """Return whether the panel is currently expanded."""
         return self._expanded
 
+    # بروزرسانی زمینه ساخت از store
     def update_context_from_store(self) -> None:
         """Manually trigger a context refresh from the calendar store."""
         self._auto_update_context()
 
     # ---- Internal helpers ----
 
+    # auto بروزرسانی زمینه
     def _auto_update_context(self) -> None:
         """Automatically populate context from the calendar store."""
         if self._store is None:
@@ -566,6 +570,7 @@ class CalendarAIPanel(QWidget):
         # visible_events are set externally via set_context since they
         # depend on the active view mode
 
+    # serialize رویدادها
     def _serialize_events(self, events: list) -> list[dict]:
         """Convert a list of Event objects (or dicts) to serializable dicts."""
         result = []
@@ -590,6 +595,7 @@ class CalendarAIPanel(QWidget):
                     continue
         return result
 
+    # نسخه ساخت زمینه
     def _build_context(self) -> dict:
         """Build the context dict for the AI service."""
         return {
@@ -602,6 +608,7 @@ class CalendarAIPanel(QWidget):
 
     # ---- Chat logic ----
 
+    # پاسخ به send
     def _on_send(self, text: str) -> None:
         text = text.strip()
         if not text:
@@ -617,11 +624,13 @@ class CalendarAIPanel(QWidget):
         # Start streaming AI response
         self._start_streaming(text)
 
+    # پاسخ به quick question
     def _on_quick_question(self, text: str) -> None:
         """Handle a quick question chip click."""
         self._input.setPlainText(text)
         self._on_send(text)
 
+    # شروع streaming
     def _start_streaming(self, user_message: str) -> None:
         """Start a streaming AI response."""
         self._request_id = f"cal-ai-{uuid.uuid4().hex[:8]}"
@@ -638,13 +647,22 @@ class CalendarAIPanel(QWidget):
 
         context = self._build_context()
 
+        # پاسخ به قطعه
         def on_chunk(chunk: str) -> None:
             # Must update UI on the main thread
             QTimer.singleShot(0, lambda: self._handle_chunk(chunk))
 
+        # پاسخ به وضعیت
         def on_status(status: str) -> None:
             pass  # Could show status in the streaming bubble
 
+        # callback
+        # callback
+        # callback
+        # callback
+
+        # callback
+        # callback
         def callback(success: bool, result: Any) -> None:
             QTimer.singleShot(0, lambda: self._handle_stream_done(success, result))
 
@@ -657,12 +675,14 @@ class CalendarAIPanel(QWidget):
             request_id=self._request_id,
         )
 
+    # مدیریت قطعه
     def _handle_chunk(self, chunk: str) -> None:
         """Handle a streaming chunk (called on main thread via QTimer)."""
         if self._streaming_msg is not None:
             self._streaming_msg.append_text(chunk)
             self._scroll_to_bottom()
 
+    # مدیریت stream انجام‌شده
     def _handle_stream_done(self, success: bool, result: Any) -> None:
         """Handle completion of streaming (called on main thread via QTimer)."""
         if self._streaming_msg is not None:
@@ -679,12 +699,14 @@ class CalendarAIPanel(QWidget):
         self._input.setFocus()
         self._request_id = None
 
+    # پاسخ به stop
     def _on_stop(self) -> None:
         """Stop the current streaming request."""
         if self._request_id:
             self._ai.cancel_request(self._request_id)
         self._handle_stream_done(True, None)
 
+    # پاک کردن conversation
     def _clear_conversation(self) -> None:
         """Clear all messages from the conversation."""
         while self._conv_layout.count() > 1:
@@ -694,6 +716,7 @@ class CalendarAIPanel(QWidget):
         self._conversation_history.clear()
         self._streaming_msg = None
 
+    # پیمایش تبدیل به پایین
     def _scroll_to_bottom(self) -> None:
         """Scroll the conversation area to the bottom."""
         QTimer.singleShot(
@@ -705,11 +728,13 @@ class CalendarAIPanel(QWidget):
 
     # ---- Size hints ----
 
+    # اندازه پیشنهادی ویجت
     def sizeHint(self) -> QSize:
         if self._expanded:
             return QSize(320, 400)
         return QSize(40, 40)
 
+    # حداقل اندازه پیشنهادی ویجت
     def minimumSizeHint(self) -> QSize:
         if self._expanded:
             return QSize(320, 200)

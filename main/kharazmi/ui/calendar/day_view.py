@@ -1,21 +1,4 @@
-"""
-DayView — Single-day detailed view for the RASK! calendar.
-
-Renders a 24-hour timeline (like Google Calendar's day view) with:
-  - Day header showing the Persian date with gold accent for today
-  - All-day event area at the top
-  - Time ruler on the left with Shamsi/Persian digit labels
-  - Hour / half-hour / quarter-hour grid lines
-  - Current-time red line with dot (auto-updates every 60 seconds)
-  - Timed event blocks positioned via collision layout (side-by-side overlap)
-  - Drag-to-create (click empty space, drag down, snap to 15 min)
-  - Drag-to-move (handled by EventWidget, committed here)
-  - Drag-to-resize (bottom handle, handled by EventWidget, committed here)
-  - Click to select, double-click to create / activate
-  - Smooth scrolling with auto-scroll to current time on load
-
-All dates and time labels use the Shamsi calendar with Persian digits.
-"""
+# نمای روز — نمایش تک‌روزه با خط زمانی ۲۴ ساعته و رویدادها
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -75,6 +58,7 @@ class _DayGridWidget(QWidget):
     Parented inside the QScrollArea of DayView.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, day_view: "DayView", parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._day_view = day_view
@@ -93,6 +77,7 @@ class _DayGridWidget(QWidget):
 
     # ── Coordinate ↔ Time conversion ────────────────────────────────────────
 
+    # y تبدیل به datetime
     def y_to_datetime(self, y: int) -> datetime:
         """Convert a Y pixel position to a datetime, snapped to 15 min."""
         day = self._day_view._day
@@ -101,23 +86,28 @@ class _DayGridWidget(QWidget):
         snapped = max(0, min(24 * 60 - _SNAP_MIN, snapped))
         return day.to_datetime(hour=int(snapped // 60), minute=int(snapped % 60))
 
+    # datetime تبدیل به y
     def datetime_to_y(self, dt: datetime) -> int:
         """Convert a datetime to a Y pixel position within this grid."""
         day_dt = self._day_view._day.to_datetime()
         delta_minutes = (dt - day_dt).total_seconds() / 60.0
         return int(delta_minutes * _HOUR_HEIGHT / 60)
 
+    # ستون چپ
     def column_left(self) -> int:
         """X coordinate where the day column starts (after the time ruler)."""
         return _RULER_W
 
+    # ستون عرض
     def column_width(self) -> int:
         """Pixel width of the day column area."""
         return max(self.width() - _RULER_W, 100)
 
     # ── Snap helper ─────────────────────────────────────────────────────────
 
+    # snap y
     @staticmethod
+    # چسباندن به موقعیت Y
     def _snap_y(y: int) -> int:
         """Snap a Y pixel position to the nearest 15-minute grid line."""
         minutes = y * 60 / _HOUR_HEIGHT
@@ -126,6 +116,7 @@ class _DayGridWidget(QWidget):
 
     # ── Painting ────────────────────────────────────────────────────────────
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -140,6 +131,7 @@ class _DayGridWidget(QWidget):
         finally:
             painter.end()
 
+    # رسم پس‌زمینه
     def _paint_background(self, p: QPainter) -> None:
         """Fill the ruler and day-column backgrounds."""
         w, h = self.width(), self.height()
@@ -161,6 +153,7 @@ class _DayGridWidget(QWidget):
         p.setPen(sep_pen)
         p.drawLine(cl, 0, cl, h)
 
+    # رسم شبکه lines
     def _paint_grid_lines(self, p: QPainter) -> None:
         """Draw hour, half-hour, and quarter-hour horizontal lines."""
         cl = self.column_left()
@@ -199,6 +192,7 @@ class _DayGridWidget(QWidget):
                     p.setPen(pen)
                     p.drawLine(cl + 1, sub_y, cl + 24, sub_y)
 
+    # رسم خط‌کش زمان
     def _paint_time_ruler(self, p: QPainter) -> None:
         """Render hour labels (۸:۰۰, ۹:۰۰, …) on the left ruler area."""
         font = font_time_label()
@@ -215,6 +209,7 @@ class _DayGridWidget(QWidget):
             rect = QRectF(0, y - fm.height() - 2, _RULER_W - 10, fm.height())
             p.drawText(rect, Qt.AlignRight | Qt.AlignVCenter, label)
 
+    # رسم خط زمان فعلی
     def _paint_now_line(self, p: QPainter) -> None:
         """Paint the red current-time line with a circular dot."""
         day = self._day_view._day
@@ -240,6 +235,7 @@ class _DayGridWidget(QWidget):
         p.setBrush(QBrush(NowLine.DOT))
         p.drawEllipse(QRectF(cl - dot_r, now_y - dot_r, dot_r * 2, dot_r * 2))
 
+    # رسم شناور خط
     def _paint_hover_line(self, p: QPainter) -> None:
         """Draw a subtle dashed guide line at the mouse hover position."""
         if self._hover_y is None or self._drag_creating:
@@ -255,6 +251,7 @@ class _DayGridWidget(QWidget):
         p.setPen(pen)
         p.drawLine(cl, self._hover_y, cr, self._hover_y)
 
+    # رسم کشیدن ایجاد
     def _paint_drag_create(self, p: QPainter) -> None:
         """Paint the translucent selection rectangle during drag-to-create."""
         if not self._drag_creating:
@@ -305,6 +302,7 @@ class _DayGridWidget(QWidget):
 
     # ── Mouse events (drag-to-create) ──────────────────────────────────────
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             pos = event.position().toPoint()
@@ -321,6 +319,7 @@ class _DayGridWidget(QWidget):
         # Click on the ruler area — deselect only
         self._day_view._deselect_all()
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         pos = event.position().toPoint()
 
@@ -338,6 +337,7 @@ class _DayGridWidget(QWidget):
 
         self.update()
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton and self._drag_creating:
             self._drag_creating = False
@@ -360,6 +360,7 @@ class _DayGridWidget(QWidget):
 
         event.ignore()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             pos = event.position().toPoint()
@@ -374,6 +375,7 @@ class _DayGridWidget(QWidget):
                 return
         event.ignore()
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:  # noqa: N802
         self._hover_y = None
         self.update()
@@ -391,6 +393,7 @@ class _AllDayArea(QWidget):
     label aligned with the time ruler.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, day_view: "DayView", parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._day_view = day_view
@@ -401,6 +404,7 @@ class _AllDayArea(QWidget):
         self.setMouseTracking(True)
         self._update_height()
 
+    # مجموعه رویدادها
     def set_events(self, events: list[Event], colors: dict[str, str]) -> None:
         """Replace the displayed all-day events and repaint."""
         self._events = list(events)
@@ -410,6 +414,7 @@ class _AllDayArea(QWidget):
         self._update_height()
         self.update()
 
+    # بروزرسانی ارتفاع
     def _update_height(self) -> None:
         n = max(len(self._events), 1)
         rows = min(n, _ALL_DAY_MAX)
@@ -417,6 +422,7 @@ class _AllDayArea(QWidget):
 
     # ── Painting ────────────────────────────────────────────────────────────
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
@@ -475,6 +481,7 @@ class _AllDayArea(QWidget):
 
     # ── Hit testing ─────────────────────────────────────────────────────────
 
+    # chip اندیس در
     def _chip_index_at(self, pos: QPoint) -> int:
         """Return the index of the chip at *pos*, or -1 if none."""
         chip_x = _RULER_W + _ALL_DAY_PAD
@@ -488,12 +495,14 @@ class _AllDayArea(QWidget):
 
     # ── Mouse events ────────────────────────────────────────────────────────
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         old = self._hovered_idx
         self._hovered_idx = self._chip_index_at(event.position().toPoint())
         if self._hovered_idx != old:
             self.update()
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             idx = self._chip_index_at(event.position().toPoint())
@@ -506,6 +515,7 @@ class _AllDayArea(QWidget):
                 self._day_view._deselect_all()
             self.update()
 
+    # پردازش دابل‌کلیک ماوس
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if event.button() == Qt.LeftButton:
             idx = self._chip_index_at(event.position().toPoint())
@@ -514,6 +524,7 @@ class _AllDayArea(QWidget):
                 self._day_view._controller.selection.selected_event_id = eid
                 self._day_view.event_activated.emit(eid)
 
+    # پردازش خروج ماوس از ویجت
     def leaveEvent(self, event) -> None:  # noqa: N802
         self._hovered_idx = -1
         self.update()
@@ -532,18 +543,21 @@ class _DayHeader(QWidget):
     «امروز» badge appears next to the date.
     """
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._day: Optional[ShamsiDate] = None
         self._is_today: bool = False
         self.setFixedHeight(_HEADER_H)
 
+    # تنظیم روز نمایشی
     def set_day(self, shamsi: ShamsiDate) -> None:
         """Update the displayed date."""
         self._day = shamsi
         self._is_today = (shamsi == ShamsiDate.today())
         self.update()
 
+    # رسم محتوای ویجت
     def paintEvent(self, event) -> None:  # noqa: N802
         if self._day is None:
             return
@@ -648,6 +662,7 @@ class DayView(QWidget):
     create_event_requested = Signal(object)   # datetime
     event_activated = Signal(str)             # event_id
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, controller: CalendarController, parent=None) -> None:
         super().__init__(parent)
 
@@ -680,6 +695,7 @@ class DayView(QWidget):
 
     # ── UI construction ─────────────────────────────────────────────────────
 
+    # ساخت رابط کاربری
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -711,6 +727,7 @@ class DayView(QWidget):
 
         layout.addWidget(self._scroll_area, 1)
 
+    # پیمایش ناحیه stylesheet
     @staticmethod
     def _scroll_area_stylesheet() -> str:
         return (
@@ -732,6 +749,7 @@ class DayView(QWidget):
             f"}}"
         )
 
+    # اتصال سیگنال‌ها
     def _connect_signals(self) -> None:
         """Wire controller signals to this view's handlers."""
         self._controller.events_changed.connect(self._on_events_changed)
@@ -740,6 +758,7 @@ class DayView(QWidget):
 
     # ── Public API ──────────────────────────────────────────────────────────
 
+    # تنظیم روز نمایشی
     def set_day(self, shamsi: ShamsiDate) -> None:
         """Change the displayed day and reload all events."""
         if self._day == shamsi:
@@ -748,6 +767,7 @@ class DayView(QWidget):
         self._header.set_day(shamsi)
         self.refresh()
 
+    # بازخوانی و بروزرسانی داده‌ها
     def refresh(self) -> None:
         """Reload events from the model, recompute layout, and reposition widgets."""
         self._day_events = self._controller.model.day_events(self._day)
@@ -757,6 +777,7 @@ class DayView(QWidget):
         self._header.set_day(self._day)
         self._grid.update()
 
+    # پیمایش تبدیل به فعلی زمان
     def scroll_to_current_time(self) -> None:
         """Scroll the grid so the current time is visible (≈1/3 from the top)."""
         if self._day == ShamsiDate.today():
@@ -773,12 +794,14 @@ class DayView(QWidget):
 
     # ── Event layout ────────────────────────────────────────────────────────
 
+    # چیدمان رویدادها
     def _layout_events(self) -> None:
         """Compute collision-aware layout for timed events."""
         self._day_events.timed_layout = self._controller.model.compute_timed_layout(
             self._day_events.timed
         )
 
+    # ایجاد رویداد widgets
     def _create_event_widgets(self) -> None:
         """Synchronise EventWidget children with the current layout data."""
         current_ids: set[str] = set()
@@ -824,6 +847,7 @@ class DayView(QWidget):
             w.setParent(None)
             w.deleteLater()
 
+    # موقعیت رویداد widget
     def _position_event_widget(self, widget: EventWidget, layout_item: EventLayout) -> None:
         """Position an EventWidget absolutely on the grid using layout data."""
         col_left = self._grid.column_left()
@@ -848,6 +872,7 @@ class DayView(QWidget):
 
         widget.setGeometry(x, y, w, h)
 
+    # بروزرسانی همه روز ناحیه
     def _update_all_day_area(self) -> None:
         """Push all-day event data into the all-day area widget."""
         colors: dict[str, str] = {}
@@ -857,21 +882,25 @@ class DayView(QWidget):
 
     # ── Deselect helper ─────────────────────────────────────────────────────
 
+    # deselect همه
     def _deselect_all(self) -> None:
         """Clear the current event selection."""
         self._controller.selection.selected_event_id = None
 
     # ── Event click / activate ──────────────────────────────────────────────
 
+    # پاسخ به رویداد clicked
     def _on_event_clicked(self, event_id: str) -> None:
         self._controller.selection.selected_event_id = event_id
 
+    # پاسخ به رویداد دابل clicked
     def _on_event_double_clicked(self, event_id: str) -> None:
         self._controller.selection.selected_event_id = event_id
         self.event_activated.emit(event_id)
 
     # ── Drag-to-move ────────────────────────────────────────────────────────
 
+    # پاسخ به رویداد کشیدن started
     def _on_event_drag_started(self, event_id: str) -> None:
         w = self._event_widgets.get(event_id)
         if w is None:
@@ -883,6 +912,7 @@ class DayView(QWidget):
         )
         self._last_move_delta[event_id] = 0
 
+    # پاسخ به رویداد کشیدن moved
     def _on_event_drag_moved(self, event_id: str, delta_minutes: int) -> None:
         self._last_move_delta[event_id] = delta_minutes
         origin = self._move_origins.get(event_id)
@@ -895,6 +925,7 @@ class DayView(QWidget):
         if w:
             w.move(w.x(), orig_y + delta_y)
 
+    # پاسخ به رویداد کشیدن ended
     def _on_event_drag_ended(self, event_id: str) -> None:
         delta = self._last_move_delta.pop(event_id, 0)
         origin = self._move_origins.pop(event_id, None)
@@ -908,6 +939,7 @@ class DayView(QWidget):
 
     # ── Drag-to-resize ──────────────────────────────────────────────────────
 
+    # پاسخ به رویداد تغییر اندازه started
     def _on_event_resize_started(self, event_id: str) -> None:
         w = self._event_widgets.get(event_id)
         if w is None:
@@ -919,6 +951,7 @@ class DayView(QWidget):
         )
         self._last_resize_delta[event_id] = 0
 
+    # پاسخ به رویداد تغییر اندازه moved
     def _on_event_resize_moved(self, event_id: str, delta_minutes: int) -> None:
         self._last_resize_delta[event_id] = delta_minutes
         origin = self._resize_origins.get(event_id)
@@ -932,6 +965,7 @@ class DayView(QWidget):
         if w:
             w.resize(w.width(), new_h)
 
+    # پاسخ به رویداد تغییر اندازه ended
     def _on_event_resize_ended(self, event_id: str) -> None:
         delta = self._last_resize_delta.pop(event_id, 0)
         origin = self._resize_origins.pop(event_id, None)
@@ -945,10 +979,12 @@ class DayView(QWidget):
 
     # ── Controller signal handlers ──────────────────────────────────────────
 
+    # پاسخ به تغییر رویدادها
     def _on_events_changed(self) -> None:
         """External mutation — reload and reposition."""
         self.refresh()
 
+    # پاسخ به تغییر تاریخ ناوبری
     def _on_date_changed(self) -> None:
         """Navigation date changed — update the displayed day."""
         self._day = self._controller.nav_date
@@ -956,23 +992,27 @@ class DayView(QWidget):
         self.refresh()
         QTimer.singleShot(0, self.scroll_to_current_time)
 
+    # پاسخ به تغییر انتخاب
     def _on_selection_changed(self) -> None:
         """Selection changed — update widget selection rings."""
         selected_id = self._controller.selection.selected_event_id
         for eid, w in self._event_widgets.items():
             w.set_selected(eid == selected_id)
 
+    # پاسخ به now tick
     def _on_now_tick(self) -> None:
         """Periodic timer — repaint the grid to advance the now-line."""
         self._grid.update()
 
     # ── Widget resize ───────────────────────────────────────────────────────
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         # Reposition event widgets because the column width may have changed
         self._reposition_all_widgets()
 
+    # reposition همه widgets
     def _reposition_all_widgets(self) -> None:
         """Reposition every EventWidget using the current layout data."""
         for layout_item in self._day_events.timed_layout:

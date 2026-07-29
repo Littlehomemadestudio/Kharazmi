@@ -1,19 +1,4 @@
-"""
-RouteGraphView — a true workspace view of an AI-generated Route.
-
-Features:
-  - COMPLEX interconnected graph: branches, parallel paths, alternative
-    edges (dashed), fallback edges (dotted), merge edges (thick)
-  - Generous spacing — uses unlimited canvas space, no cramped nodes
-  - Pan (middle-mouse or space+drag)
-  - Zoom (Ctrl+wheel) — zooms around mouse position
-  - Drag nodes anywhere
-  - Auto-layout (L key) — DAG layout with branches spread vertically
-  - Fit-in-view (F key)
-  - Insight bubbles float as overlay boxes
-  - Node entrance animations (fade-in + scale-up, staggered)
-  - Critical path highlighted
-"""
+# نمای گراف مسیر — نمایش و ویرایش مسیرها
 from __future__ import annotations
 
 import math
@@ -54,6 +39,7 @@ Y_SPACING = 220   # vertical gap between rows in same column
 class RouteEdgeItem(QGraphicsPathItem):
     """An edge between two route-step nodes."""
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source: RouteNodeItem, target: RouteNodeItem,
                  is_critical: bool = False) -> None:
         super().__init__()
@@ -76,6 +62,7 @@ class RouteEdgeItem(QGraphicsPathItem):
         except Exception:
             pass
 
+    # بروزرسانی مسیر
     def _update_path(self) -> None:
         # Choose anchors based on relative position
         src_pos = self.source.pos()
@@ -188,6 +175,7 @@ class RouteEdgeItem(QGraphicsPathItem):
             self._label_item.setParentItem(None)
             self._label_item = None
 
+    # رسم کارت رویداد
     def paint(self, painter: QPainter, option, widget=None) -> None:
         super().paint(painter, option, widget)
         if self._arrow_poly is not None:
@@ -207,6 +195,7 @@ class RouteGraphView(QGraphicsView):
     stepDoubleClicked = Signal(object)
     insightSelected = Signal(object)
 
+    # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self._route: Optional[Route] = None
@@ -233,6 +222,7 @@ class RouteGraphView(QGraphicsView):
 
         self._build_controls()
 
+    # نسخه ساخت controls
     def _build_controls(self) -> None:
         """Floating zoom/layout controls at the bottom-right."""
         self._controls = QFrame(self)
@@ -275,21 +265,31 @@ class RouteGraphView(QGraphicsView):
 
         self._reposition_controls()
 
+    # reposition controls
+    # reposition controls
+    # reposition controls
+    # reposition controls
+
+    # reposition controls
+    # reposition controls
     def _reposition_controls(self) -> None:
         if hasattr(self, "_controls"):
             self._controls.move(self.width() - self._controls.width() - 16,
                                 self.height() - self._controls.height() - 16)
             self._controls.raise_()
 
+    # پردازش تغییر اندازه ویجت
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._reposition_controls()
 
     # ---- Loading ----
+    # تنظیم مسیر
     def set_route(self, route: Optional[Route]) -> None:
         self._route = route
         self._rebuild_scene(animate=True)
 
+    # افزودن steps و یال‌ها
     def add_steps_and_edges(self, steps: list[RouteStep], edges: list[RouteEdge],
                              insights: list[Insight] = None) -> None:
         """Add new steps/edges to the existing route graph (for 'continue working')."""
@@ -350,10 +350,12 @@ class RouteGraphView(QGraphicsView):
 
         self.update()
 
+    # افزودن insights
     def add_insights(self, insights: list[Insight]) -> None:
         """Add additional insights to the canvas."""
         self.add_steps_and_edges([], [], insights)
 
+    # محاسبه bubble موقعیت
     def _compute_bubble_position(self, insight: Insight,
                                   bubble: InsightBubble) -> QPointF:
         """Compute a position for a bubble on the canvas."""
@@ -373,6 +375,12 @@ class RouteGraphView(QGraphicsView):
         y = items_rect.top() - 100 - insight.y_hint * 80
         return QPointF(x, y)
 
+    # rebuild scene
+    # rebuild scene
+    # rebuild scene
+    # rebuild scene
+
+    # بازسازی صحنه
     def _rebuild_scene(self, animate: bool = False) -> None:
         self._scene.clear()
         self._node_items.clear()
@@ -449,6 +457,7 @@ class RouteGraphView(QGraphicsView):
         QTimer.singleShot(50, self.fit_all)
 
     # ---- Layout & analysis ----
+    # محاسبه چیدمان
     def _compute_layout(self, route: Route) -> dict[str, tuple[float, float]]:
         """
         Hierarchical DAG layout with branches spread vertically.
@@ -500,6 +509,7 @@ class RouteGraphView(QGraphicsView):
 
         # Within each rank, group by branch
         # Sort: main branch first, then alt-N, then fallback-N
+        # branch مرتب‌سازی کلید
         def branch_sort_key(sid: str) -> tuple:
             step = steps_by_id.get(sid)
             if step is None:
@@ -532,6 +542,7 @@ class RouteGraphView(QGraphicsView):
                 positions[sid] = (x, start_y + i * Y_SPACING)
         return positions
 
+    # محاسبه critical مسیر
     def _compute_critical_path(self, route: Route) -> list[str]:
         """Identify the longest dependency chain (by total duration)."""
         if not route.steps:
@@ -539,6 +550,7 @@ class RouteGraphView(QGraphicsView):
         steps_by_id = {s.id: s for s in route.steps}
         memo: dict[str, tuple[int, list[str]]] = {}
 
+        # longest مسیر ending در
         def longest_path_ending_at(sid: str) -> tuple[int, list[str]]:
             if sid in memo:
                 return memo[sid]
@@ -570,22 +582,30 @@ class RouteGraphView(QGraphicsView):
         return best_overall[1]
 
     # ---- Interaction ----
+    # پاسخ به گره clicked
     def _on_node_clicked(self, step_id: str) -> None:
         step = next((s for s in self._route.steps if s.id == step_id), None) if self._route else None
         if step is not None:
             self.stepSelected.emit(step)
 
+    # پاسخ به گره دابل clicked
     def _on_node_double_clicked(self, step_id: str) -> None:
         step = next((s for s in self._route.steps if s.id == step_id), None) if self._route else None
         if step is not None:
             self.stepDoubleClicked.emit(step)
 
+    # پاسخ به bubble clicked
     def _on_bubble_clicked(self, bubble_id: str) -> None:
         bubble = self._bubble_items.get(bubble_id)
         if bubble is not None:
             self.insightSelected.emit(bubble.insight)
 
     # ---- Pan & zoom ----
+    # wheelEvent
+    # wheelEvent
+    # wheelEvent
+
+    # پردازش رویداد چرخ ماوس
     def wheelEvent(self, event: QWheelEvent) -> None:
         angle = event.angleDelta().y()
         factor = 1.15 if angle > 0 else 1 / 1.15
@@ -596,6 +616,7 @@ class RouteGraphView(QGraphicsView):
         self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() + delta.x())
         self.verticalScrollBar().setValue(self.verticalScrollBar().value() + delta.y())
 
+    # پردازش فشردن دکمه ماوس
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and (event.modifiers() & Qt.SpaceModifier)):
@@ -611,6 +632,7 @@ class RouteGraphView(QGraphicsView):
             self._scene.clearSelection()
         super().mousePressEvent(event)
 
+    # پردازش حرکت ماوس
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._panning and self._pan_last is not None:
             delta = event.position().toPoint() - self._pan_last
@@ -625,6 +647,7 @@ class RouteGraphView(QGraphicsView):
             return
         super().mouseMoveEvent(event)
 
+    # پردازش رها کردن دکمه ماوس
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self._panning:
             self._panning = False
@@ -634,6 +657,7 @@ class RouteGraphView(QGraphicsView):
             return
         super().mouseReleaseEvent(event)
 
+    # پردازش فشردن کلید صفحه‌کلید
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         if key == Qt.Key_F:
@@ -650,6 +674,11 @@ class RouteGraphView(QGraphicsView):
             super().keyPressEvent(event)
 
     # ---- Background grid ----
+    # drawBackground
+    # drawBackground
+    # drawBackground
+
+    # رسم پس‌زمینه صحنه
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         painter.fillRect(rect, QColor(Palette.BG_DEEPEST))
         # Subtle dot grid
@@ -678,12 +707,14 @@ class RouteGraphView(QGraphicsView):
             y += 100
 
     # ---- Public actions ----
+    # fit همه
     def fit_all(self) -> None:
         items_rect = self._scene.itemsBoundingRect()
         if items_rect.isNull() or items_rect.width() < 10:
             items_rect = QRectF(-400, -300, 800, 600)
         self.fitInView(items_rect.adjusted(-80, -80, 80, 80), Qt.KeepAspectRatio)
 
+    # چیدمان خودکار
     def auto_layout(self) -> None:
         if self._route is None:
             return
