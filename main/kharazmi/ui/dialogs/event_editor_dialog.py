@@ -33,7 +33,7 @@ class EventEditorDialog(QDialog):
         super().__init__(parent)
         self.evt = event
         self.store = store
-        self.setWindowTitle("Edit Event" if event else "New Event")
+        self.setWindowTitle("ویرایش رویداد" if event else "رویداد جدید")
         self.setMinimumSize(620, 720)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -70,15 +70,15 @@ class EventEditorDialog(QDialog):
         # Buttons
         button_row = QHBoxLayout()
         if event is not None:
-            delete_btn = QPushButton("Delete")
+            delete_btn = QPushButton("حذف")
             delete_btn.setProperty("variant", "danger")
             delete_btn.clicked.connect(self._on_delete)
             button_row.addWidget(delete_btn)
         button_row.addStretch()
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("لغو")
         cancel_btn.clicked.connect(self.reject)
         button_row.addWidget(cancel_btn)
-        save_btn = QPushButton("Save")
+        save_btn = QPushButton("ذخیره")
         save_btn.setProperty("variant", "primary")
         save_btn.clicked.connect(self._on_save)
         button_row.addWidget(save_btn)
@@ -102,7 +102,7 @@ class EventEditorDialog(QDialog):
 
     # ساخت سربرگ
     def _build_header(self) -> None:
-        title = QLabel("EVENT EDITOR")
+        title = QLabel("ویرایشگر رویداد")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px;"
@@ -111,22 +111,22 @@ class EventEditorDialog(QDialog):
 
     # ساخت گروه اطلاعات پایه
     def _build_basic_group(self) -> None:
-        group = QGroupBox("Basic")
+        group = QGroupBox("پایه")
         form = QFormLayout(group)
         form.setSpacing(6)
 
         self._title_edit = QLineEdit()
-        self._title_edit.setPlaceholderText("Add title")
-        form.addRow("Title", self._title_edit)
+        self._title_edit.setPlaceholderText("عنوان را وارد کنید")
+        form.addRow("عنوان", self._title_edit)
 
         self._location_edit = QLineEdit()
-        self._location_edit.setPlaceholderText("Add location")
-        form.addRow("Location", self._location_edit)
+        self._location_edit.setPlaceholderText("مکان را وارد کنید")
+        form.addRow("مکان", self._location_edit)
 
         self._desc_edit = QTextEdit()
         self._desc_edit.setFixedHeight(80)
-        self._desc_edit.setPlaceholderText("Add description")
-        form.addRow("Description", self._desc_edit)
+        self._desc_edit.setPlaceholderText("توضیحات را وارد کنید")
+        form.addRow("توضیحات", self._desc_edit)
 
         # Calendar selector
         self._calendar_combo = QComboBox()
@@ -147,11 +147,11 @@ class EventEditorDialog(QDialog):
                 cal = self.store.get_calendar(self.evt.calendar_id)
                 if cal:
                     self._calendar_combo.addItem(cal.name + " (read-only)", cal.id)
-        form.addRow("Calendar", self._calendar_combo)
+        form.addRow("تقویم", self._calendar_combo)
 
         # Color override
         color_row = QHBoxLayout()
-        self._color_checkbox = QCheckBox("Custom color:")
+        self._color_checkbox = QCheckBox("رنگ سفارشی:")
         self._color_checkbox.toggled.connect(self._on_color_toggle)
         color_row.addWidget(self._color_checkbox)
         self._color_btn = QPushButton()
@@ -170,12 +170,12 @@ class EventEditorDialog(QDialog):
 
     # ساخت گروه زمان
     def _build_time_group(self) -> None:
-        group = QGroupBox("Time")
+        group = QGroupBox("زمان")
         form = QFormLayout(group)
         form.setSpacing(6)
 
         # All-day checkbox
-        self._all_day = QCheckBox("All day")
+        self._all_day = QCheckBox("کل روز")
         self._all_day.toggled.connect(self._on_all_day_toggle)
         form.addRow("", self._all_day)
 
@@ -183,16 +183,16 @@ class EventEditorDialog(QDialog):
         self._start_dt = QDateTimeEdit()
         self._start_dt.setCalendarPopup(True)
         self._start_dt.setDisplayFormat("yyyy-MM-dd HH:mm")
-        form.addRow("Starts", self._start_dt)
+        form.addRow("شروع", self._start_dt)
 
         # End
         self._end_dt = QDateTimeEdit()
         self._end_dt.setCalendarPopup(True)
         self._end_dt.setDisplayFormat("yyyy-MM-dd HH:mm")
-        form.addRow("Ends", self._end_dt)
+        form.addRow("پایان", self._end_dt)
 
         # Timezone label (informational)
-        tz = QLabel("Time zone: local")
+        tz = QLabel("منطقه زمانی: محلی")
         tz.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 11px;")
         form.addRow("", tz)
 
@@ -200,47 +200,47 @@ class EventEditorDialog(QDialog):
 
     # ساخت گروه دسته‌بندی
     def _build_classification_group(self) -> None:
-        group = QGroupBox("Classification")
+        group = QGroupBox("دسته‌بندی")
         form = QFormLayout(group)
 
         # Event type
         self._type_combo = QComboBox()
         for t in EventType:
             self._type_combo.addItem(t.value.replace("_", " ").title(), t)
-        form.addRow("Type", self._type_combo)
+        form.addRow("نوع", self._type_combo)
 
         # Completed checkbox (for tasks)
-        self._completed_check = QCheckBox("Completed")
+        self._completed_check = QCheckBox("تکمیل شده")
         self._completed_check.setStyleSheet(f"""
             QCheckBox {{ color: {Palette.TEXT_PRIMARY}; spacing: 8px; }}
             QCheckBox::indicator {{ width: 18px; height: 18px; border: 2px solid {Palette.BORDER_STRONG}; border-radius: 4px; background: {Palette.BG_TERTIARY}; }}
             QCheckBox::indicator:checked {{ background: #5A8A5A; border: 2px solid #5A8A5A; }}
         """)
-        form.addRow("Done", self._completed_check)
+        form.addRow("انجام شده", self._completed_check)
 
         # Availability
         self._avail_combo = QComboBox()
         for a in Availability:
             self._avail_combo.addItem(a.value.replace("_", " ").title(), a)
-        form.addRow("Availability", self._avail_combo)
+        form.addRow("دسترسی‌پذیری", self._avail_combo)
 
         # Status
         self._status_combo = QComboBox()
         for s in EventStatus:
             self._status_combo.addItem(s.value.title(), s)
-        form.addRow("Status", self._status_combo)
+        form.addRow("وضعیت", self._status_combo)
 
         self._layout.addWidget(group)
 
     # ساخت گروه تکرار
     def _build_recurrence_group(self) -> None:
-        group = QGroupBox("Recurrence")
+        group = QGroupBox("تکرار")
         layout = QVBoxLayout(group)
 
         # Preset radio buttons
-        self._recur_none = QRadioButton("One-time (no repeat)")
-        self._recur_preset = QRadioButton("Preset:")
-        self._recur_custom = QRadioButton("Custom")
+        self._recur_none = QRadioButton("یک‌باره (بدون تکرار)")
+        self._recur_preset = QRadioButton("پیش‌فرض:")
+        self._recur_custom = QRadioButton("سفارشی")
         self._recur_group = QButtonGroup(self)
         self._recur_group.addButton(self._recur_none)
         self._recur_group.addButton(self._recur_preset)
@@ -263,22 +263,22 @@ class EventEditorDialog(QDialog):
         self._custom_freq = QComboBox()
         for f in RecurrenceFrequency:
             self._custom_freq.addItem(f.value.title(), f)
-        custom_row.addRow("Frequency", self._custom_freq)
+        custom_row.addRow("فرکانس", self._custom_freq)
         self._custom_interval = QSpinBox()
         self._custom_interval.setRange(1, 99)
         self._custom_interval.setValue(1)
-        custom_row.addRow("Every", self._custom_interval)
+        custom_row.addRow("هر", self._custom_interval)
         self._custom_count = QSpinBox()
         self._custom_count.setRange(0, 999)
-        self._custom_count.setSpecialValueText("(no limit)")
-        custom_row.addRow("Count (0 = forever)", self._custom_count)
+        self._custom_count.setSpecialValueText("(بدون محدودیت)")
+        custom_row.addRow("تعداد (۰ = بی‌نهایت)", self._custom_count)
         layout.addLayout(custom_row)
 
         self._layout.addWidget(group)
 
     # ساخت گروه شرکت‌کنندگان
     def _build_attendees_group(self) -> None:
-        group = QGroupBox("Attendees")
+        group = QGroupBox("شرکت‌کنندگان")
         layout = QVBoxLayout(group)
 
         self._attendees_list = QListWidget()
@@ -287,15 +287,15 @@ class EventEditorDialog(QDialog):
 
         add_row = QHBoxLayout()
         self._att_name_edit = QLineEdit()
-        self._att_name_edit.setPlaceholderText("Name")
+        self._att_name_edit.setPlaceholderText("نام")
         add_row.addWidget(self._att_name_edit)
         self._att_email_edit = QLineEdit()
-        self._att_email_edit.setPlaceholderText("Email (optional)")
+        self._att_email_edit.setPlaceholderText("ایمیل (اختیاری)")
         add_row.addWidget(self._att_email_edit)
-        add_btn = QPushButton("+ Add")
+        add_btn = QPushButton("+ افزودن")
         add_btn.clicked.connect(self._add_attendee)
         add_row.addWidget(add_btn)
-        remove_btn = QPushButton("Remove")
+        remove_btn = QPushButton("حذف")
         remove_btn.clicked.connect(self._remove_attendee)
         add_row.addWidget(remove_btn)
         layout.addLayout(add_row)
@@ -304,7 +304,7 @@ class EventEditorDialog(QDialog):
 
     # ساخت گروه یادآوری‌ها
     def _build_reminders_group(self) -> None:
-        group = QGroupBox("Reminders")
+        group = QGroupBox("یادآوری‌ها")
         layout = QVBoxLayout(group)
 
         self._reminders_list = QListWidget()
@@ -315,16 +315,16 @@ class EventEditorDialog(QDialog):
         self._reminder_minutes = QSpinBox()
         self._reminder_minutes.setRange(0, 40320)  # up to 4 weeks
         self._reminder_minutes.setValue(30)
-        add_row.addWidget(QLabel("Minutes before:"))
+        add_row.addWidget(QLabel("دقیقه قبل:"))
         add_row.addWidget(self._reminder_minutes)
         self._reminder_method = QComboBox()
-        self._reminder_method.addItem("Popup", ReminderMethod.POPUP)
-        self._reminder_method.addItem("Email", ReminderMethod.EMAIL)
+        self._reminder_method.addItem("پنجره بازشو", ReminderMethod.POPUP)
+        self._reminder_method.addItem("ایمیل", ReminderMethod.EMAIL)
         add_row.addWidget(self._reminder_method)
-        add_btn = QPushButton("+ Add")
+        add_btn = QPushButton("+ افزودن")
         add_btn.clicked.connect(self._add_reminder)
         add_row.addWidget(add_btn)
-        remove_btn = QPushButton("Remove")
+        remove_btn = QPushButton("حذف")
         remove_btn.clicked.connect(self._remove_reminder)
         add_row.addWidget(remove_btn)
         layout.addLayout(add_row)
@@ -333,22 +333,22 @@ class EventEditorDialog(QDialog):
 
     # ساخت گروه موارد اضافی
     def _build_extras_group(self) -> None:
-        group = QGroupBox("Meeting & Attachments")
+        group = QGroupBox("جلسه و پیوست‌ها")
         form = QFormLayout(group)
 
         self._meeting_link = QLineEdit()
         self._meeting_link.setPlaceholderText("https://meet.google.com/...")
-        form.addRow("Meeting link", self._meeting_link)
+        form.addRow("لینک جلسه", self._meeting_link)
 
         self._attachments_list = QListWidget()
         self._attachments_list.setStyleSheet(f"QListWidget {{ background-color: {Palette.BG_TERTIARY}; border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 4px; }}")
-        form.addRow("Attachments", self._attachments_list)
+        form.addRow("پیوست‌ها", self._attachments_list)
 
         att_row = QHBoxLayout()
-        add_att = QPushButton("+ Add file...")
+        add_att = QPushButton("+ افزودن فایل...")
         add_att.clicked.connect(self._add_attachment)
         att_row.addWidget(add_att)
-        rm_att = QPushButton("Remove")
+        rm_att = QPushButton("حذف")
         rm_att.clicked.connect(self._remove_attachment)
         att_row.addWidget(rm_att)
         att_row.addStretch()
@@ -485,7 +485,7 @@ class EventEditorDialog(QDialog):
 
     # افزودن attachment
     def _add_attachment(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Add Attachment")
+        path, _ = QFileDialog.getOpenFileName(self, "افزودن پیوست")
         if path:
             self._attachments_list.addItem(path)
 
@@ -499,12 +499,12 @@ class EventEditorDialog(QDialog):
     def _on_save(self) -> None:
         title = self._title_edit.text().strip()
         if not title:
-            QMessageBox.warning(self, "Required", "Title is required.")
+            QMessageBox.warning(self, "الزامی", "عنوان الزامی است.")
             return
 
         cal_id = self._calendar_combo.currentData()
         if cal_id is None:
-            QMessageBox.warning(self, "Required", "Calendar is required.")
+            QMessageBox.warning(self, "الزامی", "تقویم الزامی است.")
             return
 
         # Prevent calendar_id drift if the original calendar isn't in the combo
@@ -516,7 +516,7 @@ class EventEditorDialog(QDialog):
         start = self._start_dt.dateTime().toPython()
         end = self._end_dt.dateTime().toPython()
         if end < start:
-            QMessageBox.warning(self, "Time", "End must be after start.")
+            QMessageBox.warning(self, "زمان", "پایان باید بعد از شروع باشد.")
             return
 
         # Build recurrence rule
@@ -600,8 +600,8 @@ class EventEditorDialog(QDialog):
         if self.evt is None:
             return
         ret = QMessageBox.question(
-            self, "Delete Event",
-            f"Delete '{self.evt.title}'?\nThis cannot be undone.",
+            self, "حذف رویداد",
+            f"'{self.evt.title}' حذف شود؟\nاین عمل قابل بازگشت نیست.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if ret == QMessageBox.Yes:

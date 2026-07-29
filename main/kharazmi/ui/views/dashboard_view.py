@@ -49,7 +49,7 @@ class _HeroWidget(QWidget):
     def __init__(self, today: ShamsiDate, parent=None) -> None:
         super().__init__(parent)
         self._today = today
-        self.setFixedHeight(340)
+        self.setFixedHeight(400)
         self._tick = 0
         self._timer = QTimer(self)
         self._timer.setInterval(50)
@@ -82,7 +82,7 @@ class _HeroWidget(QWidget):
 
             # ── "امروز" badge ──
             badge_text = "امروز"
-            badge_font = QFont("Segoe UI", 14)
+            badge_font = QFont("Segoe UI", 16)
             p.setFont(badge_font)
             fm = QFontMetrics(badge_font)
             badge_w = fm.horizontalAdvance(badge_text) + 24
@@ -115,35 +115,35 @@ class _HeroWidget(QWidget):
             weekday_text = self._today.weekday_fa
 
             # Big centered day number with gold gradient
-            day_font = QFont("Segoe UI", 90, QFont.Bold)
+            day_font = QFont("Segoe UI", 100, QFont.Bold)
             p.setFont(day_font)
 
-            day_grad = QLinearGradient(0, 50, 0, 180)
+            day_grad = QLinearGradient(0, 50, 0, 200)
             day_grad.setColorAt(0, QColor(245, 200, 66))
             day_grad.setColorAt(0.5, QColor(212, 175, 55))
             day_grad.setColorAt(1, QColor(140, 112, 18))
             p.setPen(QPen(QBrush(day_grad), 1))
-            p.drawText(QRectF(0, 50, w, 130), Qt.AlignHCenter | Qt.AlignTop, day_text)
+            p.drawText(QRectF(0, 50, w, 150), Qt.AlignHCenter | Qt.AlignTop, day_text)
 
             # Month name centered below day
-            month_font = QFont("Segoe UI", 34, QFont.Bold)
+            month_font = QFont("Segoe UI", 38, QFont.Bold)
             p.setFont(month_font)
             p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-            p.drawText(QRectF(0, 180, w, 48), Qt.AlignHCenter, month_text)
+            p.drawText(QRectF(0, 200, w, 52), Qt.AlignHCenter, month_text)
 
             # Year + Weekday on one line
-            year_week_font = QFont("Segoe UI", 16)
+            year_week_font = QFont("Segoe UI", 18)
             p.setFont(year_week_font)
             year_weekday = f"{year_text}  ·  {weekday_text}"
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            p.drawText(QRectF(0, 230, w, 28), Qt.AlignHCenter, year_weekday)
+            p.drawText(QRectF(0, 255, w, 30), Qt.AlignHCenter, year_weekday)
 
             # ── Greeting ──
             greeting = _greeting_fa()
-            greet_font = QFont("Segoe UI", 15)
+            greet_font = QFont("Segoe UI", 17)
             p.setFont(greet_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(QRectF(0, 260, w, 28), Qt.AlignHCenter, greeting)
+            p.drawText(QRectF(0, 288, w, 30), Qt.AlignHCenter, greeting)
 
             # ── Subtle divider ──
             div_grad = QLinearGradient(0, 0, w, 0)
@@ -277,13 +277,13 @@ class _StatCard(QWidget):
 
             # ── Number (Persian digits) ──
             num_text = to_persian_digits(str(self._current))
-            num_font = QFont("Segoe UI", 34, QFont.Bold)
+            num_font = QFont("Segoe UI", 42, QFont.Bold)
             p.setFont(num_font)
             p.setPen(QPen(QColor(Palette.TEXT_PRIMARY)))
             p.drawText(QRectF(20, 22, 150, 56), Qt.AlignLeft | Qt.AlignVCenter, num_text)
 
             # ── Label ──
-            label_font = QFont("Segoe UI", 14)
+            label_font = QFont("Segoe UI", 16)
             p.setFont(label_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
             p.drawText(QRectF(20, 90, 170, 28), Qt.AlignLeft | Qt.AlignVCenter, self._label)
@@ -622,7 +622,7 @@ class DashboardView(QWidget):
 
         for label, callback, color in actions:
             btn = QPushButton(label)
-            btn.setFont(QFont("Segoe UI", 15, QFont.Bold))
+            btn.setFont(QFont("Segoe UI", 16, QFont.Bold))
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFixedHeight(56)
             btn.setMinimumWidth(140)
@@ -681,7 +681,7 @@ class DashboardView(QWidget):
         else:
             # Empty state
             empty = QLabel("هیچ رویدادی در هفته آینده ندارید")
-            empty.setFont(QFont("Segoe UI", 14))
+            empty.setFont(QFont("Segoe UI", 16))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet(
                 f"color: {Palette.TEXT_TERTIARY}; background: transparent; padding: 16px 0;"
@@ -741,7 +741,7 @@ class DashboardView(QWidget):
             "برنامه‌ریزی روزانه خود را با هوش مصنوعی در ۳۰ ثانیه انجام دهید "
             "— اهداف را به گام‌های عملی تقسیم کنید."
         )
-        tip_text.setFont(QFont("Segoe UI", 14))
+        tip_text.setFont(QFont("Segoe UI", 16))
         tip_text.setWordWrap(True)
         tip_text.setAlignment(Qt.AlignRight)
         tip_text.setStyleSheet(
@@ -762,3 +762,8 @@ class DashboardView(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._particles.setGeometry(self.rect())
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        self.update()

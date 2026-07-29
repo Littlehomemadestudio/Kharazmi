@@ -68,7 +68,7 @@ class StepDetailsPopup(QFrame):
             f"font-weight: bold; background: transparent; border: none;"
         )
         header_layout.addWidget(icon)
-        title = QLabel(f"STEP {step.id.upper()} — DETAILS")
+        title = QLabel(f"گام {step.id.upper()} — جزئیات")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 1.5px; "
@@ -105,13 +105,13 @@ class StepDetailsPopup(QFrame):
         content_layout.setSpacing(6)
 
         # Title editor
-        content_layout.addWidget(self._make_label("TITLE"))
+        content_layout.addWidget(self._make_label("عنوان"))
         self._title_edit = QLineEdit(step.title)
         self._title_edit.setStyleSheet(self._input_style())
         content_layout.addWidget(self._title_edit)
 
         # Description editor
-        content_layout.addWidget(self._make_label("DESCRIPTION"))
+        content_layout.addWidget(self._make_label("توضیحات"))
         self._desc_edit = QTextEdit()
         self._desc_edit.setPlainText(step.description)
         self._desc_edit.setFixedHeight(70)
@@ -121,9 +121,9 @@ class StepDetailsPopup(QFrame):
 
         # Duration + success probability row
         row1 = QHBoxLayout()
-        row1.addWidget(self._make_label("DURATION (MIN)"))
+        row1.addWidget(self._make_label("مدت (دقیقه)"))
         row1.addStretch()
-        row1.addWidget(self._make_label("SUCCESS (%)"))
+        row1.addWidget(self._make_label("موفقیت (٪)"))
         content_layout.addLayout(row1)
         row2 = QHBoxLayout()
         self._dur_spin = QSpinBox()
@@ -143,13 +143,13 @@ class StepDetailsPopup(QFrame):
 
         # Risk + branch row
         row3 = QHBoxLayout()
-        row3.addWidget(self._make_label("RISK LEVEL"))
+        row3.addWidget(self._make_label("سطح ریسک"))
         row3.addStretch()
-        row3.addWidget(self._make_label("BRANCH"))
+        row3.addWidget(self._make_label("شاخه"))
         content_layout.addLayout(row3)
         row4 = QHBoxLayout()
         self._risk_combo = QComboBox()
-        for r in ["low", "medium", "high", "severe"]:
+        for r in ["کم", "متوسط", "زیاد", "بسیار زیاد"]:
             self._risk_combo.addItem(r)
         self._risk_combo.setCurrentText(step.risk_level)
         self._risk_combo.setStyleSheet(self._input_style())
@@ -161,13 +161,13 @@ class StepDetailsPopup(QFrame):
         content_layout.addLayout(row4)
 
         # Location
-        content_layout.addWidget(self._make_label("LOCATION"))
+        content_layout.addWidget(self._make_label("مکان"))
         self._loc_edit = QLineEdit(step.location)
         self._loc_edit.setStyleSheet(self._input_style())
         content_layout.addWidget(self._loc_edit)
 
         # Fallback
-        content_layout.addWidget(self._make_label("FALLBACK (if this step fails)"))
+        content_layout.addWidget(self._make_label("جایگزین (اگر این گام شکست خورد)"))
         self._fb_edit = QTextEdit()
         self._fb_edit.setPlainText(step.fallback)
         self._fb_edit.setFixedHeight(45)
@@ -177,7 +177,7 @@ class StepDetailsPopup(QFrame):
 
         # Sub-goals (read-only display)
         if step.sub_goals:
-            content_layout.addWidget(self._make_label("SUB-GOALS"))
+            content_layout.addWidget(self._make_label("زیرهدف‌ها"))
             for sg in step.sub_goals:
                 sg_label = QLabel(f"  ◆ {sg}")
                 sg_label.setStyleSheet(
@@ -189,7 +189,7 @@ class StepDetailsPopup(QFrame):
 
         # Dependencies (read-only)
         if step.depends_on:
-            content_layout.addWidget(self._make_label("DEPENDS ON"))
+            content_layout.addWidget(self._make_label("وابسته به"))
             dep_label = QLabel(", ".join(step.depends_on))
             dep_label.setStyleSheet(
                 f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
@@ -200,7 +200,7 @@ class StepDetailsPopup(QFrame):
             content_layout.addWidget(dep_label)
 
         # Cost estimate
-        content_layout.addWidget(self._make_label("COST ESTIMATE"))
+        content_layout.addWidget(self._make_label("برآورد هزینه"))
         self._cost_edit = QLineEdit(step.cost_estimate)
         self._cost_edit.setStyleSheet(self._input_style())
         content_layout.addWidget(self._cost_edit)
@@ -220,7 +220,7 @@ class StepDetailsPopup(QFrame):
         btn_layout.setSpacing(8)
 
         # Full Edit button (opens modal dialog)
-        full_edit_btn = QPushButton("✏️ Full Edit")
+        full_edit_btn = QPushButton("✏️ ویرایش کامل")
         full_edit_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -242,7 +242,7 @@ class StepDetailsPopup(QFrame):
         btn_layout.addStretch()
 
         # Cancel button
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("لغو")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -260,7 +260,7 @@ class StepDetailsPopup(QFrame):
         btn_layout.addWidget(cancel_btn)
 
         # Save button
-        save_btn = QPushButton("💾 Save")
+        save_btn = QPushButton("💾 ذخیره")
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.GOLD_PRIMARY};

@@ -322,7 +322,7 @@ class MultipleChoiceQuestionWidget(QFrame):
         custom_row.addWidget(custom_label)
 
         self._custom_input = QLineEdit()
-        self._custom_input.setPlaceholderText("Type your own answer and press Enter…")
+        self._custom_input.setPlaceholderText("پاسخ خود را بنویسید و Enter بزنید…")
         self._custom_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {Palette.BG_ELEVATED};
@@ -340,7 +340,7 @@ class MultipleChoiceQuestionWidget(QFrame):
         custom_row.addWidget(self._custom_input, stretch=1)
 
         submit_btn = QPushButton("→")
-        submit_btn.setToolTip("Submit custom answer")
+        submit_btn.setToolTip("ثبت پاسخ سفارشی")
         submit_btn.setFixedSize(32, 32)
         submit_btn.setStyleSheet(f"""
             QPushButton {{

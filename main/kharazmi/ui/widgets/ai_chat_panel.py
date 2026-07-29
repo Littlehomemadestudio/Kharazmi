@@ -107,7 +107,7 @@ class ChatMessage(QFrame):
             bg_color = Palette.BG_SELECTED
             border_color = Palette.BORDER_NORMAL
             icon = "○"
-            name = "You"
+            name = "شما"
             icon_color = Palette.TEXT_SECONDARY
 
         self.setStyleSheet(f"""
@@ -207,7 +207,7 @@ class ChatInput(QPlainTextEdit):
     # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
-        self.setPlaceholderText("Ask Rask about this route…  (Enter to send, Shift+Enter for newline)")
+        self.setPlaceholderText("از رَسک درباره این مسیر بپرسید…  (Enter برای ارسال، Shift+Enter برای خط جدید)")
         self.setStyleSheet(f"""
             QPlainTextEdit {{
                 background-color: {Palette.BG_TERTIARY};
@@ -274,7 +274,7 @@ class AIChatPanel(QWidget):
             f"font-weight: bold; background: transparent; border: none;"
         )
         header_layout.addWidget(icon)
-        title = QLabel("RASK ASSISTANT")
+        title = QLabel("دستیار رَسک")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px; "
@@ -285,7 +285,7 @@ class AIChatPanel(QWidget):
 
         # Clear button
         clear_btn = QToolButton()
-        clear_btn.setText("Clear")
+        clear_btn.setText("پاک کردن")
         clear_btn.setStyleSheet(f"""
             QToolButton {{
                 background: transparent;
@@ -335,7 +335,7 @@ class AIChatPanel(QWidget):
         action_row = QHBoxLayout()
         action_row.addStretch()
 
-        self._stop_btn = QPushButton("■ Stop")
+        self._stop_btn = QPushButton("■ توقف")
         self._stop_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.STATUS_BLOCKED};
@@ -354,7 +354,7 @@ class AIChatPanel(QWidget):
         self._stop_btn.hide()
         action_row.addWidget(self._stop_btn)
 
-        self._send_btn = QPushButton("➤ Send")
+        self._send_btn = QPushButton("➤ ارسال")
         self._send_btn.setProperty("variant", "primary")
         self._send_btn.clicked.connect(lambda: self._on_send(self._input.toPlainText()))
         action_row.addWidget(self._send_btn)
@@ -393,7 +393,7 @@ class AIChatPanel(QWidget):
         return msg
 
     # شروع وضعیت box
-    def start_status_box(self, initial_text: str = "Working…") -> StatusBox:
+    def start_status_box(self, initial_text: str = "در حال کار…") -> StatusBox:
         """Show a status box (used during structured operations like route generation).
         Shows meaningful status text instead of raw JSON."""
         box = StatusBox(initial_text)

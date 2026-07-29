@@ -108,7 +108,7 @@ class JournalEntryCard(QFrame):
             _parse_iso(entry.timestamp), include_time=True
         ) if entry.timestamp else "—")
         ts_label.setStyleSheet(
-            f"color: {Palette.TEXT_SECONDARY}; font-size: 10px; "
+            f"color: {Palette.TEXT_SECONDARY}; font-size: 15px; "
             f"font-family: 'JetBrains Mono', monospace;"
         )
         header.addWidget(ts_label)
@@ -117,9 +117,9 @@ class JournalEntryCard(QFrame):
         if entry.route:
             pct = entry.route.overall_success_probability
             pct_color = Palette.GOLD_BRIGHT if pct > 0.7 else (Palette.GOLD_PRIMARY if pct > 0.4 else Palette.STATUS_BLOCKED)
-            pct_label = QLabel(f"{pct:.0%} success")
+            pct_label = QLabel(f"{pct:.0%} موفقیت")
             pct_label.setStyleSheet(
-                f"color: {pct_color}; font-size: 11px; font-weight: bold; "
+                f"color: {pct_color}; font-size: 16px; font-weight: bold; "
                 f"font-family: 'JetBrains Mono', monospace; "
                 f"background-color: {Palette.BG_DEEPEST}; padding: 2px 8px; "
                 f"border-radius: 8px;"
@@ -130,7 +130,7 @@ class JournalEntryCard(QFrame):
         # Goal
         goal_label = QLabel(entry.user_goal)
         goal_label.setStyleSheet(
-            f"color: {Palette.TEXT_PRIMARY}; font-size: 13px; font-weight: bold;"
+            f"color: {Palette.TEXT_PRIMARY}; font-size: 17px; font-weight: bold;"
         )
         goal_label.setWordWrap(True)
         layout.addWidget(goal_label)
@@ -138,10 +138,10 @@ class JournalEntryCard(QFrame):
         # Step count
         if entry.route:
             steps_label = QLabel(
-                f"{len(entry.route.steps)} steps · {entry.route.total_duration_minutes} min total"
+                f"{len(entry.route.steps)} مرحله · {entry.route.total_duration_minutes} دقیقه مجموع"
             )
             steps_label.setStyleSheet(
-                f"color: {Palette.TEXT_SECONDARY}; font-size: 11px;"
+                f"color: {Palette.TEXT_SECONDARY}; font-size: 16px;"
             )
             layout.addWidget(steps_label)
 
@@ -149,7 +149,7 @@ class JournalEntryCard(QFrame):
         if entry.notes:
             notes_label = QLabel(f"📝 {entry.notes}")
             notes_label.setStyleSheet(
-                f"color: {Palette.TEXT_SECONDARY}; font-size: 11px; font-style: italic;"
+                f"color: {Palette.TEXT_SECONDARY}; font-size: 16px; font-style: italic;"
             )
             notes_label.setWordWrap(True)
             layout.addWidget(notes_label)
@@ -157,18 +157,18 @@ class JournalEntryCard(QFrame):
         # Action row
         actions = QHBoxLayout()
         actions.addStretch()
-        edit_btn = QPushButton("Edit notes")
+        edit_btn = QPushButton("ویرایش یادداشت")
         edit_btn.setStyleSheet(
             f"background: transparent; color: {Palette.TEXT_SECONDARY}; "
-            f"border: none; padding: 2px 8px; font-size: 10px;"
+            f"border: none; padding: 2px 8px; font-size: 15px;"
         )
         edit_btn.setCursor(Qt.PointingHandCursor)
         edit_btn.clicked.connect(lambda: self.editNotesRequested.emit(entry.id))
         actions.addWidget(edit_btn)
-        del_btn = QPushButton("Delete")
+        del_btn = QPushButton("حذف")
         del_btn.setStyleSheet(
             f"background: transparent; color: {Palette.STATUS_BLOCKED}; "
-            f"border: none; padding: 2px 8px; font-size: 10px;"
+            f"border: none; padding: 2px 8px; font-size: 15px;"
         )
         del_btn.setCursor(Qt.PointingHandCursor)
         del_btn.clicked.connect(lambda: self.deleteRequested.emit(entry.id))
@@ -214,9 +214,9 @@ class JournalView(QWidget):
         layout.setSpacing(12)
 
         # Header
-        title = QLabel("JOURNAL")
+        title = QLabel("یادداشت‌ها")
         title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 22px; "
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 28px; "
             f"font-weight: bold; letter-spacing: 2px;"
         )
         layout.addWidget(title)
@@ -224,7 +224,7 @@ class JournalView(QWidget):
         self._subtitle = QLabel(
             "هر هدفی که با رَسک برنامه‌ریزی کنید اینجا ذخیره می‌شود — تاریخچه کامل مسیرهای ساخته‌شده با هوش مصنوعی."
         )
-        self._subtitle.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 12px;")
+        self._subtitle.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 16px;")
         self._subtitle.setWordWrap(True)
         layout.addWidget(self._subtitle)
 
@@ -238,7 +238,7 @@ class JournalView(QWidget):
                 border: 1px solid {Palette.BORDER_NORMAL};
                 border-radius: 4px;
                 padding: 8px 14px;
-                font-size: 12px;
+                font-size: 16px;
             }}
             QLineEdit:focus {{
                 border: 1px solid {Palette.GOLD_PRIMARY};
@@ -303,7 +303,7 @@ class JournalView(QWidget):
                 empty_title.setAlignment(Qt.AlignCenter)
                 empty_title.setStyleSheet(f"""
                     color: {Palette.TEXT_PRIMARY};
-                    font-size: 18px;
+                    font-size: 22px;
                     font-weight: bold;
                 """)
                 empty_title_layout = QHBoxLayout()
@@ -319,7 +319,7 @@ class JournalView(QWidget):
                 empty_desc.setMaximumWidth(400)
                 empty_desc.setStyleSheet(f"""
                     color: {Palette.TEXT_SECONDARY};
-                    font-size: 13px;
+                    font-size: 17px;
                 """)
                 desc_layout = QHBoxLayout()
                 desc_layout.addStretch()
@@ -340,7 +340,7 @@ class JournalView(QWidget):
                         border: 1px solid {Palette.GOLD_DEEP};
                         border-radius: 8px;
                         padding: 12px 28px;
-                        font-size: 14px;
+                        font-size: 18px;
                         font-weight: bold;
                     }}
                     QPushButton:hover {{
@@ -363,7 +363,7 @@ class JournalView(QWidget):
                 empty_label.setAlignment(Qt.AlignCenter)
                 empty_label.setStyleSheet(f"""
                     color: {Palette.TEXT_SECONDARY};
-                    font-size: 14px;
+                    font-size: 18px;
                     padding: 40px;
                 """)
                 label_layout = QHBoxLayout()
@@ -407,8 +407,8 @@ class JournalView(QWidget):
     # پاسخ به حذف
     def _on_delete(self, entry_id: str) -> None:
         reply = QMessageBox.question(
-            self, "Delete Entry",
-            "Delete this journal entry? This cannot be undone.",
+            self, "حذف یادداشت",
+            "این یادداشت حذف شود؟ این عمل قابل بازگشت نیست.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if reply == QMessageBox.Yes:
@@ -421,10 +421,15 @@ class JournalView(QWidget):
         if entry is None:
             return
         text, ok = QInputDialog.getMultiLineText(
-            self, "Edit Notes",
-            "Notes for this journal entry:",
+            self, "ویرایش یادداشت",
+            "یادداشت‌های این ورودی:",
             entry.notes,
         )
         if ok:
             self.journal.update_notes(entry_id, text)
             self.refresh()
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        self.refresh()

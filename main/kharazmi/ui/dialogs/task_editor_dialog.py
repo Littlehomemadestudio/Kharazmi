@@ -28,7 +28,7 @@ class TaskEditorDialog(QDialog):
         super().__init__(parent)
         self.task = task
         self.task_service = task_service
-        self.setWindowTitle("Edit Task" if task else "New Task")
+        self.setWindowTitle("ویرایش وظیفه" if task else "وظیفه جدید")
         self.setMinimumWidth(520)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -36,7 +36,7 @@ class TaskEditorDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title_label = QLabel("TASK EDITOR")
+        title_label = QLabel("ویرایشگر وظیفه")
         title_label.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; font-weight: bold; "
             f"letter-spacing: 2px;"
@@ -47,12 +47,12 @@ class TaskEditorDialog(QDialog):
         form.setSpacing(8)
 
         self._title = QLineEdit(task.title if task else "")
-        form.addRow("Title", self._title)
+        form.addRow("عنوان", self._title)
 
         self._desc = QTextEdit()
         self._desc.setFixedHeight(80)
         self._desc.setPlainText(task.description if task else "")
-        form.addRow("Description", self._desc)
+        form.addRow("توضیحات", self._desc)
 
         # Duration
         dur_row = QHBoxLayout()
@@ -65,7 +65,7 @@ class TaskEditorDialog(QDialog):
         self._dur_unit.setCurrentText(DurationUnit.DAY.value)
         dur_row.addWidget(self._dur)
         dur_row.addWidget(self._dur_unit)
-        form.addRow("Duration", dur_row)
+        form.addRow("مدت", dur_row)
 
         # Priority
         self._priority = QComboBox()
@@ -73,7 +73,7 @@ class TaskEditorDialog(QDialog):
             self._priority.addItem(p.name, p)
         if task:
             self._priority.setCurrentIndex(int(task.priority))
-        form.addRow("Priority", self._priority)
+        form.addRow("اولویت", self._priority)
 
         # Risk
         self._risk = QComboBox()
@@ -81,7 +81,7 @@ class TaskEditorDialog(QDialog):
             self._risk.addItem(r.name, r)
         if task:
             self._risk.setCurrentText(task.risk.name)
-        form.addRow("Risk", self._risk)
+        form.addRow("ریسک", self._risk)
 
         # Status
         self._status = QComboBox()
@@ -89,7 +89,7 @@ class TaskEditorDialog(QDialog):
             self._status.addItem(s.value, s)
         if task:
             self._status.setCurrentIndex(list(TaskStatus).index(task.status))
-        form.addRow("Status", self._status)
+        form.addRow("وضعیت", self._status)
 
         # Progress
         prog_row = QHBoxLayout()
@@ -106,19 +106,19 @@ class TaskEditorDialog(QDialog):
         )
         prog_row.addWidget(self._progress)
         prog_row.addWidget(self._progress_lbl)
-        form.addRow("Progress", prog_row)
+        form.addRow("پیشرفت", prog_row)
 
         # Tags
         self._tags = QLineEdit()
         if task:
             self._tags.setText(", ".join(sorted(str(t) for t in task.tags)))
-        self._tags.setPlaceholderText("comma-separated, e.g. backend, urgent")
-        form.addRow("Tags", self._tags)
+        self._tags.setPlaceholderText("با کاما جدا کنید، مثلاً: باک‌اند، فوری")
+        form.addRow("برچسب‌ها", self._tags)
 
         layout.addLayout(form)
 
         # PERT group
-        pert_group = QGroupBox("PERT 3-Point Estimate (optional)")
+        pert_group = QGroupBox("برآورد سه‌نقطه‌ای پرت (اختیاری)")
         pert_layout = QFormLayout(pert_group)
         self._pert_o = QDoubleSpinBox()
         self._pert_m = QDoubleSpinBox()
@@ -130,15 +130,15 @@ class TaskEditorDialog(QDialog):
             self._pert_o.setValue(task.pert.optimistic.to_unit(DurationUnit.DAY))
             self._pert_m.setValue(task.pert.most_likely.to_unit(DurationUnit.DAY))
             self._pert_p.setValue(task.pert.pessimistic.to_unit(DurationUnit.DAY))
-        pert_layout.addRow("Optimistic", self._pert_o)
-        pert_layout.addRow("Most likely", self._pert_m)
-        pert_layout.addRow("Pessimistic", self._pert_p)
+        pert_layout.addRow("خوش‌بینانه", self._pert_o)
+        pert_layout.addRow("محتمل‌ترین", self._pert_m)
+        pert_layout.addRow("بدبینانه", self._pert_p)
         layout.addWidget(pert_group)
 
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Save).setProperty("variant", "primary")
-        buttons.button(QDialogButtonBox.Save).setText("Save Task")
+        buttons.button(QDialogButtonBox.Save).setText("ذخیره وظیفه")
         buttons.accepted.connect(self._on_save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -148,7 +148,7 @@ class TaskEditorDialog(QDialog):
         title = self._title.text().strip()
         if not title:
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Required", "Title is required.")
+            QMessageBox.warning(self, "الزامی", "عنوان الزامی است.")
             return
         # Build / update task
         if self.task is None:

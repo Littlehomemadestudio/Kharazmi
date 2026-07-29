@@ -151,136 +151,136 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu("فایل")
 
         # New actions
-        self._action_new_event = QAction(get_icon("plus"), "New &Event...", self)
+        self._action_new_event = QAction(get_icon("plus"), "رویداد جدید...", self)
         self._action_new_event.setShortcut(QKeySequence("Ctrl+E"))
         self._action_new_event.triggered.connect(self._on_new_event)
         file_menu.addAction(self._action_new_event)
 
-        self._action_new_task = QAction(get_icon("plus"), "New &Task...", self)
+        self._action_new_task = QAction(get_icon("plus"), "وظیفه جدید...", self)
         self._action_new_task.setShortcut(QKeySequence("Ctrl+T"))
         self._action_new_task.triggered.connect(self._on_new_task)
         file_menu.addAction(self._action_new_task)
 
         file_menu.addSeparator()
 
-        self._action_save = QAction(get_icon("save"), "&Save", self)
+        self._action_save = QAction(get_icon("save"), "ذخیره", self)
         self._action_save.setShortcut(QKeySequence.Save)
         self._action_save.triggered.connect(self._on_save)
         file_menu.addAction(self._action_save)
 
         file_menu.addSeparator()
 
-        self._action_ai_settings = QAction("AI &Settings...", self)
+        self._action_ai_settings = QAction("تنظیمات هوش مصنوعی...", self)
         self._action_ai_settings.triggered.connect(self._on_ai_settings)
         file_menu.addAction(self._action_ai_settings)
 
-        self._action_manage_calendars = QAction("Manage &Calendars...", self)
+        self._action_manage_calendars = QAction("مدیریت تقویم‌ها...", self)
         self._action_manage_calendars.triggered.connect(self._on_manage_calendars)
         file_menu.addAction(self._action_manage_calendars)
 
         file_menu.addSeparator()
 
-        self._action_export_json = QAction("Export Tasks as &JSON...", self)
+        self._action_export_json = QAction("صادر کردن وظایف به JSON...", self)
         self._action_export_json.triggered.connect(lambda: self._on_export("json"))
         file_menu.addAction(self._action_export_json)
 
-        self._action_export_calendar = QAction("Export &Calendar as JSON...", self)
+        self._action_export_calendar = QAction("صادر کردن تقویم به JSON...", self)
         self._action_export_calendar.triggered.connect(self._on_export_calendar)
         file_menu.addAction(self._action_export_calendar)
 
         file_menu.addSeparator()
 
-        self._action_quit = QAction("&Quit", self)
+        self._action_quit = QAction("خروج", self)
         self._action_quit.setShortcut(QKeySequence.Quit)
         self._action_quit.triggered.connect(self.close)
         file_menu.addAction(self._action_quit)
 
         # Edit menu
-        edit_menu = menubar.addMenu("&Edit")
-        self._action_undo = QAction(get_icon("undo"), "&Undo", self)
+        edit_menu = menubar.addMenu("ویرایش")
+        self._action_undo = QAction(get_icon("undo"), "برگشت", self)
         self._action_undo.setShortcut(QKeySequence.Undo)
         self._action_undo.triggered.connect(self._on_undo)
         edit_menu.addAction(self._action_undo)
 
-        self._action_redo = QAction(get_icon("redo"), "&Redo", self)
+        self._action_redo = QAction(get_icon("redo"), "دوباره", self)
         self._action_redo.setShortcut(QKeySequence.Redo)
         self._action_redo.triggered.connect(self._on_redo)
         edit_menu.addAction(self._action_redo)
 
         # View menu
-        view_menu = menubar.addMenu("&View")
-        self._action_tab_home = QAction("Go to &Home", self)
+        view_menu = menubar.addMenu("نمایش")
+        self._action_tab_home = QAction("رفتن به خانه", self)
         self._action_tab_home.setShortcut(QKeySequence("Ctrl+0"))
         self._action_tab_home.triggered.connect(lambda: self._switch_tab(0))
         view_menu.addAction(self._action_tab_home)
 
-        self._action_tab_calendar = QAction("Go to &Calendar", self)
+        self._action_tab_calendar = QAction("رفتن به تقویم", self)
         self._action_tab_calendar.setShortcut(QKeySequence("Ctrl+1"))
         self._action_tab_calendar.triggered.connect(lambda: self._switch_tab(1))
         view_menu.addAction(self._action_tab_calendar)
 
-        self._action_tab_ai = QAction("Go to &AI Planner", self)
+        self._action_tab_ai = QAction("رفتن به برنامه‌ریز", self)
         self._action_tab_ai.setShortcut(QKeySequence("Ctrl+2"))
         self._action_tab_ai.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_ai)
 
-        self._action_tab_graphs = QAction("Go to &Graphs", self)
+        self._action_tab_graphs = QAction("رفتن به نمودارها", self)
         self._action_tab_graphs.setShortcut(QKeySequence("Ctrl+3"))
         self._action_tab_graphs.triggered.connect(lambda: self._switch_tab(3))
         view_menu.addAction(self._action_tab_graphs)
 
-        self._action_tab_simulation = QAction("Go to &Simulation", self)
+        self._action_tab_simulation = QAction("رفتن به شبیه‌سازی", self)
         self._action_tab_simulation.setShortcut(QKeySequence("Ctrl+4"))
         self._action_tab_simulation.triggered.connect(lambda: self._switch_tab(4))
         view_menu.addAction(self._action_tab_simulation)
 
-        self._action_tab_journal = QAction("Go to &Journal", self)
+        self._action_tab_journal = QAction("رفتن به یادداشت‌ها", self)
         self._action_tab_journal.setShortcut(QKeySequence("Ctrl+5"))
         self._action_tab_journal.triggered.connect(lambda: self._switch_tab(5))
         view_menu.addAction(self._action_tab_journal)
 
-        self._action_tab_tasks = QAction("Go to &Tasks", self)
+        self._action_tab_tasks = QAction("رفتن به وظایف", self)
         self._action_tab_tasks.setShortcut(QKeySequence("Ctrl+6"))
         self._action_tab_tasks.triggered.connect(lambda: self._switch_tab(2))
         view_menu.addAction(self._action_tab_tasks)
 
         view_menu.addSeparator()
 
-        self._action_fullscreen = QAction("Toggle &Fullscreen", self)
+        self._action_fullscreen = QAction("تغییر تمام‌صفحه", self)
         self._action_fullscreen.setShortcut(QKeySequence("F11"))
         self._action_fullscreen.triggered.connect(self.toggle_fullscreen)
         view_menu.addAction(self._action_fullscreen)
 
         view_menu.addSeparator()
 
-        self._action_toggle_theme = QAction("Toggle &Theme (Light/Dark)", self)
+        self._action_toggle_theme = QAction("تغییر تم (روشن/تیره)", self)
         self._action_toggle_theme.triggered.connect(self._toggle_theme)
         view_menu.addAction(self._action_toggle_theme)
 
         # Schedule menu (for Enterprise features)
-        sched_menu = menubar.addMenu("&Schedule")
-        self._action_recalc = QAction(get_icon("play"), "&Recalculate CPM", self)
+        sched_menu = menubar.addMenu("زمان‌بندی")
+        self._action_recalc = QAction(get_icon("play"), "محاسبه مجدد CPM", self)
         self._action_recalc.setShortcut(QKeySequence("Ctrl+R"))
         self._action_recalc.triggered.connect(self._recalculate)
         sched_menu.addAction(self._action_recalc)
 
-        self._action_advisor = QAction(get_icon("warning"), "&Advisor Report", self)
+        self._action_advisor = QAction(get_icon("warning"), "گزارش مشاور", self)
         self._action_advisor.triggered.connect(self._on_advisor)
         sched_menu.addAction(self._action_advisor)
 
         # Help menu
-        help_menu = menubar.addMenu("&Help")
-        self._action_tour = QAction("Take the &Tour", self)
+        help_menu = menubar.addMenu("کمک")
+        self._action_tour = QAction("تور معرفی", self)
         self._action_tour.setShortcut(QKeySequence("F1"))
         self._action_tour.triggered.connect(self._on_show_tour)
         help_menu.addAction(self._action_tour)
 
         help_menu.addSeparator()
 
-        self._action_about = QAction("&About Rask", self)
+        self._action_about = QAction("درباره رَسک", self)
         self._action_about.triggered.connect(self._on_about)
         help_menu.addAction(self._action_about)
 
@@ -334,7 +334,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         dash_layout = QVBoxLayout(dash_container)
         dash_layout.setContentsMargins(0, 0, 0, 0)
         dash_layout.addWidget(self.dashboard_view)
-        self._tabs.addTab(dash_container, "🏠  Home")
+        self._tabs.addTab(dash_container, "🏠  خانه")
 
         # ---- Tab 1: Calendar ----
         self.calendar_view = CalendarView(self.calendar_store, ai_service=self.ai_service)
@@ -342,7 +342,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         cal_layout = QVBoxLayout(cal_container)
         cal_layout.setContentsMargins(0, 0, 0, 0)
         cal_layout.addWidget(self.calendar_view)
-        self._tabs.addTab(cal_container, "📅  Calendar")
+        self._tabs.addTab(cal_container, "📅  تقویم")
 
         # ---- Tab 2: AI Planner + Tasks
         # The AI Planner view holds the route workspace + chat. The Tasks
@@ -358,7 +358,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         graphs_layout = QVBoxLayout(graphs_container)
         graphs_layout.setContentsMargins(0, 0, 0, 0)
         graphs_layout.addWidget(self.graphs_view)
-        self._tabs.addTab(graphs_container, "📊  Graphs")
+        self._tabs.addTab(graphs_container, "📊  نمودارها")
 
         # ---- Tab 4: Simulation ----
         self.simulation_view = SimulationView()
@@ -366,7 +366,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         sim_layout = QVBoxLayout(sim_container)
         sim_layout.setContentsMargins(0, 0, 0, 0)
         sim_layout.addWidget(self.simulation_view)
-        self._tabs.addTab(sim_container, "🧪  Simulation")
+        self._tabs.addTab(sim_container, "🧪  شبیه‌سازی")
 
         # ---- Tab 5: Journal ----
         self.journal_view = JournalView(self.journal_store)
@@ -374,7 +374,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         journal_layout = QVBoxLayout(journal_container)
         journal_layout.setContentsMargins(0, 0, 0, 0)
         journal_layout.addWidget(self.journal_view)
-        self._tabs.addTab(journal_container, "📖  Journal")
+        self._tabs.addTab(journal_container, "📖  یادداشت‌ها")
 
     # ساخت تب یکپارچه برنامه‌ریز و وظایف
     def _build_planner_tasks_tab(self) -> None:
@@ -395,7 +395,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         )
         layout.addWidget(self.ai_planner_view)
 
-        self._tabs.addTab(container, "✦  Planner & Tasks")
+        self._tabs.addTab(container, "✦  برنامه‌ریز و وظایف")
 
     # سبک دکمه حالت (برای سازگاری قبلی)
     def _mode_button_style(self, active: bool) -> str:
@@ -428,9 +428,9 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         cal_count = self.calendar_store.event_count
         task_count = self.project.task_count
         journal_count = len(self.journal_store)
-        ai_status = "● AI ready" if self.ai_service.is_configured else "○ AI not configured"
+        ai_status = "● هوش مصنوعی آماده" if self.ai_service.is_configured else "○ هوش مصنوعی تنظیم نشده"
         self.statusbar.show_message(
-            f"{cal_count} events · {task_count} tasks · {journal_count} journal entries   |   {ai_status}",
+            f"{cal_count} رویداد · {task_count} وظیفه · {journal_count} یادداشت   |   {ai_status}",
             0,
         )
 
@@ -487,7 +487,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             self.graphs_view.set_route(entry.route)
             self.simulation_view.set_route(entry.route)
             self.statusbar.show_message(
-                f"Loaded route from {entry.timestamp[:10]} into AI Planner", 3000
+                f"مسیر بارگذاری شد از {entry.timestamp[:10]} در برنامه‌ریز", 3000
             )
 
     # همگام‌سازی مسیر انتخاب‌شده از نمودارها با شبیه‌سازی
@@ -519,7 +519,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     def _on_save(self) -> None:
         self.repository.save_snapshot(self.project, kind="manual")
         self.calendar_repository.save(self.calendar_store, kind="manual")
-        self.statusbar.show_message("All data saved", 3000)
+        self.statusbar.show_message("همه داده‌ها ذخیره شد", 3000)
 
     # باز کردن تنظیمات هوش مصنوعی
     def _on_ai_settings(self) -> None:
@@ -535,7 +535,7 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     # صادرکردن وظایف به فرمت JSON
     def _on_export(self, fmt: str) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, f"Export {fmt.upper()}",
+            self, f"صادر کردن {fmt.upper()}",
             f"{self.project.name}.{fmt}",
             f"{fmt.upper()} files (*.{fmt});;All files (*)"
         )
@@ -544,14 +544,14 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
         try:
             if fmt == "json":
                 self.export_service.to_json(path)
-            self.statusbar.show_message(f"Exported → {path}", 4000)
+            self.statusbar.show_message(f"صادر شد → {path}", 4000)
         except Exception as e:
-            QMessageBox.warning(self, "Export Failed", str(e))
+            QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
     # صادرکردن تقویم به فرمت JSON
     def _on_export_calendar(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Calendar as JSON",
+            self, "صادر کردن تقویم به JSON",
             "calendar.json",
             "JSON files (*.json);;All files (*)"
         )
@@ -561,9 +561,9 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             import json
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.calendar_store.to_dict(), f, ensure_ascii=False, indent=2)
-            self.statusbar.show_message(f"Exported → {path}", 4000)
+            self.statusbar.show_message(f"صادر شد → {path}", 4000)
         except Exception as e:
-            QMessageBox.warning(self, "Export Failed", str(e))
+            QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
     # برگشت عملیات اخیر
     def _on_undo(self) -> None:
@@ -584,24 +584,21 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
-            "About Rask",
-            "<h3>Rask</h3>"
-            "<p>Rask is a unified planning workspace combining:</p>"
+            "درباره رَسک",
+            "<h3>رَسک</h3>"
+            "<p>رَسک یک فضای کاری برنامه‌ریزی یکپارچه است که شامل:</p>"
             "<ul>"
-            "<li><b>Calendar</b> — Google-Calendar-style planner with Persian "
-            "Shamsi dates, multiple calendars, recurring events, and natural-"
-            "language input.</li>"
-            "<li><b>AI Planner</b> — describe a goal in plain language and "
-            "the AI (z.ai GLM-4.5-flash) builds a walkable route of "
-            "interconnected steps with success probabilities, fallbacks, and "
-            "time estimates.</li>"
-            "<li><b>Journal</b> — every AI-generated route is saved for "
-            "later review.</li>"
-            "<li><b>Tasks</b> — the Enterprise node-graph task operating "
-            "system with Critical Path Method, PERT, and Monte Carlo "
-            "simulation.</li>"
+            "<li><b>تقویم</b> — برنامه‌ریز سبک گوگل با تاریخ شمسی، "
+            "چند تقویم، رویدادهای تکراری و ورودی زبان طبیعی.</li>"
+            "<li><b>برنامه‌ریز هوشمند</b> — هدف خود را به زبان ساده شرح دهید "
+            "و هوش مصنوعی (GLM-4.5-flash) مسیری از مراحل به هم پیوسته "
+            "با احتمال موفقیت، پشتیبان و تخمین زمان می‌سازد.</li>"
+            "<li><b>یادداشت‌ها</b> — هر مسیر ساخته‌شده با هوش مصنوعی "
+            "برای بازبینی بعدی ذخیره می‌شود.</li>"
+            "<li><b>وظایف</b> — سیستم عامل گراف وظایف سازمانی "
+            "با روش مسیر بحرانی، PERT و شبیه‌سازی مونت‌کارلو.</li>"
             "</ul>"
-            "<p style='color:#D4AF37'><b>Version 3.0</b></p>"
+            "<p style='color:#D4AF37'><b>نسخه ۳.۰</b></p>"
         )
 
     # ---- Enterprise-side helpers ----
@@ -667,8 +664,10 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
     def _toggle_theme(self) -> None:
         """Switch between Light and Dark theme."""
         from .theme import current_mode, set_theme, QSS, build_qpalette
+        from .calendar.theme import set_calendar_theme
         new_mode = "dark" if current_mode() == "light" else "light"
         set_theme(new_mode)
+        set_calendar_theme(new_mode)
         # Re-apply global stylesheet and palette
         app = QApplication.instance()
         if app:
@@ -754,7 +753,10 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
             view = getattr(self, view_attr, None)
             if view is not None:
                 try:
-                    view.update()
+                    if hasattr(view, '_reapply_theme'):
+                        view._reapply_theme()
+                    else:
+                        view.update()
                 except Exception:
                     pass
         # Force repaint of all child widgets

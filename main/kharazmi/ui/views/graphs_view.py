@@ -372,8 +372,8 @@ class _BarChartWidget(QWidget):
         steps = self.route.steps
         if not steps:
             p.setPen(QColor(Palette.TEXT_TERTIARY))
-            p.setFont(QFont("Inter", 14))
-            p.drawText(self.rect(), Qt.AlignCenter, "No steps to display")
+            p.setFont(QFont("Inter", 18))
+            p.drawText(self.rect(), Qt.AlignCenter, "مرحله‌ای برای نمایش نیست")
             p.end()
             return
 
@@ -382,14 +382,14 @@ class _BarChartWidget(QWidget):
         bar_area = w - label_w - 80
         y = 10
 
-        title_font = QFont("Inter", 13, QFont.Bold)
+        title_font = QFont("Inter", 18, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, y + 12, "Success Probability by Step")
+        p.drawText(10, y + 12, "احتمال موفقیت هر مرحله")
         y += 28
 
-        bar_font = QFont("Inter", 12)
-        val_font = QFont("JetBrains Mono", 12, QFont.Bold)
+        bar_font = QFont("Inter", 16)
+        val_font = QFont("JetBrains Mono", 16, QFont.Bold)
 
         for step in steps:
             # Label
@@ -452,10 +452,10 @@ class _RiskHeatmapWidget(QWidget):
             p.end()
             return
 
-        title_font = QFont("Inter", 13, QFont.Bold)
+        title_font = QFont("Inter", 18, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, 18, "Risk Level Distribution")
+        p.drawText(10, 18, "توزیع سطح ریسک")
 
         risk_colors = {
             "low": QColor("#5A8A5A"),
@@ -476,9 +476,10 @@ class _RiskHeatmapWidget(QWidget):
         for risk, count in risk_counts.items():
             pct = count / total
             # Label
-            p.setFont(QFont("Inter", 12))
+            p.setFont(QFont("Inter", 16))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
-            p.drawText(QRectF(10, y, 80, 28), Qt.AlignRight | Qt.AlignVCenter, risk.upper())
+            risk_labels_fa = {"low": "کم", "medium": "متوسط", "high": "زیاد", "severe": "خیلی زیاد"}
+            p.drawText(QRectF(10, y, 80, 28), Qt.AlignRight | Qt.AlignVCenter, risk_labels_fa.get(risk, risk.upper()))
 
             # Bar
             bar_w = bar_area_w * pct
@@ -487,7 +488,7 @@ class _RiskHeatmapWidget(QWidget):
             p.drawRoundedRect(QRectF(96, y + 4, bar_w, 20), 3, 3)
 
             # Count
-            p.setFont(QFont("JetBrains Mono", 12, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 16, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(96 + bar_area_w + 6, y, 60, 28),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{count} ({pct:.0%})")
@@ -524,10 +525,10 @@ class _DurationTimelineWidget(QWidget):
         bar_h = min(22, max(14, (h - 50) // len(steps) - 4))
         y = 10
 
-        title_font = QFont("Inter", 13, QFont.Bold)
+        title_font = QFont("Inter", 18, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, y + 12, "Duration Timeline (minutes)")
+        p.drawText(10, y + 12, "جدول زمانی مدت (دقیقه)")
         y += 28
 
         kind_colors = {
@@ -540,7 +541,7 @@ class _DurationTimelineWidget(QWidget):
 
         for step in steps:
             # Label
-            p.setFont(QFont("Inter", 11))
+            p.setFont(QFont("Inter", 15))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             label = step.title[:18] + "…" if len(step.title) > 18 else step.title
             p.drawText(QRectF(4, y, label_w - 8, bar_h), Qt.AlignRight | Qt.AlignVCenter, label)
@@ -558,7 +559,7 @@ class _DurationTimelineWidget(QWidget):
             p.drawRoundedRect(QRectF(label_w, y + 2, bar_w, bar_h - 4), 3, 3)
 
             # Duration text
-            p.setFont(QFont("JetBrains Mono", 11))
+            p.setFont(QFont("JetBrains Mono", 15))
             p.setPen(QColor(Palette.TEXT_TERTIARY))
             p.drawText(QRectF(label_w + bar_w + 4, y, 50, bar_h),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{step.duration_minutes}m")
@@ -575,7 +576,7 @@ class _KindDonutWidget(QWidget):
     def __init__(self, route: Route, parent=None):
         super().__init__(parent)
         self.route = route
-        self.setFixedSize(260, 260)
+        self.setFixedSize(320, 320)
 
     # رسم محتوای ویجت
     def paintEvent(self, event):
@@ -598,7 +599,7 @@ class _KindDonutWidget(QWidget):
         }
 
         total = len(steps)
-        cx, cy, r = 130, 125, 90
+        cx, cy, r = 160, 155, 110
         start_angle = 0
 
         for kind, count in kind_counts.items():
@@ -614,12 +615,12 @@ class _KindDonutWidget(QWidget):
         p.drawEllipse(QRectF(cx - 55, cy - 55, 110, 110))
 
         # Center text
-        p.setFont(QFont("Inter", 18, QFont.Bold))
+        p.setFont(QFont("Inter", 24, QFont.Bold))
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(QRectF(cx - 50, cy - 18, 100, 24), Qt.AlignCenter, str(total))
-        p.setFont(QFont("Inter", 11))
+        p.setFont(QFont("Inter", 15))
         p.setPen(QColor(Palette.TEXT_TERTIARY))
-        p.drawText(QRectF(cx - 50, cy + 6, 100, 18), Qt.AlignCenter, "steps")
+        p.drawText(QRectF(cx - 50, cy + 6, 100, 18), Qt.AlignCenter, "مرحله")
 
         # Legend
         y = 8
@@ -628,7 +629,7 @@ class _KindDonutWidget(QWidget):
             p.setPen(Qt.NoPen)
             p.setBrush(color)
             p.drawRoundedRect(QRectF(210, y, 10, 10), 2, 2)
-            p.setFont(QFont("Inter", 11))
+            p.setFont(QFont("Inter", 15))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(224, y - 2, 40, 14), Qt.AlignLeft | Qt.AlignVCenter,
                        f"{kind[:4]} {count}")
@@ -664,10 +665,10 @@ class _BranchFlowWidget(QWidget):
         for s in steps:
             branch_counts[s.branch] = branch_counts.get(s.branch, 0) + 1
 
-        title_font = QFont("Inter", 13, QFont.Bold)
+        title_font = QFont("Inter", 18, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, 18, "Branch Distribution")
+        p.drawText(10, 18, "توزیع شاخه‌ها")
 
         branch_colors = {
             "main": QColor("#D4AF37"),
@@ -702,13 +703,13 @@ class _BranchFlowWidget(QWidget):
             p.drawRoundedRect(QRectF(x, y_base - bar_h, col_w - 10, bar_h), 4, 4)
 
             # Count on top
-            p.setFont(QFont("JetBrains Mono", 13, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 17, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(x, y_base - bar_h - 18, col_w - 10, 16),
                        Qt.AlignCenter, str(count))
 
             # Label below
-            p.setFont(QFont("Inter", 11))
+            p.setFont(QFont("Inter", 15))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(x, y_base + 4, col_w - 10, 16),
                        Qt.AlignCenter, branch[:10])
@@ -742,16 +743,16 @@ class _GraphsLanding(QFrame):
         outer.setSpacing(20)
 
         # Title
-        title = QLabel("📊  WORKFLOW ANALYTICS")
+        title = QLabel("📊  تحلیل گردش کار")
         title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 24px; "
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 30px; "
             f"font-weight: bold; letter-spacing: 3px; background: transparent;"
         )
         outer.addWidget(title)
 
-        subtitle = QLabel("Select a workflow to visualize, or import one from a file.")
+        subtitle = QLabel("یک گردش کار برای نمایش انتخاب کنید یا از فایل وارد کنید.")
         subtitle.setStyleSheet(
-            f"color: {Palette.TEXT_SECONDARY}; font-size: 13px; background: transparent;"
+            f"color: {Palette.TEXT_SECONDARY}; font-size: 17px; background: transparent;"
         )
         outer.addWidget(subtitle)
 
@@ -759,12 +760,12 @@ class _GraphsLanding(QFrame):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        self._import_csv_btn = QPushButton("📁  Import CSV")
+        self._import_csv_btn = QPushButton("📁  وارد کردن CSV")
         self._import_csv_btn.setStyleSheet(self._btn_style())
         self._import_csv_btn.clicked.connect(self._on_import_csv)
         btn_row.addWidget(self._import_csv_btn)
 
-        self._import_excel_btn = QPushButton("📊  Import Excel")
+        self._import_excel_btn = QPushButton("📊  وارد کردن Excel")
         self._import_excel_btn.setStyleSheet(self._btn_style())
         self._import_excel_btn.clicked.connect(self._on_import_excel)
         btn_row.addWidget(self._import_excel_btn)
@@ -779,9 +780,9 @@ class _GraphsLanding(QFrame):
         outer.addWidget(sep)
 
         # Workflow list header
-        list_header = QLabel("SAVED WORKFLOWS")
+        list_header = QLabel("گردش کارهای ذخیره‌شده")
         list_header.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; "
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; "
             f"font-weight: bold; letter-spacing: 2px; background: transparent;"
         )
         outer.addWidget(list_header)
@@ -813,7 +814,7 @@ class _GraphsLanding(QFrame):
                 border: 1px solid {Palette.BORDER_GOLD};
                 border-radius: 6px;
                 padding: 10px 20px;
-                font-size: 12px;
+                font-size: 16px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -860,16 +861,16 @@ class _GraphsLanding(QFrame):
             cl.setSpacing(4)
 
             goal_label = QLabel(f"<b>{entry.user_goal[:60]}</b>")
-            goal_label.setStyleSheet(f"color: {Palette.TEXT_PRIMARY}; background: transparent; font-size: 12px;")
+            goal_label.setStyleSheet(f"color: {Palette.TEXT_PRIMARY}; background: transparent; font-size: 16px;")
             goal_label.setWordWrap(True)
             cl.addWidget(goal_label)
 
             meta = QLabel(
-                f"{len(entry.route.steps)} steps · {entry.route.total_duration_minutes}m · "
-                f"{entry.route.overall_success_probability:.0%} success · "
+                f"{len(entry.route.steps)} مرحله · {entry.route.total_duration_minutes}m · "
+                f"{entry.route.overall_success_probability:.0%} موفقیت · "
                 f"{entry.timestamp[:10]}"
             )
-            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 13px;")
+            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 17px;")
             cl.addWidget(meta)
 
             # Export buttons
@@ -884,7 +885,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 12px;
+                    font-size: 16px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -903,7 +904,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 12px;
+                    font-size: 16px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -922,7 +923,7 @@ class _GraphsLanding(QFrame):
     # پاسخ به وارد کردن csv
     def _on_import_csv(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Import Workflow from CSV", "",
+            self, "وارد کردن گردش کار از CSV", "",
             "CSV files (*.csv);;All files (*)"
         )
         if path:
@@ -930,12 +931,12 @@ class _GraphsLanding(QFrame):
                 route = import_route_csv(path)
                 self.workflowSelected.emit(route)
             except Exception as e:
-                QMessageBox.warning(self, "Import Failed", str(e))
+                QMessageBox.warning(self, "وارد کردن ناموفق", str(e))
 
     # پاسخ به وارد کردن excel
     def _on_import_excel(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Import Workflow from Excel", "",
+            self, "وارد کردن گردش کار از Excel", "",
             "Excel files (*.xlsx);;All files (*)"
         )
         if path:
@@ -943,33 +944,33 @@ class _GraphsLanding(QFrame):
                 route = import_route_excel(path)
                 self.workflowSelected.emit(route)
             except Exception as e:
-                QMessageBox.warning(self, "Import Failed", str(e))
+                QMessageBox.warning(self, "وارد کردن ناموفق", str(e))
 
     # خروجی csv
     def _export_csv(self, route: Route):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Workflow as CSV", "workflow.csv",
+            self, "صادر کردن گردش کار به CSV", "workflow.csv",
             "CSV files (*.csv);;All files (*)"
         )
         if path:
             try:
                 export_route_csv(route, path)
-                QMessageBox.information(self, "Exported", f"Saved to {path}")
+                QMessageBox.information(self, "صادر شد", f"ذخیره شد در {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
     # خروجی excel
     def _export_excel(self, route: Route):
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Workflow as Excel", "workflow.xlsx",
+            self, "صادر کردن گردش کار به Excel", "workflow.xlsx",
             "Excel files (*.xlsx);;All files (*)"
         )
         if path:
             try:
                 export_route_excel(route, path)
-                QMessageBox.information(self, "Exported", f"Saved to {path}")
+                QMessageBox.information(self, "صادر شد", f"ذخیره شد در {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -1002,12 +1003,12 @@ class _GraphsWorkspace(QFrame):
         top_layout = QHBoxLayout(top)
         top_layout.setContentsMargins(12, 6, 12, 6)
 
-        back_btn = QPushButton("← Back")
+        back_btn = QPushButton("→ بازگشت")
         back_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 12px; font-size: 11px;
+                padding: 4px 12px; font-size: 15px;
             }}
             QPushButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1018,7 +1019,7 @@ class _GraphsWorkspace(QFrame):
 
         self._route_title = QLabel("")
         self._route_title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 12px; font-weight: bold; background: transparent;"
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 16px; font-weight: bold; background: transparent;"
         )
         top_layout.addWidget(self._route_title)
         top_layout.addStretch()
@@ -1030,7 +1031,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 13px;
+                padding: 4px 10px; font-size: 17px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1045,7 +1046,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 13px;
+                padding: 4px 10px; font-size: 17px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1077,7 +1078,7 @@ class _GraphsWorkspace(QFrame):
     def set_route(self, route: Route):
         self._route = route
         self._route_title.setText(
-            f"📊  {route.goal[:50]}  ·  {len(route.steps)} steps  ·  {route.total_duration_minutes}m"
+            f"📊  {route.goal[:50]}  ·  {len(route.steps)} مرحله  ·  {route.total_duration_minutes}m"
         )
         self._rebuild_charts()
 
@@ -1105,12 +1106,12 @@ class _GraphsWorkspace(QFrame):
         stats_row.setSpacing(12)
 
         for label, value, color in [
-            ("Steps", str(len(route.steps)), Palette.GOLD_BRIGHT),
-            ("Duration", f"{route.total_duration_minutes}m", Palette.TEXT_PRIMARY),
-            ("Success", f"{route.overall_success_probability:.0%}", "#5A8A5A" if route.overall_success_probability > 0.7 else "#D4AF37"),
-            ("Edges", str(len(route.edges)), Palette.TEXT_SECONDARY),
-            ("Insights", str(len(route.insights)), Palette.TEXT_TERTIARY),
-            ("Branches", str(len(set(s.branch for s in route.steps))), Palette.TEXT_SECONDARY),
+            ("مراحل", str(len(route.steps)), Palette.GOLD_BRIGHT),
+            ("مدت", f"{route.total_duration_minutes}m", Palette.TEXT_PRIMARY),
+            ("موفقیت", f"{route.overall_success_probability:.0%}", "#5A8A5A" if route.overall_success_probability > 0.7 else "#D4AF37"),
+            ("یال‌ها", str(len(route.edges)), Palette.TEXT_SECONDARY),
+            ("بینش‌ها", str(len(route.insights)), Palette.TEXT_TERTIARY),
+            ("شاخه‌ها", str(len(set(s.branch for s in route.steps))), Palette.TEXT_SECONDARY),
         ]:
             stat = QFrame()
             stat.setStyleSheet(f"""
@@ -1125,11 +1126,11 @@ class _GraphsWorkspace(QFrame):
             sl.setContentsMargins(12, 8, 12, 8)
             sl.setSpacing(2)
             v = QLabel(value)
-            v.setStyleSheet(f"color: {color}; font-size: 20px; font-weight: bold; background: transparent;")
+            v.setStyleSheet(f"color: {color}; font-size: 26px; font-weight: bold; background: transparent;")
             v.setAlignment(Qt.AlignCenter)
             sl.addWidget(v)
             l = QLabel(label)
-            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 12px; background: transparent; letter-spacing: 1px;")
+            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 16px; background: transparent; letter-spacing: 1px;")
             l.setAlignment(Qt.AlignCenter)
             sl.addWidget(l)
             stats_row.addWidget(stat)
@@ -1140,26 +1141,26 @@ class _GraphsWorkspace(QFrame):
         row1 = QHBoxLayout()
         row1.setSpacing(16)
 
-        bar_card = self._chart_card("Success Probability", _BarChartWidget(route))
+        bar_card = self._chart_card("احتمال موفقیت", _BarChartWidget(route))
         row1.addWidget(bar_card, stretch=3)
 
-        donut_card = self._chart_card("Step Kinds", _KindDonutWidget(route))
+        donut_card = self._chart_card("انواع مراحل", _KindDonutWidget(route))
         row1.addWidget(donut_card, stretch=1)
 
         self._charts_layout.addLayout(row1)
 
         # Chart row 2: Duration timeline
-        dur_card = self._chart_card("Duration Timeline", _DurationTimelineWidget(route))
+        dur_card = self._chart_card("جدول زمانی مدت", _DurationTimelineWidget(route))
         self._charts_layout.addWidget(dur_card)
 
         # Chart row 3: Risk heatmap + Branch flow
         row3 = QHBoxLayout()
         row3.setSpacing(16)
 
-        risk_card = self._chart_card("Risk Levels", _RiskHeatmapWidget(route))
+        risk_card = self._chart_card("سطوح ریسک", _RiskHeatmapWidget(route))
         row3.addWidget(risk_card, stretch=1)
 
-        branch_card = self._chart_card("Branch Distribution", _BranchFlowWidget(route))
+        branch_card = self._chart_card("توزیع شاخه‌ها", _BranchFlowWidget(route))
         row3.addWidget(branch_card, stretch=1)
 
         self._charts_layout.addLayout(row3)
@@ -1190,30 +1191,30 @@ class _GraphsWorkspace(QFrame):
         if not self._route:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Workflow as CSV", "workflow.csv",
+            self, "صادر کردن گردش کار به CSV", "workflow.csv",
             "CSV files (*.csv);;All files (*)"
         )
         if path:
             try:
                 export_route_csv(self._route, path)
-                QMessageBox.information(self, "Exported", f"Saved to {path}")
+                QMessageBox.information(self, "صادر شد", f"ذخیره شد در {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
     # پاسخ به خروجی excel
     def _on_export_excel(self):
         if not self._route:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Workflow as Excel", "workflow.xlsx",
+            self, "صادر کردن گردش کار به Excel", "workflow.xlsx",
             "Excel files (*.xlsx);;All files (*)"
         )
         if path:
             try:
                 export_route_excel(self._route, path)
-                QMessageBox.information(self, "Exported", f"Saved to {path}")
+                QMessageBox.information(self, "صادر شد", f"ذخیره شد در {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -1277,3 +1278,12 @@ class GraphsView(QWidget):
     def refresh(self):
         """Refresh the landing page workflow list."""
         self._landing.refresh_workflows()
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        if hasattr(self, '_landing'):
+            self._landing.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        if hasattr(self, '_workspace'):
+            self._workspace.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        self.update()

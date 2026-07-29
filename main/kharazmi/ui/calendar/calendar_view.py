@@ -129,7 +129,7 @@ class _CalendarToolbar(QWidget):
                 border-radius: 8px;
                 padding: 8px 20px;
                 font-weight: 600;
-                font-size: 13px;
+                font-size: 16px;
             }}
             QPushButton:hover {{
                 background: {Gold.BRIGHT};
@@ -142,7 +142,7 @@ class _CalendarToolbar(QWidget):
         layout.addWidget(new_btn)
 
         # AI Schedule button
-        ai_btn = QPushButton("✦ AI Schedule")
+        ai_btn = QPushButton("✦ برنامه‌ریزی هوشمند")
         ai_btn.setFont(font_body())
         ai_btn.setCursor(Qt.PointingHandCursor)
         ai_btn.setStyleSheet(f"""
@@ -154,7 +154,7 @@ class _CalendarToolbar(QWidget):
                 border-radius: 8px;
                 padding: 8px 18px;
                 font-weight: 600;
-                font-size: 13px;
+                font-size: 16px;
             }}
             QPushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -180,7 +180,7 @@ class _CalendarToolbar(QWidget):
                 border: 1px solid {Border.NORMAL};
                 border-radius: 6px;
                 padding: 7px 18px;
-                font-size: 13px;
+                font-size: 16px;
             }}
             QPushButton:hover {{
                 border-color: {Gold.DEEP};
@@ -242,10 +242,10 @@ class _CalendarToolbar(QWidget):
         # View switcher buttons
         self._view_buttons: dict[str, _ViewButton] = {}
         for kind, label in [
-            (CalendarViewKind.DAY, "Day"),
-            (CalendarViewKind.WEEK, "Week"),
-            (CalendarViewKind.MONTH, "Month"),
-            (CalendarViewKind.YEAR, "Year"),
+            (CalendarViewKind.DAY, "روز"),
+            (CalendarViewKind.WEEK, "هفته"),
+            (CalendarViewKind.MONTH, "ماه"),
+            (CalendarViewKind.YEAR, "سال"),
         ]:
             btn = _ViewButton(label)
             btn.clicked.connect(lambda checked, k=kind.value: self.view_change_requested.emit(k))
@@ -340,7 +340,7 @@ class CalendarView(QWidget):
         self._ai_toggle_btn = QPushButton("✦")
         self._ai_toggle_btn.setFixedSize(44, 44)
         self._ai_toggle_btn.setCursor(Qt.PointingHandCursor)
-        self._ai_toggle_btn.setToolTip("Rask AI Assistant")
+        self._ai_toggle_btn.setToolTip("دستیار هوش مصنوعی رَسک")
         self._ai_toggle_btn.setStyleSheet(f"""
             QPushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -634,3 +634,15 @@ class CalendarView(QWidget):
         # Update AI context if panel is visible
         if self._ai_panel_visible:
             self._update_ai_context()
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self) -> None:
+        """Rebuild inline styles for the current theme."""
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        # Force all calendar sub-views to repaint
+        for child in self.findChildren(QWidget):
+            try:
+                child.update()
+            except Exception:
+                pass
+        self.update()

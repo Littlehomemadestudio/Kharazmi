@@ -160,7 +160,7 @@ class AIPlannerView(QWidget):
         gh_layout = QHBoxLayout(graph_header)
         gh_layout.setContentsMargins(12, 4, 12, 4)
         gh_layout.setSpacing(8)
-        gh_label = QLabel("WORKSPACE — AI ROUTES + TASKS")
+        gh_label = QLabel("فضای کاری — مسیرهای هوش مصنوعی و وظایف")
         gh_label.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px;"
@@ -170,7 +170,7 @@ class AIPlannerView(QWidget):
 
         # Schedule in calendar button
         # Big glowing Schedule in Calendar button
-        self._schedule_btn = QPushButton("📅  Schedule in Calendar")
+        self._schedule_btn = QPushButton("📅  برنامه‌ریزی در تقویم")
         self._schedule_btn.setCursor(Qt.PointingHandCursor)
         self._schedule_btn.setFixedHeight(28)
         self._schedule_btn.setStyleSheet(f"""
@@ -207,7 +207,7 @@ class AIPlannerView(QWidget):
         gh_layout.addWidget(self._schedule_btn)
 
         self._critique_btn = QToolButton()
-        self._critique_btn.setText("🔍  Critique & Improve")
+        self._critique_btn.setText("🔍  نقد و بهبود")
         self._critique_btn.setStyleSheet(f"""
             QToolButton {{
                 background-color: #5A4A8A;
@@ -276,7 +276,7 @@ class AIPlannerView(QWidget):
             }}
         """)
         gh_export_menu.addAction("📊  CSV", self._on_export_csv)
-        gh_export_menu.addAction("📗  Excel", self._on_export_xlsx)
+        gh_export_menu.addAction("📗  اکسل", self._on_export_xlsx)
         gh_export_menu.addAction("🌐  HTML", self._on_export_html)
         self._gh_export_btn.setMenu(gh_export_menu)
         self._gh_export_btn.setEnabled(False)
@@ -306,7 +306,7 @@ class AIPlannerView(QWidget):
         q_outer_layout.setContentsMargins(0, 0, 0, 0)
         q_outer_layout.setSpacing(0)
 
-        q_header = QLabel("⚡ RASK NEEDS CLARIFICATION — answer the questions below")
+        q_header = QLabel("⚡ رَسک نیاز به شفاف‌سازی دارد — به سوالات زیر پاسخ دهید")
         q_header.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 1.5px; "
@@ -400,8 +400,8 @@ class AIPlannerView(QWidget):
                 color: {Palette.GOLD_PRIMARY};
             }}
         """)
-        self._right_tabs.addTab(self.chat_panel, "Chat")
-        self._right_tabs.addTab(self._health_dashboard, "Health")
+        self._right_tabs.addTab(self.chat_panel, "گفتگو")
+        self._right_tabs.addTab(self._health_dashboard, "سلامت")
         self._right_tabs.setMinimumWidth(280)
 
         splitter.addWidget(self._right_tabs)
@@ -460,7 +460,7 @@ class AIPlannerView(QWidget):
         layout.setSpacing(4)
 
         header_row = QHBoxLayout()
-        label = QLabel("DESCRIBE YOUR GOAL — RASK WILL BUILD A WALKABLE ROUTE")
+        label = QLabel("هدفتان را شرح دهید — رَسک یک مسیر قابل پیاده‌سازی می‌سازد")
         label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; letter-spacing: 2px;"
@@ -469,7 +469,7 @@ class AIPlannerView(QWidget):
         header_row.addStretch()
 
         # New Plan button — go back to landing
-        new_plan_btn = QPushButton("✦ New Plan")
+        new_plan_btn = QPushButton("✦ برنامه جدید")
         new_plan_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -492,7 +492,7 @@ class AIPlannerView(QWidget):
 
         # Export button — dropdown with CSV / Excel / HTML
         self._export_btn = QToolButton()
-        self._export_btn.setText("📤  Export")
+        self._export_btn.setText("📤  صادر کردن")
         self._export_btn.setPopupMode(QToolButton.InstantPopup)
         self._export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self._export_btn.setFixedHeight(22)
@@ -536,14 +536,14 @@ class AIPlannerView(QWidget):
                 color: {Palette.GOLD_BRIGHT};
             }}
         """)
-        export_menu.addAction("📊  Export as CSV", self._on_export_csv)
-        export_menu.addAction("📗  Export as Excel", self._on_export_xlsx)
-        export_menu.addAction("🌐  Export as HTML", self._on_export_html)
+        export_menu.addAction("📊  خروجی CSV", self._on_export_csv)
+        export_menu.addAction("📗  خروجی اکسل", self._on_export_xlsx)
+        export_menu.addAction("🌐  خروجی HTML", self._on_export_html)
         self._export_btn.setMenu(export_menu)
         self._export_btn.setEnabled(False)
         header_row.addWidget(self._export_btn)
 
-        self._stat_steps = QLabel("○ steps: 0")
+        self._stat_steps = QLabel("○ مراحل: ۰")
         self._stat_steps.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
             f"font-family: 'JetBrains Mono', monospace;"
@@ -569,7 +569,7 @@ class AIPlannerView(QWidget):
         header_row.addWidget(self._stat_status)
 
         # Feedback button
-        self._feedback_btn = QPushButton("💡 Feedback")
+        self._feedback_btn = QPushButton("💡 بازخورد")
         self._feedback_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -601,7 +601,7 @@ class AIPlannerView(QWidget):
 
         self._goal_input = QLineEdit()
         self._goal_input.setPlaceholderText(
-            "e.g. 'I want to be home by 9 o'clock, my car is broken'"
+            "مثلاً: 'می‌خواهم تا ساعت ۹ خانه باشم، ماشینم خراب است'"
         )
         self._goal_input.setStyleSheet(f"""
             QLineEdit {{
@@ -619,7 +619,7 @@ class AIPlannerView(QWidget):
         self._goal_input.returnPressed.connect(self._on_plan_clicked)
         row.addWidget(self._goal_input, stretch=1)
 
-        self._plan_btn = QPushButton("✦ Plan with AI")
+        self._plan_btn = QPushButton("✦ برنامه‌ریزی با هوش مصنوعی")
         self._plan_btn.setProperty("variant", "primary")
         self._plan_btn.setFixedHeight(38)
         self._plan_btn.clicked.connect(self._on_plan_clicked)
@@ -635,7 +635,7 @@ class AIPlannerView(QWidget):
 
     # بروزرسانی stats
     def _update_stats(self, route: Route) -> None:
-        self._stat_steps.setText(f"○ steps: {len(route.steps)}")
+        self._stat_steps.setText(f"○ مراحل: {len(route.steps)}")
         hours = route.total_duration_minutes // 60
         mins = route.total_duration_minutes % 60
         if hours > 0:
@@ -697,8 +697,8 @@ class AIPlannerView(QWidget):
         if not goal:
             return
         if not self.ai.is_configured:
-            QMessageBox.warning(self, "AI Not Configured",
-                                "Please set your z.ai API key in Settings.")
+            QMessageBox.warning(self, "هوش مصنوعی پیکربندی نشده",
+                                "لطفاً کلید API زدات‌ای‌ (z.ai) را در تنظیمات وارد کنید.")
             return
 
         self._pending_goal = goal
@@ -707,8 +707,8 @@ class AIPlannerView(QWidget):
         self._goal_input.clear()
 
         self.chat_panel.add_message(f"<b>Goal:</b> {goal}", role="user", as_html=True)
-        self.chat_panel.start_status_box("Analysing your goal…")
-        self._set_status("⏳ Asking AI to analyse your goal…")
+        self.chat_panel.start_status_box("در حال تحلیل هدفتان…")
+        self._set_status("⏳ درخواست از هوش مصنوعی برای تحلیل هدفتان…")
         self._plan_btn.setEnabled(False)
 
         self._current_request_id = f"clar-{uuid.uuid4().hex[:8]}"
@@ -725,7 +725,7 @@ class AIPlannerView(QWidget):
     # پاسخ به clarifying دریافت‌شده
     def _on_clarifying_received(self, success, result) -> None:
         self._plan_btn.setEnabled(True)
-        self.chat_panel.finish_status_box("Analysis complete")
+        self.chat_panel.finish_status_box("تحلیل کامل شد")
 
         if not success:
             self._set_status("✗ Error")
@@ -740,15 +740,15 @@ class AIPlannerView(QWidget):
             self.chat_panel.add_message(acknowledgment, role="assistant")
 
         if is_clear or not questions:
-            self._set_status("⏳ Goal is clear — generating route…")
+            self._set_status("⏳ هدف واضح است — در حال ساخت مسیر…")
             self._generate_route()
         else:
             self._awaiting_questions = questions
             self._show_multiple_choice_questions(questions)
-            self._set_status(f"⏳ Waiting for {len(questions)} answers…")
+            self._set_status(f"⏳ منتظر {len(questions)} پاسخ…")
             self.chat_panel.add_message(
-                f"I need to ask <b>{len(questions)} clarifying question(s)</b> "
-                f"to build a good route. Answer them in the panel below the graph.",
+                f"باید <b>{len(questions)} سوال شفاف‌کننده</b> بپرسم "
+                f"تا مسیر خوبی بسازم. به آن‌ها در پنل زیر گراف پاسخ دهید.",
                 role="assistant", as_html=True,
             )
 
@@ -800,12 +800,12 @@ class AIPlannerView(QWidget):
             self._set_status("⏳ Generating route…")
             self._generate_route()
         else:
-            self._set_status(f"⏳ Waiting for {len(self._awaiting_questions)} more answer(s)…")
+            self._set_status(f"⏳ منتظر {len(self._awaiting_questions)} پاسخ دیگر…")
 
     # generate مسیر
     def _generate_route(self) -> None:
-        self.chat_panel.start_status_box("Building the route graph…")
-        self._set_status("⏳ AI is building the route…")
+        self.chat_panel.start_status_box("در حال ساخت گراف مسیر…")
+        self._set_status("⏳ هوش مصنوعی در حال ساخت مسیر…")
 
         self._current_request_id = f"route-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -832,7 +832,7 @@ class AIPlannerView(QWidget):
         """TRUE STREAMING: a step was parsed from the AI's response.
         Add it to the canvas immediately — don't wait for the full route."""
         self.graph_view.add_step(step)
-        self.chat_panel.update_status(f"Added step: {step.title[:50]}…")
+        self.chat_panel.update_status(f"گام اضافه شد: {step.title[:50]}…")
 
     # پاسخ به یال added
     def _on_edge_added(self, edge: RouteEdge) -> None:
@@ -846,7 +846,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به مسیر دریافت‌شده
     def _on_route_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Route generated")
+        self.chat_panel.finish_status_box("مسیر ساخته شد")
 
         if not success:
             self._set_status("✗ Error generating route")
@@ -889,13 +889,13 @@ class AIPlannerView(QWidget):
         self._gh_export_btn.setEnabled(True)
 
         msg = (
-            f"<b>Route generated!</b><br><br>"
+            f"<b>مسیر ساخته شد!</b><br><br>"
             f"{result.summary}<br><br>"
-            f"<b>Steps:</b> {len(result.steps)}<br>"
-            f"<b>Edges:</b> {len(result.edges)}<br>"
-            f"<b>Insights:</b> {len(result.insights)}<br>"
-            f"<b>Overall success:</b> {result.overall_success_probability:.0%}<br>"
-            f"<b>Total duration:</b> {result.total_duration_minutes} min"
+            f"<b>گام‌ها:</b> {len(result.steps)}<br>"
+            f"<b>یال‌ها:</b> {len(result.edges)}<br>"
+            f"<b>بینش‌ها:</b> {len(result.insights)}<br>"
+            f"<b>موفقیت کلی:</b> {result.overall_success_probability:.0%}<br>"
+            f"<b>مدت کل:</b> {result.total_duration_minutes} دقیقه"
         )
         self.chat_panel.add_message(msg, role="assistant", as_html=True)
 
@@ -909,7 +909,7 @@ class AIPlannerView(QWidget):
         all_entries = self.journal.all()
         if all_entries:
             self._current_journal_entry_id = all_entries[0].id
-        self._set_status("✓ Route saved — AI is continuing to work…")
+        self._set_status("✓ مسیر ذخیره شد — هوش مصنوعی به کار ادامه می‌دهد…")
 
         # Emit route update for other views (Graphs, Simulation)
         self.routeUpdated.emit(result)
@@ -928,8 +928,8 @@ class AIPlannerView(QWidget):
         if self._current_route is None:
             return
 
-        self.chat_panel.start_status_box("Continuing to work — adding alternatives, breakthroughs, more questions…")
-        self._set_status("⏳ AI is continuing to work…")
+        self.chat_panel.start_status_box("ادامه کار — افزودن جایگزین‌ها، پیشرفت‌ها، سوالات بیشتر…")
+        self._set_status("⏳ هوش مصنوعی به کار ادامه می‌دهد…")
 
         self._current_request_id = f"cont-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -944,7 +944,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به continue دریافت‌شده
     def _on_continue_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Done")
+        self.chat_panel.finish_status_box("انجام شد")
         if not success:
             self._set_status("✗ Continue-working failed")
             return
@@ -956,7 +956,7 @@ class AIPlannerView(QWidget):
 
         if reflection:
             self.chat_panel.add_message(
-                f"<b>Continuing my analysis…</b><br>{reflection}",
+                f"<b>ادامه تحلیل…</b><br>{reflection}",
                 role="assistant", as_html=True,
             )
 
@@ -975,8 +975,8 @@ class AIPlannerView(QWidget):
             if new_insights:
                 parts.append(f"<b>{len(new_insights)} new insights</b>")
             self.chat_panel.add_message(
-                f"Added {' , '.join(parts)} to the route graph. "
-                f"Drag nodes around to reorganize. Double-click a node to open the edit dialog (with Save button).",
+                f"{' , '.join(parts)} به گراف مسیر اضافه شد. "
+                f"گره‌ها را بکشید و جابجا کنید. روی گره دابل‌کلیک کنید تا پنجره ویرایش باز شود.",
                 role="assistant", as_html=True,
             )
 
@@ -990,7 +990,7 @@ class AIPlannerView(QWidget):
     def _on_chat_send(self, text: str) -> None:
         if self._current_route is None:
             self.chat_panel.add_message(
-                "Generate a route first — describe your goal in the top input.",
+                "ابتدا یک مسیر بسازید — هدفتان را در ورودی بالا شرح دهید.",
                 role="assistant", as_html=True,
             )
             return
@@ -1015,7 +1015,7 @@ class AIPlannerView(QWidget):
         streaming_msg = self.chat_panel.start_streaming_message()
         self._current_request_id = f"chat-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
-        self._set_status("⏳ AI is responding…")
+        self._set_status("⏳ هوش مصنوعی در حال پاسخ‌دهی…")
 
         self._credits_panel.increment()
         self.ai.chat_streaming(
@@ -1127,14 +1127,14 @@ class AIPlannerView(QWidget):
         # Show the questions overlay, hide the splitter
         self._splitter.hide()
         self._questions_outer.show()
-        self._set_status("⚙ Configure your schedule…")
+        self._set_status("⚙ تنظیمات زمان‌بندی…")
 
     # پاسخ به schedule لغوشده
     def _on_schedule_cancelled(self) -> None:
         """User cancelled the scheduling questions."""
         self._questions_outer.hide()
         self._splitter.show()
-        self._set_status("✓ Schedule cancelled")
+        self._set_status("✓ زمان‌بندی لغو شد")
         # Restart the pulse
         if self._schedule_btn.isEnabled():
             self._schedule_pulse_timer.start()
@@ -1180,8 +1180,8 @@ class AIPlannerView(QWidget):
             start_dt = datetime.now().replace(second=0, microsecond=0)
             start_dt = start_dt + timedelta(minutes=15 - start_dt.minute % 15)
 
-        self.chat_panel.start_status_box("Building your intelligent schedule…")
-        self._set_status("⏳ AI is scheduling…")
+        self.chat_panel.start_status_box("در حال ساخت برنامه‌ریزی هوشمند…")
+        self._set_status("⏳ هوش مصنوعی در حال زمان‌بندی…")
 
         self._current_request_id = f"sched-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -1199,7 +1199,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به schedule دریافت‌شده
     def _on_schedule_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Scheduled")
+        self.chat_panel.finish_status_box("زمان‌بندی شد")
         if not success:
             self._set_status("✗ Scheduling failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1252,19 +1252,19 @@ class AIPlannerView(QWidget):
         guarantee = schedule_summary.get("guarantee_note", "")
 
         summary_html = (
-            f"<b>📅 Scheduled!</b> Created {count} calendar events<br><br>"
-            f"<b>Total hours:</b> {total_hours:.1f}h<br>"
+            f"<b>📅 زمان‌بندی شد!</b> {count} رویداد تقویم ایجاد شد<br><br>"
+            f"<b>ساعت کل:</b> {total_hours:.1f}h<br>"
         )
         if est_completion:
-            summary_html += f"<b>Estimated completion:</b> {est_completion}<br>"
+            summary_html += f"<b>تخمین تکمیل:</b> {est_completion}<br>"
         if guarantee:
             summary_html += f"<br><i>💡 {guarantee}</i><br>"
-        summary_html += "<br>Switch to the Calendar tab to see your schedule."
+        summary_html += "<br>به تب تقویم بروید تا برنامه‌ریزی خود را ببینید."
 
         self.chat_panel.add_message(
             summary_html, role="assistant", as_html=True,
         )
-        self._set_status(f"✓ Scheduled {count} events")
+        self._set_status(f"✓ {count} رویداد زمان‌بندی شد")
 
     # ---- Task creation ----
     # پاسخ به ایجاد وظیفه
@@ -1273,7 +1273,7 @@ class AIPlannerView(QWidget):
         if self.project is None:
             return
         # Prompt for title
-        new_title, ok = QInputDialog.getText(self, "New Task", "Task title:", text=title)
+        new_title, ok = QInputDialog.getText(self, "وظیفه جدید", "عنوان وظیفه:", text=title)
         if not ok or not new_title.strip():
             return
         task = self.project.create_task(
@@ -1297,7 +1297,7 @@ class AIPlannerView(QWidget):
         )
         self.graph_view._add_node(step, x, y, animate=True)
         self.chat_panel.add_message(
-            f"Created task <b>{new_title}</b>. Double-click to edit (with Save button), drag to move.",
+            f"وظیفه <b>{new_title}</b> ایجاد شد. دابل‌کلیک برای ویرایش، بکشید برای جابجایی.",
             role="assistant", as_html=True,
         )
 
@@ -1310,15 +1310,15 @@ class AIPlannerView(QWidget):
         step = next((s for s in self._current_route.steps if s.id == step_id), None)
         if step is None:
             return
-        self.chat_panel.start_status_box(f"Breaking down step: {step.title}…")
-        self._set_status(f"⏳ AI breaking down step: {step.title}…")
+        self.chat_panel.start_status_box(f"در حال تفکیک گام: {step.title}…")
+        self._set_status(f"⏳ هوش مصنوعی در حال تفکیک گام: {step.title}…")
 
         self._current_request_id = f"bd-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
 
         # پاسخ به breakdown انجام‌شده
         def _on_breakdown_done(success, result):
-            self.chat_panel.finish_status_box("Breakdown complete")
+            self.chat_panel.finish_status_box("تفکیک کامل شد")
             if not success:
                 self._set_status("✗ Step breakdown failed")
                 self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1347,8 +1347,8 @@ class AIPlannerView(QWidget):
                 self.graph_view.add_steps_and_edges(new_steps, new_edges + edges_to_parents)
 
                 self.chat_panel.add_message(
-                    f"Replaced <b>{step.title}</b> with <b>{len(new_steps)} sub-steps</b>. "
-                    f"Drag them around to reorganize.",
+                    f"<b>{step.title}</b> با <b>{len(new_steps)} زیرگام</b> جایگزین شد. "
+                    f"آن‌ها را بکشید و جابجا کنید.",
                     role="assistant", as_html=True,
                 )
 
@@ -1411,7 +1411,7 @@ class AIPlannerView(QWidget):
     # پاسخ به کلیک شبیه‌سازی
     def _on_simulation_clicked(self) -> None:
         if self._current_route is None or not self._current_route.steps:
-            self.chat_panel.add_message("Generate a route first before running simulation.", role="assistant", as_html=True)
+            self.chat_panel.add_message("ابتدا یک مسیر بسازید قبل از اجرای شبیه‌سازی.", role="assistant", as_html=True)
             return
         self._set_status("⏳ Running Monte Carlo simulation (5,000 runs)…")
         self.chat_panel.add_message("<b>Running Monte Carlo simulation…</b> Simulating the route 5,000 times to compute realistic time estimates.", role="assistant", as_html=True)
@@ -1455,8 +1455,8 @@ class AIPlannerView(QWidget):
     def _on_optimize_clicked(self) -> None:
         if self._current_route is None:
             return
-        self.chat_panel.start_status_box("AI is optimizing your route…")
-        self._set_status("⏳ AI optimizing route…")
+        self.chat_panel.start_status_box("هوش مصنوعی در حال بهینه‌سازی مسیر…")
+        self._set_status("⏳ هوش مصنوعی در حال بهینه‌سازی مسیر…")
 
         self._current_request_id = f"opt-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -1471,7 +1471,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به بهینه‌سازی دریافت‌شده
     def _on_optimize_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Optimization complete")
+        self.chat_panel.finish_status_box("بهینه‌سازی کامل شد")
         if not success:
             self._set_status("✗ Optimization failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1513,8 +1513,8 @@ class AIPlannerView(QWidget):
     def _on_risk_analysis_clicked(self) -> None:
         if self._current_route is None:
             return
-        self.chat_panel.start_status_box("AI is analyzing risks…")
-        self._set_status("⏳ AI analyzing risks…")
+        self.chat_panel.start_status_box("هوش مصنوعی در حال تحلیل ریسک…")
+        self._set_status("⏳ هوش مصنوعی در حال تحلیل ریسک…")
 
         self._current_request_id = f"risk-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -1529,7 +1529,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به risk analysis دریافت‌شده
     def _on_risk_analysis_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Risk analysis complete")
+        self.chat_panel.finish_status_box("تحلیل ریسک کامل شد")
         if not success:
             self._set_status("✗ Risk analysis failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1564,8 +1564,8 @@ class AIPlannerView(QWidget):
     def _on_critique_clicked(self) -> None:
         if self._current_route is None:
             return
-        self.chat_panel.start_status_box("AI is critically reviewing its own plan…")
-        self._set_status("⏳ AI critiquing route…")
+        self.chat_panel.start_status_box("هوش مصنوعی در حال بازبینی انتقادی برنامه…")
+        self._set_status("⏳ هوش مصنوعی در حال بازبینی مسیر…")
 
         self._current_request_id = f"crit-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -1580,7 +1580,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به critique دریافت‌شده
     def _on_critique_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Critique complete")
+        self.chat_panel.finish_status_box("بازبینی کامل شد")
         if not success:
             self._set_status("✗ Critique failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1648,12 +1648,12 @@ class AIPlannerView(QWidget):
         if self._current_route is None:
             return
         # Ask user what changed
-        change_desc, ok = QInputDialog.getText(self, "Smart Re-plan", "What did you change? Describe the modification:")
+        change_desc, ok = QInputDialog.getText(self, "باز برنامه‌ریزی هوشمند", "چه چیزی تغییر کرد؟ تغییر را شرح دهید:")
         if not ok or not change_desc.strip():
             return
 
-        self.chat_panel.start_status_box("AI is adjusting the route…")
-        self._set_status("⏳ AI re-planning…")
+        self.chat_panel.start_status_box("هوش مصنوعی در حال تنظیم مسیر…")
+        self._set_status("⏳ هوش مصنوعی در حال باز برنامه‌ریزی…")
 
         self._current_request_id = f"replan-{uuid.uuid4().hex[:8]}"
         self.chat_panel.set_request_id(self._current_request_id)
@@ -1668,7 +1668,7 @@ class AIPlannerView(QWidget):
 
     # پاسخ به replan دریافت‌شده
     def _on_replan_received(self, success, result) -> None:
-        self.chat_panel.finish_status_box("Re-plan complete")
+        self.chat_panel.finish_status_box("باز برنامه‌ریزی کامل شد")
         if not success:
             self._set_status("✗ Re-plan failed")
             self.chat_panel.add_message(f"<b>Error:</b> {result}", role="assistant", as_html=True)
@@ -1737,7 +1737,7 @@ class AIPlannerView(QWidget):
         if not self._current_route or not self._current_route.steps:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Route as CSV",
+            self, "خروجی مسیر به صورت CSV",
             f"{self._current_route.goal[:40]}.csv",
             "CSV files (*.csv);;All files (*)"
         )
@@ -1746,14 +1746,14 @@ class AIPlannerView(QWidget):
                 export_route_csv(self._current_route, path)
                 self._set_status(f"✓ Exported CSV → {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "خطا در صادر کردن", str(e))
 
     # پاسخ به خروجی xlsx
     def _on_export_xlsx(self) -> None:
         if not self._current_route or not self._current_route.steps:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Route as Excel",
+            self, "خروجی مسیر به صورت اکسل",
             f"{self._current_route.goal[:40]}.xlsx",
             "Excel files (*.xlsx);;All files (*)"
         )
@@ -1762,14 +1762,14 @@ class AIPlannerView(QWidget):
                 export_route_xlsx(self._current_route, path)
                 self._set_status(f"✓ Exported Excel → {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "خطا در صادر کردن", str(e))
 
     # پاسخ به خروجی html
     def _on_export_html(self) -> None:
         if not self._current_route or not self._current_route.steps:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Route as HTML",
+            self, "خروجی مسیر به صورت HTML",
             f"{self._current_route.goal[:40]}.html",
             "HTML files (*.html);;All files (*)"
         )
@@ -1778,4 +1778,9 @@ class AIPlannerView(QWidget):
                 export_route_html(self._current_route, path)
                 self._set_status(f"✓ Exported HTML → {path}")
             except Exception as e:
-                QMessageBox.warning(self, "Export Failed", str(e))
+                QMessageBox.warning(self, "خطا در صادر کردن", str(e))
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        self.update()

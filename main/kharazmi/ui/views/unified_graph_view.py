@@ -213,7 +213,7 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         # 4. Draw edge label if present
         if self._label:
             mid = path.pointAtPercent(0.5)
-            label_font = QFont("Inter", 11)
+            label_font = QFont("Inter", 15)
             painter.setFont(label_font)
             # Background pill
             fm = painter.fontMetrics()
@@ -362,7 +362,7 @@ class UnifiedGraphView(QGraphicsView):
         layout_label = QLabel("Layout:")
         layout_label.setStyleSheet(f"""
             color: {Palette.TEXT_TERTIARY};
-            font-size: 13px;
+            font-size: 17px;
             font-weight: bold;
             background: transparent;
             border: none;
@@ -383,7 +383,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: 1px solid {Palette.BORDER_NORMAL};
                 border-radius: 4px;
                 padding: 4px 8px;
-                font-size: 11px;
+                font-size: 15px;
                 min-width: 130px;
             }}
             QComboBox:hover {{
@@ -412,7 +412,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: none;
                 border-radius: 4px;
                 padding: 6px 14px;
-                font-size: 11px;
+                font-size: 15px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -430,7 +430,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: 1px solid {Palette.BORDER_NORMAL};
                 border-radius: 4px;
                 padding: 6px 10px;
-                font-size: 11px;
+                font-size: 15px;
             }}
             QPushButton:hover {{
                 background-color: {Palette.BG_HOVER};
@@ -484,7 +484,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: none;
                 border-radius: 4px;
                 padding: 6px 12px;
-                font-size: 11px;
+                font-size: 15px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -509,7 +509,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: 1px solid {Palette.BORDER_NORMAL};
                 border-radius: 4px;
                 padding: 4px 8px;
-                font-size: 11px;
+                font-size: 15px;
                 min-width: 120px;
             }}
             QComboBox:hover {{
@@ -547,7 +547,7 @@ class UnifiedGraphView(QGraphicsView):
                 border: none;
                 border-radius: 4px;
                 padding: 6px 10px;
-                font-size: 11px;
+                font-size: 15px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -562,7 +562,7 @@ class UnifiedGraphView(QGraphicsView):
         self._sel_count_label = QLabel("")
         self._sel_count_label.setStyleSheet(f"""
             color: {Palette.TEXT_TERTIARY};
-            font-size: 13px;
+            font-size: 17px;
             background: transparent;
             border: none;
         """)

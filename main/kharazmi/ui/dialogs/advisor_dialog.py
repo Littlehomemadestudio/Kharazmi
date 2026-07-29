@@ -71,7 +71,7 @@ class AdvisorDialog(QDialog):
     def __init__(self, project: Project, parent=None) -> None:
         super().__init__(parent)
         self.project = project
-        self.setWindowTitle("Advisor — Recommendations")
+        self.setWindowTitle("مشاور — توصیه‌ها")
         self.setMinimumWidth(560)
         self.setMinimumHeight(500)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
@@ -80,7 +80,7 @@ class AdvisorDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        title = QLabel("LOCAL ADVISOR")
+        title = QLabel("مشاور محلی")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 13px; font-weight: bold; "
             f"letter-spacing: 2px;"
@@ -88,7 +88,7 @@ class AdvisorDialog(QDialog):
         layout.addWidget(title)
 
         subtitle = QLabel(
-            "Deterministic, rule-based analysis of the project. No external services."
+            "تحلیل قطعی و مبتنی بر قوانین پروژه. بدون سرویس خارجی."
         )
         subtitle.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 11px;")
         subtitle.setWordWrap(True)
@@ -106,7 +106,7 @@ class AdvisorDialog(QDialog):
         advisor = LocalAdvisor()
         advices = advisor.analyze(project)
         if not advices:
-            empty = QLabel("No advice — the project looks clean.")
+            empty = QLabel("توصیه‌ای نیست — پروژه سالم به نظر می‌رسد.")
             empty.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; padding: 20px;")
             container_layout.addWidget(empty)
         else:
@@ -116,7 +116,7 @@ class AdvisorDialog(QDialog):
         scroll.setWidget(container)
         layout.addWidget(scroll)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("بستن")
         close_btn.setProperty("variant", "primary")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)

@@ -17,7 +17,7 @@ class ProjectSettingsDialog(QDialog):
     def __init__(self, project: Project, parent=None) -> None:
         super().__init__(parent)
         self.project = project
-        self.setWindowTitle("Project Settings")
+        self.setWindowTitle("تنظیمات پروژه")
         self.setMinimumWidth(480)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -25,7 +25,7 @@ class ProjectSettingsDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title = QLabel("PROJECT SETTINGS")
+        title = QLabel("تنظیمات پروژه")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; font-weight: bold; "
             f"letter-spacing: 2px;"
@@ -34,21 +34,21 @@ class ProjectSettingsDialog(QDialog):
 
         form = QFormLayout()
         self._name = QLineEdit(project.name)
-        form.addRow("Name", self._name)
+        form.addRow("نام", self._name)
 
         self._desc = QTextEdit()
         self._desc.setPlainText(project.description)
         self._desc.setFixedHeight(80)
-        form.addRow("Description", self._desc)
+        form.addRow("توضیحات", self._desc)
 
         layout.addLayout(form)
 
         # Info group
-        info_group = QGroupBox("Project Info")
+        info_group = QGroupBox("اطلاعات پروژه")
         info_layout = QFormLayout(info_group)
-        info_layout.addRow("Tasks", QLabel(str(project.task_count)))
-        info_layout.addRow("Dependencies", QLabel(str(project.dependency_count)))
-        info_layout.addRow("Created", QLabel(project.created_at.strftime("%Y-%m-%d %H:%M")))
+        info_layout.addRow("وظایف", QLabel(str(project.task_count)))
+        info_layout.addRow("وابستگی‌ها", QLabel(str(project.dependency_count)))
+        info_layout.addRow("ایجاد شده", QLabel(project.created_at.strftime("%Y-%m-%d %H:%M")))
         layout.addWidget(info_group)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
@@ -62,7 +62,7 @@ class ProjectSettingsDialog(QDialog):
         name = self._name.text().strip()
         if not name:
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Required", "Project name is required.")
+            QMessageBox.warning(self, "الزامی", "نام پروژه الزامی است.")
             return
         self.project.name = name
         self.project.description = self._desc.toPlainText()

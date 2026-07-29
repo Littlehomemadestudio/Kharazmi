@@ -243,7 +243,7 @@ class _StepPage(QFrame):
 
             self._custom_input = QLineEdit()
             self._custom_input.setPlaceholderText(
-                custom_placeholder or "Type your own answer…"
+                custom_placeholder or "پاسخ خود را بنویسید…"
             )
             self._custom_input.setStyleSheet(f"""
                 QLineEdit {{
@@ -263,7 +263,7 @@ class _StepPage(QFrame):
             custom_row.addWidget(self._custom_input, stretch=1)
 
             submit_btn = QPushButton("→")
-            submit_btn.setToolTip("Submit custom answer")
+            submit_btn.setToolTip("ثبت پاسخ سفارشی")
             submit_btn.setFixedSize(32, 32)
             submit_btn.setStyleSheet(f"""
                 QPushButton {{
@@ -411,7 +411,7 @@ class _DateStepPage(QFrame):
         layout.addLayout(quick_row)
 
         # Custom date input
-        custom_label = QLabel("✏️ Enter a date (Shamsi format: yyyy/mm/dd):")
+        custom_label = QLabel("✏️ تاریخ را وارد کنید (فرمت شمسی: yyyy/mm/dd):")
         custom_label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
             f"background: transparent; border: none;"
@@ -440,7 +440,7 @@ class _DateStepPage(QFrame):
         input_row.addWidget(self._date_input, stretch=1)
 
         submit_btn = QPushButton("→")
-        submit_btn.setToolTip("Submit date")
+        submit_btn.setToolTip("ثبت تاریخ")
         submit_btn.setFixedSize(32, 32)
         submit_btn.setStyleSheet(f"""
             QPushButton {{
@@ -533,7 +533,7 @@ class _DateStepPage(QFrame):
         parsed = parse_shamsi(raw)
         if parsed is None:
             self._validation_label.setText(
-                "Invalid date format. Use yyyy/mm/dd (e.g. 1403/01/15)"
+                "فرمت تاریخ نامعتبر. از yyyy/mm/dd استفاده کنید (مثلاً ۱۴۰۳/۰۱/۱۵)"
             )
             self._validation_label.show()
             return
@@ -541,7 +541,7 @@ class _DateStepPage(QFrame):
         today = ShamsiDate.today()
         if parsed < today:
             self._validation_label.setText(
-                "Start date cannot be in the past."
+                "تاریخ شروع نمی‌تواند در گذشته باشد."
             )
             self._validation_label.show()
             return
@@ -819,7 +819,7 @@ class ScheduleQuestionsWidget(QFrame):
         self._main_layout.addLayout(nav_layout)
 
         # ── Final "Schedule with AI" button (hidden until last step) ──
-        self._final_btn = QPushButton("✦  Schedule with AI")
+        self._final_btn = QPushButton("✦  برنامه‌ریزی با هوش مصنوعی")
         self._final_btn.setCursor(Qt.PointingHandCursor)
         self._final_btn.setFixedHeight(52)
         self._final_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -1061,7 +1061,7 @@ class ScheduleQuestionsWidget(QFrame):
 
         # Step indicator text
         self._step_indicator.setText(
-            f"Step {self._current_step + 1} of {total}"
+            f"گام {self._current_step + 1} از {total}"
         )
 
         # Progress bar fill

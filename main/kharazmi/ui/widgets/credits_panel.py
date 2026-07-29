@@ -77,4 +77,4 @@ class CreditsPanel(QLabel):
 
     # بروزرسانی متن
     def _update_text(self) -> None:
-        self.setText(f"🪙 {self._count} AI Operations")
+        self.setText(f"🪙 {self._count} عملیات هوش مصنوعی")

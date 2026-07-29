@@ -22,7 +22,7 @@ class CalendarSettingsDialog(QDialog):
     def __init__(self, store: CalendarStore, parent=None) -> None:
         super().__init__(parent)
         self.store = store
-        self.setWindowTitle("Manage Calendars")
+        self.setWindowTitle("مدیریت تقویم‌ها")
         self.setMinimumSize(560, 460)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
 
@@ -30,7 +30,7 @@ class CalendarSettingsDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title = QLabel("CALENDAR MANAGEMENT")
+        title = QLabel("مدیریت تقویم‌ها")
         title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px;"
@@ -63,21 +63,21 @@ class CalendarSettingsDialog(QDialog):
 
         # Name
         name_row = QHBoxLayout()
-        name_row.addWidget(QLabel("Name:"))
+        name_row.addWidget(QLabel("نام:"))
         self._name_edit = QLineEdit()
         name_row.addWidget(self._name_edit, stretch=1)
         edit_layout.addLayout(name_row)
 
         # Description
         desc_row = QHBoxLayout()
-        desc_row.addWidget(QLabel("Description:"))
+        desc_row.addWidget(QLabel("توضیحات:"))
         self._desc_edit = QLineEdit()
         desc_row.addWidget(self._desc_edit, stretch=1)
         edit_layout.addLayout(desc_row)
 
         # Color
         color_row = QHBoxLayout()
-        color_row.addWidget(QLabel("Color:"))
+        color_row.addWidget(QLabel("رنگ:"))
         for hex_color in CALENDAR_COLORS:
             btn = QPushButton()
             btn.setFixedSize(24, 24)
@@ -87,18 +87,18 @@ class CalendarSettingsDialog(QDialog):
             btn.clicked.connect(lambda _=False, c=hex_color: self._set_color(c))
             color_row.addWidget(btn)
         color_row.addStretch()
-        self._custom_color_btn = QPushButton("Custom...")
+        self._custom_color_btn = QPushButton("سفارشی...")
         self._custom_color_btn.clicked.connect(self._pick_custom_color)
         color_row.addWidget(self._custom_color_btn)
         edit_layout.addLayout(color_row)
 
         # Action buttons
         btn_row = QHBoxLayout()
-        self._apply_btn = QPushButton("Apply Changes")
+        self._apply_btn = QPushButton("اعمال تغییرات")
         self._apply_btn.setProperty("variant", "primary")
         self._apply_btn.clicked.connect(self._apply_changes)
         btn_row.addWidget(self._apply_btn)
-        self._delete_btn = QPushButton("Delete Calendar")
+        self._delete_btn = QPushButton("حذف تقویم")
         self._delete_btn.setProperty("variant", "danger")
         self._delete_btn.clicked.connect(self._delete_calendar)
         btn_row.addWidget(self._delete_btn)
@@ -108,13 +108,13 @@ class CalendarSettingsDialog(QDialog):
         layout.addWidget(edit_panel)
 
         # Create new calendar button
-        new_btn = QPushButton("+ Create New Calendar")
+        new_btn = QPushButton("+ ایجاد تقویم جدید")
         new_btn.setProperty("variant", "primary")
         new_btn.clicked.connect(self._create_new)
         layout.addWidget(new_btn)
 
         # Close
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("بستن")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
 
@@ -129,9 +129,9 @@ class CalendarSettingsDialog(QDialog):
                            key=lambda c: (not c.is_default, c.name.lower())):
             suffix = ""
             if cal.is_default:
-                suffix = "  (default)"
+                suffix = "  (پیش‌فرض)"
             elif cal.is_readonly:
-                suffix = "  (read-only)"
+                suffix = "  (فقط خواندنی)"
             item = QListWidgetItem(f"{cal.name}{suffix}")
             item.setData(Qt.UserRole, cal.id)
             self._list.addItem(item)
@@ -188,8 +188,8 @@ class CalendarSettingsDialog(QDialog):
         if cal is None or cal.is_default or cal.is_readonly:
             return
         ret = QMessageBox.question(
-            self, "Delete Calendar",
-            f"Delete calendar '{cal.name}'?\nAll events on it will be deleted.\nThis cannot be undone.",
+            self, "حذف تقویم",
+            f"تقویم '{cal.name}' حذف شود؟\nهمه رویدادهای آن حذف خواهند شد.\nاین عمل قابل بازگشت نیست.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if ret == QMessageBox.Yes:
@@ -199,7 +199,7 @@ class CalendarSettingsDialog(QDialog):
 
     # ایجاد جدید
     def _create_new(self) -> None:
-        name, ok = QInputDialog.getText(self, "New Calendar", "Calendar name:")
+        name, ok = QInputDialog.getText(self, "تقویم جدید", "نام تقویم:")
         if not ok or not name.strip():
             return
         # Pick a color not yet used

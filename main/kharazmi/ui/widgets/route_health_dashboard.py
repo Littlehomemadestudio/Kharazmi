@@ -124,7 +124,7 @@ class _CircularGauge(QWidget):
             sub_font = QFont("Inter", 11, QFont.Bold)
             p.setFont(sub_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            sub_text = "HEALTH SCORE"
+            sub_text = "امتیاز سلامت"
             fm_s = QFontMetrics(sub_font)
             subw = fm_s.horizontalAdvance(sub_text)
             p.drawText(QRectF(cx - subw / 2 - 4, cy + 48, subw + 8, 16), Qt.AlignCenter, sub_text)
@@ -179,7 +179,7 @@ class _MiniHistogram(QWidget):
             if not self._bins:
                 p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
                 p.setFont(QFont("Inter", 12))
-                p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "No simulation data")
+                p.drawText(QRectF(0, 0, w, h), Qt.AlignCenter, "داده شبیه‌سازی موجود نیست")
                 return
 
             n = len(self._bins)
@@ -504,7 +504,7 @@ class RouteHealthDashboard(QFrame):
         hdr = QHBoxLayout()
         hdr.setSpacing(8)
 
-        title = QLabel("Route Health Dashboard")
+        title = QLabel("داشبورد سلامت مسیر")
         title.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; font-size: 18px; font-weight: 700; "
             f"letter-spacing: 0.5px; background: transparent;"
@@ -536,7 +536,7 @@ class RouteHealthDashboard(QFrame):
         summary_col = QVBoxLayout()
         summary_col.setSpacing(6)
 
-        self._score_summary_lbl = QLabel("No health data")
+        self._score_summary_lbl = QLabel("داده سلامت موجود نیست")
         self._score_summary_lbl.setWordWrap(True)
         self._score_summary_lbl.setStyleSheet(
             f"color: {Palette.TEXT_SECONDARY}; font-size: 12px; background: transparent;"
@@ -558,12 +558,12 @@ class RouteHealthDashboard(QFrame):
         summary_col.addStretch()
         row.addLayout(summary_col, 1)
 
-        self._main_layout.addWidget(self._section_title("Overall Health", "\U0001F3AF"))
+        self._main_layout.addWidget(self._section_title("سلامت کلی", "\U0001F3AF"))
         self._main_layout.addLayout(row)
 
     # نسخه ساخت breakdown بخش
     def _build_breakdown_section(self) -> None:
-        self._main_layout.addWidget(self._section_title("Score Breakdown", "\U0001F4CA"))
+        self._main_layout.addWidget(self._section_title("تفکیک امتیاز", "\U0001F4CA"))
 
         breakdown_card = QFrame()
         breakdown_card.setStyleSheet(f"""
@@ -578,12 +578,12 @@ class RouteHealthDashboard(QFrame):
         blay.setContentsMargins(14, 12, 14, 12)
         blay.setSpacing(6)
 
-        self._prob_bar = _ScoreBar("Probability Score", 40)
-        self._fallback_bar = _ScoreBar("Fallback Coverage", 15)
-        self._risk_bar = _ScoreBar("Risk Score", 15)
-        self._branch_bar = _ScoreBar("Branch Complexity", 12)
-        self._kind_bar = _ScoreBar("Step Kind Variety", 10)
-        self._dep_bar = _ScoreBar("Dependency Health", 10)
+        self._prob_bar = _ScoreBar("امتیاز احتمال", 40)
+        self._fallback_bar = _ScoreBar("پوشش جایگزین", 15)
+        self._risk_bar = _ScoreBar("امتیاز ریسک", 15)
+        self._branch_bar = _ScoreBar("پیچیدگی شاخه", 12)
+        self._kind_bar = _ScoreBar("تنوع نوع گام", 10)
+        self._dep_bar = _ScoreBar("سلامت وابستگی", 10)
 
         blay.addWidget(self._prob_bar)
         blay.addWidget(self._fallback_bar)
@@ -596,13 +596,13 @@ class RouteHealthDashboard(QFrame):
 
     # نسخه ساخت bottleneck بخش
     def _build_bottleneck_section(self) -> None:
-        self._bottleneck_title = self._section_title("Bottleneck Alerts", "\U0001F6A8")
+        self._bottleneck_title = self._section_title("هشدارهای گلوگاه", "\U0001F6A8")
         self._main_layout.addWidget(self._bottleneck_title)
 
         self._bottleneck_container = QVBoxLayout()
         self._bottleneck_container.setSpacing(8)
 
-        self._no_bottleneck_lbl = QLabel("No bottlenecks detected \u2705")
+        self._no_bottleneck_lbl = QLabel("گلوگاهی شناسایی نشد ✅")
         self._no_bottleneck_lbl.setStyleSheet(
             f"color: {Palette.STATUS_DONE}; font-size: 12px; padding: 8px; background: transparent;"
         )
@@ -612,7 +612,7 @@ class RouteHealthDashboard(QFrame):
 
     # نسخه ساخت recommendations بخش
     def _build_recommendations_section(self) -> None:
-        self._main_layout.addWidget(self._section_title("Recommendations", "\U0001F4A1"))
+        self._main_layout.addWidget(self._section_title("توصیه‌ها", "\U0001F4A1"))
 
         self._rec_card = QFrame()
         self._rec_card.setStyleSheet(f"""
@@ -627,7 +627,7 @@ class RouteHealthDashboard(QFrame):
         self._rec_lay.setContentsMargins(14, 12, 14, 12)
         self._rec_lay.setSpacing(6)
 
-        self._no_rec_lbl = QLabel("Run a health check to see recommendations.")
+        self._no_rec_lbl = QLabel("برای مشاهده توصیه‌ها بررسی سلامت را اجرا کنید.")
         self._no_rec_lbl.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; background: transparent;"
         )
@@ -637,7 +637,7 @@ class RouteHealthDashboard(QFrame):
 
     # نسخه ساخت simulation بخش
     def _build_simulation_section(self) -> None:
-        self._main_layout.addWidget(self._section_title("Monte Carlo Simulation", "\U0001F3B2"))
+        self._main_layout.addWidget(self._section_title("شبیه‌سازی مونت‌کارلو", "\U0001F3B2"))
 
         sim_card = QFrame()
         sim_card.setStyleSheet(f"""
@@ -660,7 +660,7 @@ class RouteHealthDashboard(QFrame):
         self._p75_lbl = self._make_stat_label("P75", "--")
         self._p90_lbl = self._make_stat_label("P90", "--")
         self._p99_lbl = self._make_stat_label("P99", "--")
-        self._fail_lbl = self._make_stat_label("Fail %", "--")
+        self._fail_lbl = self._make_stat_label("شکست %", "--")
 
         pct_grid.addWidget(self._p50_lbl[0], 0, 0)
         pct_grid.addWidget(self._p50_lbl[1], 1, 0)
@@ -680,7 +680,7 @@ class RouteHealthDashboard(QFrame):
         slay.addWidget(self._histogram)
 
         # Sim runs info
-        self._sim_info_lbl = QLabel("No simulation has been run yet.")
+        self._sim_info_lbl = QLabel("هنوز شبیه‌سازی‌ای اجرا نشده.")
         self._sim_info_lbl.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 13px; background: transparent;"
         )
@@ -707,36 +707,36 @@ class RouteHealthDashboard(QFrame):
 
     # نسخه ساخت عملکرد buttons
     def _build_action_buttons(self) -> None:
-        self._main_layout.addWidget(self._section_title("Actions", "\u2699\uFE0F"))
+        self._main_layout.addWidget(self._section_title("عملیات", "\u2699\uFE0F"))
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
 
         self._sim_btn = self._make_action_button(
-            "\U0001F3B2  Run Monte Carlo Simulation", primary=True
+            "\U0001F3B2  اجرای شبیه‌سازی مونت‌کارلو", primary=True
         )
-        self._sim_btn.setToolTip("Run 5,000 Monte Carlo simulations to estimate completion time and failure rate")
+        self._sim_btn.setToolTip("اجرای ۵۰۰۰ شبیه‌سازی مونت‌کارلو برای تخمین زمان تکمیل و نرخ شکست")
         self._sim_btn.clicked.connect(self.simulationRequested.emit)
         btn_row.addWidget(self._sim_btn)
 
         self._opt_btn = self._make_action_button(
-            "\u2728  AI Optimize Route", primary=False
+            "\u2728  بهینه‌سازی مسیر با هوش مصنوعی", primary=False
         )
-        self._opt_btn.setToolTip("Ask AI to optimize the route for better health and resilience")
+        self._opt_btn.setToolTip("درخواست از هوش مصنوعی برای بهینه‌سازی مسیر")
         self._opt_btn.clicked.connect(self.optimizeRequested.emit)
         btn_row.addWidget(self._opt_btn)
 
         self._risk_btn = self._make_action_button(
-            "\U0001F6A8  AI Risk Analysis", primary=False
+            "\U0001F6A8  تحلیل ریسک با هوش مصنوعی", primary=False
         )
-        self._risk_btn.setToolTip("Ask AI to analyze and mitigate risks in the route")
+        self._risk_btn.setToolTip("درخواست از هوش مصنوعی برای تحلیل و کاهش ریسک")
         self._risk_btn.clicked.connect(self.riskAnalysisRequested.emit)
         btn_row.addWidget(self._risk_btn)
 
         self._replan_btn = self._make_action_button(
-            "\U0001F504  AI Smart Re-plan", primary=False
+            "\U0001F504  باز برنامه‌ریزی هوشمند", primary=False
         )
-        self._replan_btn.setToolTip("Ask AI to re-plan the route with improved structure")
+        self._replan_btn.setToolTip("درخواست از هوش مصنوعی برای باز برنامه‌ریزی")
         self._replan_btn.clicked.connect(self.replanRequested.emit)
         btn_row.addWidget(self._replan_btn)
 
@@ -799,18 +799,18 @@ class RouteHealthDashboard(QFrame):
         # ── Summary text ──
         score_desc = self._describe_score(health.overall_score)
         self._score_summary_lbl.setText(
-            f"Overall Score: <b>{health.overall_score:.0f}</b>/100 — {score_desc}"
+            f"امتیاز کلی: <b>{health.overall_score:.0f}</b>/۱۰۰ — {score_desc}"
         )
 
         m = health.metrics
         n_steps = len(self._route.steps) if self._route else 0
         self._steps_count_lbl.setText(
-            f"Steps: {n_steps}  |  Branches: {m.get('n_branches', 0)}  |  "
-            f"Kinds: {m.get('n_kinds', 0)}"
+            f"گام‌ها: {n_steps}  |  شاخه‌ها: {m.get('n_branches', 0)}  |  "
+            f"انواع: {m.get('n_kinds', 0)}"
         )
         self._prob_avg_lbl.setText(
-            f"Avg Probability: {m.get('avg_success_probability', 0):.0%}  |  "
-            f"Fallback Coverage: {m.get('fallback_coverage_pct', 0):.0%}"
+            f"احتمال میانگین: {m.get('avg_success_probability', 0):.0%}  |  "
+            f"پوشش جایگزین: {m.get('fallback_coverage_pct', 0):.0%}"
         )
 
         # ── Breakdown bars ──
@@ -865,9 +865,9 @@ class RouteHealthDashboard(QFrame):
 
         # Info
         self._sim_info_lbl.setText(
-            f"Based on {result.n_simulations:,} simulations  |  "
-            f"Mean: {result.mean_minutes:.0f}m  |  "
-            f"Range: {result.min_minutes}m – {result.max_minutes}m"
+            f"بر اساس {result.n_simulations:,} شبیه‌سازی  |  "
+            f"میانگین: {result.mean_minutes:.0f}m  |  "
+            f"بازه: {result.min_minutes}m – {result.max_minutes}m"
         )
 
     # ──────────── Internals ────────────
@@ -882,17 +882,17 @@ class RouteHealthDashboard(QFrame):
     # describe score
     def _describe_score(self, score: float) -> str:
         if score >= 90:
-            return "Excellent — route is robust and well-structured"
+            return "عالی — مسیر مقاوم و خوش‌ساخت است"
         elif score >= 80:
-            return "Good — minor issues to address"
+            return "خوب — مشکلات جزئی برای رفع وجود دارد"
         elif score >= 70:
-            return "Fair — some risks present"
+            return "متوسط — ریسک‌هایی وجود دارد"
         elif score >= 60:
-            return "Moderate — improvements recommended"
+            return "قابل قبول — بهبودها توصیه می‌شود"
         elif score >= 50:
-            return "Poor — significant issues found"
+            return "ضعیف — مشکلات قابل توجهی یافت شد"
         else:
-            return "Critical — route is likely to fail"
+            return "بحرانی — مسیر احتمالاً شکست می‌خورد"
 
     # rebuild bottlenecks
     # rebuild bottlenecks
@@ -910,7 +910,7 @@ class RouteHealthDashboard(QFrame):
 
         bottlenecks = health.bottlenecks
         if not bottlenecks:
-            lbl = QLabel("No bottlenecks detected \u2705")
+            lbl = QLabel("گلوگاهی شناسایی نشد ✅")
             lbl.setStyleSheet(
                 f"color: {Palette.STATUS_DONE}; font-size: 12px; padding: 8px; background: transparent;"
             )
@@ -934,18 +934,18 @@ class RouteHealthDashboard(QFrame):
             reasons = []
             if step:
                 if step.success_probability < 0.4:
-                    reasons.append(f"Very low success probability ({step.success_probability:.0%})")
+                    reasons.append(f"احتمال موفقیت بسیار کم ({step.success_probability:.0%})")
                 elif step.success_probability < 0.6:
-                    reasons.append(f"Low success probability ({step.success_probability:.0%})")
+                    reasons.append(f"احتمال موفقیت کم ({step.success_probability:.0%})")
                 n_deps = dependents_count.get(bn_id, 0)
                 if n_deps >= 2:
-                    reasons.append(f"{n_deps} other steps depend on this step")
+                    reasons.append(f"{n_deps} گام دیگر به این گام وابسته‌اند")
                 if step.risk_level in ("high", "severe"):
-                    reasons.append(f"High risk level ({step.risk_level})")
+                    reasons.append(f"سطح ریسک بالا ({step.risk_level})")
                 if not step.fallback:
-                    reasons.append("No fallback plan defined")
+                    reasons.append("هیچ طرح جایگزینی تعریف نشده")
 
-            reason_text = "; ".join(reasons) if reasons else "Bottleneck detected"
+            reason_text = "؛ ".join(reasons) if reasons else "گلوگاه شناسایی شد"
             card = _BottleneckCard(bn_id, title, reason_text)
             self._bottleneck_container.addWidget(card)
 
@@ -964,7 +964,7 @@ class RouteHealthDashboard(QFrame):
                 w.deleteLater()
 
         if not recommendations:
-            lbl = QLabel("No recommendations yet.")
+            lbl = QLabel("هنوز توصیه‌ای وجود ندارد.")
             lbl.setStyleSheet(
                 f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; background: transparent;"
             )

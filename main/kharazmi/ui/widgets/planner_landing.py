@@ -607,7 +607,7 @@ class PlannerLanding(QWidget):
         layout.addStretch(2)
 
         # ---- Bottom hint ----
-        hint = QLabel("Press Enter to start planning with AI  ·  رَسک هوش مصنوعی شماست")
+        hint = QLabel("Enter را بزنید تا برنامه‌ریزی با هوش مصنوعی شروع شود  ·  رَسک هوش مصنوعی شماست")
         hint.setAlignment(Qt.AlignCenter)
         hint.setStyleSheet(f"""
             color: {Palette.TEXT_TERTIARY};

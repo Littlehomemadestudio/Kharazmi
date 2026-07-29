@@ -47,7 +47,7 @@ class FeedbackDialog(QDialog):
     # سازنده — مقداردهی اولیه شیء
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("💡 Feedback")
+        self.setWindowTitle("💡 بازخورد")
         self.setMinimumWidth(420)
         self.setMinimumHeight(320)
         self.setStyleSheet(
@@ -60,7 +60,7 @@ class FeedbackDialog(QDialog):
         layout.setSpacing(12)
 
         # Title
-        title = QLabel("We'd love to hear from you!")
+        title = QLabel("خوشحال می‌شویم نظرتان را بشنویم!")
         title.setStyleSheet(
             f"color: {Palette.GOLD_BRIGHT}; font-size: 16px; "
             f"font-weight: bold; border: none;"
@@ -69,8 +69,8 @@ class FeedbackDialog(QDialog):
 
         # Subtitle
         subtitle = QLabel(
-            "Share your thoughts, suggestions, or bug reports. "
-            "Your feedback helps us improve Rask."
+            "نظرات، پیشنهادات یا گزارش باگ‌هایتان را به اشتراک بگذارید. "
+            "بازخورد شما به بهبود رَسک کمک می‌کند."
         )
         subtitle.setWordWrap(True)
         subtitle.setStyleSheet(
@@ -80,7 +80,7 @@ class FeedbackDialog(QDialog):
 
         # Text area
         self._text_area = QTextEdit()
-        self._text_area.setPlaceholderText("Type your feedback here…")
+        self._text_area.setPlaceholderText("بازخورد خود را اینجا بنویسید…")
         self._text_area.setStyleSheet(f"""
             QTextEdit {{
                 background-color: {Palette.BG_TERTIARY};
@@ -100,7 +100,7 @@ class FeedbackDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton("لغو")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -118,7 +118,7 @@ class FeedbackDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        submit_btn = QPushButton("Submit")
+        submit_btn = QPushButton("ارسال")
         submit_btn.setProperty("variant", "primary")
         submit_btn.setStyleSheet(f"""
             QPushButton {{
@@ -158,6 +158,6 @@ class FeedbackDialog(QDialog):
         # Show thank you message
         QMessageBox.information(
             None,
-            "Thank you! 🙏",
-            "Your feedback has been saved. Thank you for helping us improve Rask!",
+            "ممنون! 🙏",
+            "بازخورد شما ذخیره شد. ممنون که به بهبود رَسک کمک می‌کنید!",
         )
