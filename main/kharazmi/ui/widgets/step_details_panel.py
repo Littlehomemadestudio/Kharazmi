@@ -53,7 +53,7 @@ class StepDetailsPanel(QFrame):
         header_layout.setContentsMargins(12, 4, 12, 4)
         header_layout.setSpacing(8)
 
-        self._title = QLabel("STEP DETAILS — click a node to expand")
+        self._title = QLabel("جزئیات گام — برای باز کردن روی یک گره کلیک کنید")
         self._title.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 2px; background: transparent; border: none;"
@@ -147,22 +147,22 @@ class StepDetailsPanel(QFrame):
         # Build rich details
         parts = []
         if step.location:
-            parts.append(f"<b>📍 Location:</b> {step.location}")
+            parts.append(f"<b>📍 مکان:</b> {step.location}")
         if step.description:
-            parts.append(f"<b>What to do:</b><br>{step.description}")
+            parts.append(f"<b>چه کار کنید:</b><br>{step.description}")
         if step.fallback:
-            parts.append(f"<b>↩ Fallback:</b> {step.fallback}")
+            parts.append(f"<b>↩ جایگزین:</b> {step.fallback}")
         if step.sub_goals:
-            parts.append("<b>◆ Sub-goals:</b>")
+            parts.append("<b>◆ زیرهدف‌ها:</b>")
             for sg in step.sub_goals:
                 parts.append(f"  • {sg}")
         if step.depends_on:
-            parts.append(f"<b>Depends on:</b> {', '.join(step.depends_on)}")
+            parts.append(f"<b>وابسته به:</b> {', '.join(step.depends_on)}")
         if step.cost_estimate:
-            parts.append(f"<b>$ Cost:</b> {step.cost_estimate}")
+            parts.append(f"<b>$ هزینه:</b> {step.cost_estimate}")
         self._details_label.setText("<br><br>".join(parts))
 
-        self._title.setText(f"STEP DETAILS — {step.id.upper()}")
+        self._title.setText(f"جزئیات گام — {step.id.upper()}")
         self._content.show()
         self._close_btn.show()
         self._expanded = True
@@ -173,7 +173,7 @@ class StepDetailsPanel(QFrame):
         self._step = None
         self._content.hide()
         self._close_btn.hide()
-        self._title.setText("STEP DETAILS — click a node to expand")
+        self._title.setText("جزئیات گام — برای باز کردن روی یک گره کلیک کنید")
         self._expanded = False
         self.setFixedHeight(self.COLLAPSED_HEIGHT)
 

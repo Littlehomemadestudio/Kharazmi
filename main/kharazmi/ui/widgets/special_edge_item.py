@@ -100,10 +100,18 @@ class BreakthroughEdge(QGraphicsPathItem):
     Represents a radical alternative way — an electric flash of insight.
     """
 
-    # Color constants
-    COLOR = QColor("#3C8CFF")
-    GLOW_COLOR = QColor(60, 140, 255, 50)
-    LABEL_COLOR = QColor(100, 190, 255)
+    # Color constants — read from Palette at runtime so theme changes propagate
+    @property
+    def COLOR(self):
+        return QColor(Palette.EDGE_BREAKTHROUGH)
+
+    @property
+    def GLOW_COLOR(self):
+        c = QColor(Palette.EDGE_BREAKTHROUGH); c.setAlpha(50); return c
+
+    @property
+    def LABEL_COLOR(self):
+        c = QColor(Palette.EDGE_BREAKTHROUGH); c = c.lighter(140); return c
 
     # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,
@@ -337,9 +345,17 @@ class SkipEdge(QGraphicsPathItem):
     arrowhead at target.  Feels like bypassing something.
     """
 
-    COLOR = QColor("#FF8C1E")
-    GLOW_COLOR = QColor(255, 140, 30, 40)
-    LABEL_COLOR = QColor(255, 200, 100)
+    @property
+    def COLOR(self):
+        return QColor(Palette.EDGE_SKIP)
+
+    @property
+    def GLOW_COLOR(self):
+        c = QColor(Palette.EDGE_SKIP); c.setAlpha(40); return c
+
+    @property
+    def LABEL_COLOR(self):
+        c = QColor(Palette.EDGE_SKIP); c = c.lighter(140); return c
 
     # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,
@@ -580,9 +596,17 @@ class LoopEdge(QGraphicsPathItem):
     point, and a "LOOP" label.  Feels like going around again.
     """
 
-    COLOR = QColor("#3CDC78")
-    GLOW_COLOR = QColor(60, 220, 120, 40)
-    LABEL_COLOR = QColor(140, 255, 180)
+    @property
+    def COLOR(self):
+        return QColor(Palette.EDGE_LOOP)
+
+    @property
+    def GLOW_COLOR(self):
+        c = QColor(Palette.EDGE_LOOP); c.setAlpha(40); return c
+
+    @property
+    def LABEL_COLOR(self):
+        c = QColor(Palette.EDGE_LOOP); c = c.lighter(140); return c
 
     # سازنده — مقداردهی اولیه شیء
     def __init__(self, edge: RouteEdge, source, target,

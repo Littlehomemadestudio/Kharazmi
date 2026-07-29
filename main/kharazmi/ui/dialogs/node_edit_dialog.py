@@ -28,7 +28,7 @@ class NodeEditDialog(QDialog):
         super().__init__(parent)
         self.step = step
         self._changes: dict = {}
-        self.setWindowTitle(f"Edit: {step.title}")
+        self.setWindowTitle(f"ویرایش: {step.title}")
         self.setMinimumWidth(560)
         self.setMinimumHeight(520)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -50,7 +50,7 @@ class NodeEditDialog(QDialog):
         icon_label.setStyleSheet("font-size: 20px; background: transparent; border: none;")
         header_layout.addWidget(icon_label)
 
-        title_label = QLabel(f"EDIT NODE — {step.id.upper()}")
+        title_label = QLabel(f"ویرایش گره — {step.id.upper()}")
         title_label.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 12px; font-weight: bold; "
             f"letter-spacing: 2px; background: transparent; border: none;"
@@ -76,25 +76,25 @@ class NodeEditDialog(QDialog):
         # Title
         self._title = QLineEdit(step.title or "")
         self._title.setStyleSheet(self._input_style(large=True))
-        self._title.setPlaceholderText("Step title…")
+        self._title.setPlaceholderText("عنوان مرحله…")
         self._title.selectAll()
-        form.addRow(self._label("Title"), self._title)
+        form.addRow(self._label("عنوان"), self._title)
 
         # Description
         self._desc = QTextEdit()
         self._desc.setPlainText(step.description or "")
         self._desc.setFixedHeight(100)
         self._desc.setStyleSheet(self._input_style())
-        self._desc.setPlaceholderText("Description…")
+        self._desc.setPlaceholderText("توضیحات…")
         self._desc.setAcceptRichText(False)
-        form.addRow(self._label("Description"), self._desc)
+        form.addRow(self._label("توضیحات"), self._desc)
 
         # Duration + Success probability
         row1 = QHBoxLayout()
         self._dur_spin = QSpinBox()
         self._dur_spin.setRange(1, 99999)
         self._dur_spin.setValue(step.duration_minutes)
-        self._dur_spin.setSuffix("  min")
+        self._dur_spin.setSuffix("  دقیقه")
         self._dur_spin.setStyleSheet(self._input_style())
         row1.addWidget(self._dur_spin)
 
@@ -106,14 +106,14 @@ class NodeEditDialog(QDialog):
         self._prob_spin.setDecimals(2)
         self._prob_spin.setValue(step.success_probability)
         self._prob_spin.setStyleSheet(self._input_style())
-        row1.addWidget(QLabel("Success %"))
+        row1.addWidget(QLabel("احتمال موفقیت"))
         row1.addWidget(self._prob_spin)
-        form.addRow(self._label("Duration"), row1)
+        form.addRow(self._label("مدت"), row1)
 
         # Risk + Kind
         row2 = QHBoxLayout()
         self._risk_combo = QComboBox()
-        for r in ["low", "medium", "high", "severe"]:
+        for r in ["پایین", "متوسط", "بالا", "شدید"]:
             self._risk_combo.addItem(r)
         self._risk_combo.setCurrentText(step.risk_level)
         self._risk_combo.setStyleSheet(self._input_style())
@@ -122,40 +122,40 @@ class NodeEditDialog(QDialog):
         row2.addSpacing(16)
 
         self._kind_combo = QComboBox()
-        for k in ["action", "decision", "milestone", "wait", "checkpoint"]:
+        for k in ["عمل", "تصمیم", "نقطه عطف", "انتظار", "بازرسی"]:
             self._kind_combo.addItem(k)
         self._kind_combo.setCurrentText(step.kind)
         self._kind_combo.setStyleSheet(self._input_style())
-        row2.addWidget(QLabel("Kind"))
+        row2.addWidget(QLabel("نوع"))
         row2.addWidget(self._kind_combo)
-        form.addRow(self._label("Risk"), row2)
+        form.addRow(self._label("ریسک"), row2)
 
         # Branch
         self._branch = QLineEdit(step.branch or "")
         self._branch.setStyleSheet(self._input_style())
-        self._branch.setPlaceholderText("e.g. main, alt-a, fallback-1")
-        form.addRow(self._label("Branch"), self._branch)
+        self._branch.setPlaceholderText("مثلاً: اصلی، alt-a، fallback-1")
+        form.addRow(self._label("شاخه"), self._branch)
 
         # Location
         self._location = QLineEdit(step.location or "")
         self._location.setStyleSheet(self._input_style())
-        self._location.setPlaceholderText("e.g. Office, Remote, Tehran")
-        form.addRow(self._label("Location"), self._location)
+        self._location.setPlaceholderText("مثلاً: دفتر، راه دور، تهران")
+        form.addRow(self._label("مکان"), self._location)
 
         # Cost estimate
         self._cost = QLineEdit(step.cost_estimate or "")
         self._cost.setStyleSheet(self._input_style())
-        self._cost.setPlaceholderText("e.g. $500, 2 hours")
-        form.addRow(self._label("Cost"), self._cost)
+        self._cost.setPlaceholderText("مثلاً: ۵۰۰ دلار، ۲ ساعت")
+        form.addRow(self._label("هزینه"), self._cost)
 
         # Fallback
         self._fallback = QTextEdit()
         self._fallback.setPlainText(step.fallback or "")
         self._fallback.setFixedHeight(60)
         self._fallback.setStyleSheet(self._input_style())
-        self._fallback.setPlaceholderText("What to do if this step fails…")
+        self._fallback.setPlaceholderText("اگر این مرحله شکست خورد چه کار کنید…")
         self._fallback.setAcceptRichText(False)
-        form.addRow(self._label("Fallback"), self._fallback)
+        form.addRow(self._label("جایگزین"), self._fallback)
 
         # Depends on (display only)
         if step.depends_on:
@@ -167,7 +167,7 @@ class NodeEditDialog(QDialog):
                 f"background: transparent; border: none; padding: 4px;"
             )
             dep_label.setWordWrap(True)
-            form.addRow(self._label("Depends on"), dep_label)
+            form.addRow(self._label("وابسته به"), dep_label)
 
         # Sub-goals (display only)
         if step.sub_goals:
@@ -178,7 +178,7 @@ class NodeEditDialog(QDialog):
                 f"background: transparent; border: none; padding: 4px;"
             )
             sg_label.setWordWrap(True)
-            form.addRow(self._label("Sub-goals"), sg_label)
+            form.addRow(self._label("زیراهداف"), sg_label)
 
         layout.addLayout(form)
 
@@ -188,7 +188,7 @@ class NodeEditDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        cancel_btn = QPushButton("  Cancel  ")
+        cancel_btn = QPushButton("  لغو  ")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -207,7 +207,7 @@ class NodeEditDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        save_btn = QPushButton("  💾  Save Changes  ")
+        save_btn = QPushButton("  💾  ذخیره تغییرات  ")
         save_btn.setDefault(True)
         save_btn.setStyleSheet(f"""
             QPushButton {{
@@ -267,7 +267,7 @@ class NodeEditDialog(QDialog):
         title = self._title.text().strip()
         if not title:
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Required", "Title is required.")
+            QMessageBox.warning(self, "الزامی", "عنوان الزامی است.")
             return
 
         # Collect changes

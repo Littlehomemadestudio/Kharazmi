@@ -33,16 +33,22 @@ from ..dialogs.new_node_dialog import NewNodeDialog
 logger = logging.getLogger(__name__)
 
 
-# Edge style by kind
-EDGE_STYLES = {
-    "primary":       {"color": "#D4AF37", "width": 2.2, "style": Qt.SolidLine},
-    "alternative":   {"color": "#5A7FA8", "width": 1.8, "style": Qt.DashLine},
-    "fallback":      {"color": "#A85A5A", "width": 1.5, "style": Qt.DotLine},
-    "merge":         {"color": "#F5C842", "width": 2.5, "style": Qt.SolidLine},
-    "breakthrough":  {"color": "#3C8CFF", "width": 3.0, "style": Qt.SolidLine},
-    "skip":          {"color": "#FF8C1E", "width": 2.5, "style": Qt.DashLine},
-    "loop":          {"color": "#3CDC78", "width": 2.5, "style": Qt.DashDotLine},
-}
+# Edge style by kind — lazy function so colors always reflect current Palette
+def _edge_styles() -> dict:
+    """Return edge style dict built from current Palette values (theme-aware)."""
+    return {
+        "primary":       {"color": Palette.EDGE_PRIMARY,      "width": 2.2, "style": Qt.SolidLine},
+        "alternative":   {"color": Palette.EDGE_ALTERNATIVE,  "width": 1.8, "style": Qt.DashLine},
+        "fallback":      {"color": Palette.EDGE_FALLBACK,     "width": 1.5, "style": Qt.DotLine},
+        "merge":         {"color": Palette.EDGE_MERGE,        "width": 2.5, "style": Qt.SolidLine},
+        "breakthrough":  {"color": Palette.EDGE_BREAKTHROUGH, "width": 3.0, "style": Qt.SolidLine},
+        "skip":          {"color": Palette.EDGE_SKIP,         "width": 2.5, "style": Qt.DashLine},
+        "loop":          {"color": Palette.EDGE_LOOP,         "width": 2.5, "style": Qt.DashDotLine},
+    }
+
+
+# Module-level convenience alias — returns a fresh dict each time
+EDGE_STYLES = _edge_styles()
 
 # Generous spacing — large enough so nodes NEVER overlap
 # Nodes can be up to 580px wide and ~400px tall, so spacing must exceed that
@@ -63,9 +69,9 @@ class UnifiedEdgeItem(QGraphicsPathItem):
         self._target = target
         self._is_critical = is_critical
 
-        style = EDGE_STYLES.get(edge.kind, EDGE_STYLES["primary"])
+        style = _edge_styles().get(edge.kind, _edge_styles()["primary"])
         self._style = style
-        self._base_color = QColor("#F5C842") if is_critical else QColor(style["color"])
+        self._base_color = QColor(Palette.GOLD_BRIGHT) if is_critical else QColor(style["color"])
         self._glow_color = QColor(self._base_color)
         self._glow_color.setAlpha(60)
 
@@ -551,7 +557,7 @@ class UnifiedGraphView(QGraphicsView):
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background-color: #C04040;
+                background-color: {Palette.STATUS_BLOCKED};
             }}
         """)
         self._delete_sel_btn.clicked.connect(self._delete_selected_nodes)
@@ -577,6 +583,98 @@ class UnifiedGraphView(QGraphicsView):
         # Position toolbar at top-right
         tb = self._toolbar
         tb.move(self.width() - tb.width() - 12, 12)
+
+    # بازسازی تمام سبک‌های درخطی برای تم فعلی
+    def _reapply_theme(self) -> None:
+        """Rebuild all inline stylesheets and update edge colors for the current theme."""
+        # Rebuild toolbar stylesheets
+        if hasattr(self, '_toolbar') and self._toolbar is not None:
+            self._toolbar.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {Palette.BG_ELEVATED};
+                    border: 1px solid {Palette.BORDER_NORMAL};
+                    border-radius: 6px;
+                }}
+            """)
+        if hasattr(self, '_layout_combo') and self._layout_combo is not None:
+            self._layout_combo.setStyleSheet(f"""
+                QComboBox {{
+                    background-color: {Palette.BG_TERTIARY};
+                    color: {Palette.TEXT_PRIMARY};
+                    border: 1px solid {Palette.BORDER_NORMAL};
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 15px;
+                    min-width: 130px;
+                }}
+                QComboBox:hover {{
+                    border: 1px solid {Palette.GOLD_PRIMARY};
+                }}
+                QComboBox::drop-down {{
+                    border: none;
+                    width: 20px;
+                }}
+                QComboBox QAbstractItemView {{
+                    background-color: {Palette.BG_DEEPEST};
+                    color: {Palette.TEXT_PRIMARY};
+                    border: 1px solid {Palette.BORDER_NORMAL};
+                    selection-background-color: {Palette.BG_HOVER};
+                    selection-color: {Palette.GOLD_BRIGHT};
+                    padding: 4px;
+                }}
+            """)
+        if hasattr(self, '_delete_sel_btn') and self._delete_sel_btn is not None:
+            self._delete_sel_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Palette.STATUS_BLOCKED};
+                    color: {Palette.TEXT_PRIMARY};
+                    border: none;
+                    border-radius: 4px;
+                    padding: 6px 10px;
+                    font-size: 15px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {Palette.STATUS_BLOCKED};
+                }}
+            """)
+        if hasattr(self, '_sel_count_label') and self._sel_count_label is not None:
+            self._sel_count_label.setStyleSheet(f"""
+                color: {Palette.TEXT_TERTIARY};
+                font-size: 17px;
+                background: transparent;
+                border: none;
+            """)
+
+        # Update rubber band colors
+        self._rubber_band_color = QColor(Palette.GOLD_PRIMARY)
+        self._rubber_band_color.setAlpha(30)
+        self._rubber_band_border = QColor(Palette.GOLD_BRIGHT)
+        self._rubber_band_border.setAlpha(160)
+
+        # Rebuild all edge items with current Palette edge colors
+        styles = _edge_styles()
+        for edge_item in list(self._edge_items):
+            try:
+                if isinstance(edge_item, (BreakthroughEdge, SkipEdge, LoopEdge)):
+                    continue
+                style = styles.get(edge_item.edge.kind, styles["primary"])
+                color = QColor(Palette.GOLD_BRIGHT) if edge_item._is_critical else QColor(style["color"])
+                pen = QPen(color, style["width"] + (0.8 if edge_item._is_critical else 0), style["style"])
+                pen.setCapStyle(Qt.RoundCap)
+                pen.setJoinStyle(Qt.RoundJoin)
+                edge_item.setPen(pen)
+                edge_item._base_color = color
+                edge_item._arrow_color = QColor(color)
+                edge_item._glow_color = QColor(color)
+                edge_item._glow_color.setAlpha(60)
+                edge_item.update()
+            except RuntimeError:
+                pass  # C++ object already deleted
+
+        # Force scene update
+        self._scene.update()
+        self.update()
 
     # ---- Project sync ----
     # تنظیم پروژه
@@ -1074,8 +1172,8 @@ class UnifiedGraphView(QGraphicsView):
                 src_id = edge_item.edge.source_id
                 tgt_id = edge_item.edge.target_id
                 is_crit = src_id in critical_set and tgt_id in critical_set
-                style = EDGE_STYLES.get(edge_item.edge.kind, EDGE_STYLES["primary"])
-                color = QColor("#F5C842") if is_crit else QColor(style["color"])
+                style = _edge_styles().get(edge_item.edge.kind, _edge_styles()["primary"])
+                color = QColor(Palette.GOLD_BRIGHT) if is_crit else QColor(style["color"])
                 pen = QPen(color, style["width"] + (0.5 if is_crit else 0), style["style"])
                 pen.setCapStyle(Qt.RoundCap)
                 edge_item.setPen(pen)

@@ -146,7 +146,7 @@ class EventEditorDialog(QDialog):
             if not found:
                 cal = self.store.get_calendar(self.evt.calendar_id)
                 if cal:
-                    self._calendar_combo.addItem(cal.name + " (read-only)", cal.id)
+                    self._calendar_combo.addItem(cal.name + " (فقط خواندنی)", cal.id)
         form.addRow("تقویم", self._calendar_combo)
 
         # Color override
@@ -418,7 +418,7 @@ class EventEditorDialog(QDialog):
             self._attendees_list.addItem(item)
         # Reminders
         for rem in event.reminders:
-            item = QListWidgetItem(f"{rem.minutes_before} min before ({rem.method.value})")
+            item = QListWidgetItem(f"{rem.minutes_before} دقیقه قبل ({rem.method.value})")
             item.setData(Qt.UserRole, rem)
             self._reminders_list.addItem(item)
         # Meeting link
@@ -474,7 +474,7 @@ class EventEditorDialog(QDialog):
         minutes = self._reminder_minutes.value()
         method = self._reminder_method.currentData()
         rem = Reminder(minutes_before=minutes, method=method)
-        item = QListWidgetItem(f"{minutes} min before ({method.value})")
+        item = QListWidgetItem(f"{minutes} دقیقه قبل ({method.value})")
         item.setData(Qt.UserRole, rem)
         self._reminders_list.addItem(item)
 

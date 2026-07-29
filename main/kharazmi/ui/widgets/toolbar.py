@@ -38,31 +38,31 @@ class MainToolbar(QToolBar):
         self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
         # --- File ops ---
-        self._add_action("open", "Open", self.openRequested, "Open project snapshot")
-        self._add_action("save", "Save", self.saveRequested, "Save project snapshot")
-        self._add_action("export", "Export", self.exportRequested, "Export to file")
+        self._add_action("open", "باز کردن", self.openRequested, "باز کردن پروژه")
+        self._add_action("save", "ذخیره", self.saveRequested, "ذخیره پروژه")
+        self._add_action("export", "صادر کردن", self.exportRequested, "صادر کردن به فایل")
         self.addSeparator()
 
         # --- Task ops ---
-        self._add_action("plus", "New Task", self.newTaskRequested, "Create a new task (N)")
-        self._add_action("trash", "Delete", self.deleteRequested, "Delete selected task (Del)")
+        self._add_action("plus", "وظیفه جدید", self.newTaskRequested, "ایجاد وظیفه جدید (N)")
+        self._add_action("trash", "حذف", self.deleteRequested, "حذف وظیفه انتخاب‌شده (Del)")
         self.addSeparator()
 
         # --- Undo / Redo ---
-        self._undo_action = self._add_action("undo", "Undo", self.undoRequested, "Undo (Ctrl+Z)")
-        self._redo_action = self._add_action("redo", "Redo", self.redoRequested, "Redo (Ctrl+Y)")
+        self._undo_action = self._add_action("undo", "برگشت", self.undoRequested, "برگشت (Ctrl+Z)")
+        self._redo_action = self._add_action("redo", "دوباره", self.redoRequested, "دوباره (Ctrl+Y)")
         self.addSeparator()
 
         # --- Schedule ops ---
-        self._add_action("play", "Recalc", self.scheduleRequested, "Recalculate schedule")
-        self._add_action("graph", "Layout", self.layoutRequested, "Auto-layout graph (Ctrl+L)")
-        self._add_action("stats", "Monte Carlo", self.monteCarloRequested, "Run Monte Carlo")
-        self._add_action("warning", "Advisor", self.advisorRequested, "Run advisor")
+        self._add_action("play", "محاسبه", self.scheduleRequested, "محاسبه مجدد زمان‌بندی")
+        self._add_action("graph", "چیدمان", self.layoutRequested, "چیدمان خودکار گراف (Ctrl+L)")
+        self._add_action("stats", "مونت‌کارلو", self.monteCarloRequested, "اجرای شبیه‌سازی مونت‌کارلو")
+        self._add_action("warning", "مشاور", self.advisorRequested, "اجرای مشاور")
         self.addSeparator()
 
         # --- Command palette ---
-        self._add_action("command", "Commands", self.commandPaletteRequested,
-                         "Command palette (Ctrl+P)")
+        self._add_action("command", "دستورات", self.commandPaletteRequested,
+                         "پالت دستورات (Ctrl+P)")
 
         # Spacer
         spacer = QWidget()
@@ -70,7 +70,7 @@ class MainToolbar(QToolBar):
         self.addWidget(spacer)
 
         # --- View switcher (right side) ---
-        view_label = QLabel("VIEW")
+        view_label = QLabel("نما")
         view_label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; letter-spacing: 1.5px; padding: 0 6px 0 12px;"
@@ -111,13 +111,13 @@ class MainToolbar(QToolBar):
         self._undo_action.setEnabled(can_undo)
         self._redo_action.setEnabled(can_redo)
         if can_undo and undo_name:
-            self._undo_action.setToolTip(f"Undo {undo_name} (Ctrl+Z)")
+            self._undo_action.setToolTip(f"برگشت {undo_name} (Ctrl+Z)")
         else:
-            self._undo_action.setToolTip("Nothing to undo")
+            self._undo_action.setToolTip("چیزی برای برگشت نیست")
         if can_redo and redo_name:
-            self._redo_action.setToolTip(f"Redo {redo_name} (Ctrl+Y)")
+            self._redo_action.setToolTip(f"دوباره {redo_name} (Ctrl+Y)")
         else:
-            self._redo_action.setToolTip("Nothing to redo")
+            self._redo_action.setToolTip("چیزی برای دوباره نیست")
 
     # مجموعه فعال نما
     def set_active_view(self, view_kind: str) -> None:

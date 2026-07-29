@@ -993,13 +993,13 @@ class ScheduleQuestionsWidget(QFrame):
         step4 = _StepPage(
             question_text=q4_text,
             options=[
-                {"label": "None", "value": "none"},
-                {"label": "Fridays (جمعه)", "value": "friday"},
-                {"label": "Weekends (Fridays + Saturdays)", "value": "weekends"},
-                {"label": "Custom…", "value": "custom"},
+                {"label": "هیچ", "value": "none"},
+                {"label": "جمعه‌ها (جمعه)", "value": "friday"},
+                {"label": "آخر هفته‌ها (جمعه + شنبه)", "value": "weekends"},
+                {"label": "سفارشی…", "value": "custom"},
             ],
             allow_custom=True,
-            custom_placeholder="e.g. Wednesdays" if not rtl else "مثلاً چهارشنبه‌ها",
+            custom_placeholder="مثلاً چهارشنبه‌ها" if not rtl else "مثلاً چهارشنبه‌ها",
             rtl=rtl,
         )
         step4.selectionChanged.connect(lambda v: self._set_answer(3, v))

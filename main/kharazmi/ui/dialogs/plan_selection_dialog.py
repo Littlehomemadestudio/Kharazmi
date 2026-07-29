@@ -78,7 +78,7 @@ class PlanCard(QFrame):
 
         # Featured ribbon
         if featured:
-            ribbon = QLabel("★ RECOMMENDED")
+            ribbon = QLabel("★ پیشنهادی")
             ribbon.setStyleSheet(
                 f"background-color: {Palette.GOLD_PRIMARY}; "
                 f"color: {Palette.TEXT_ON_GOLD}; "
@@ -132,7 +132,7 @@ class PlanCard(QFrame):
         layout.addStretch()
 
         # CTA button
-        self._cta = QPushButton(f"Choose {title}")
+        self._cta = QPushButton(f"انتخاب {title}")
         self._cta.setProperty("variant", "primary" if featured else "default")
         self._cta.setFixedHeight(40)
         layout.addWidget(self._cta)
@@ -182,7 +182,7 @@ class PlanSelectionDialog(QDialog):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.chosen_plan: Optional[str] = None
-        self.setWindowTitle("Welcome to Rask")
+        self.setWindowTitle("به رَسک خوش آمدید")
         self.setModal(True)
         self.setMinimumSize(900, 620)
         self.setStyleSheet(f"background-color: {Palette.BG_DEEPEST};")
@@ -203,7 +203,7 @@ class PlanSelectionDialog(QDialog):
         title.setAlignment(Qt.AlignCenter)
         header.addWidget(title)
 
-        subtitle = QLabel("TASK OPERATING SYSTEM")
+        subtitle = QLabel("سیستم‌عامل وظایف")
         subtitle.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "
             f"font-weight: bold; letter-spacing: 3px;"
@@ -212,7 +212,7 @@ class PlanSelectionDialog(QDialog):
         header.addWidget(subtitle)
 
         today = ShamsiDate.today()
-        date_lbl = QLabel(f"Today: {today.format('d MMMM yyyy')}  •  {today.weekday_fa}")
+        date_lbl = QLabel(f"امروز: {today.format('d MMMM yyyy')}  •  {today.weekday_fa}")
         date_lbl.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 12px; "
             f"font-family: 'JetBrains Mono', monospace; padding-top: 4px;"
@@ -223,7 +223,7 @@ class PlanSelectionDialog(QDialog):
         layout.addLayout(header)
 
         # Choose-your-experience prompt
-        prompt = QLabel("Choose your experience")
+        prompt = QLabel("تجربه خود را انتخاب کنید")
         prompt.setStyleSheet(
             f"color: {Palette.TEXT_SECONDARY}; font-size: 14px; padding-top: 12px;"
         )
@@ -237,20 +237,20 @@ class PlanSelectionDialog(QDialog):
 
         self._basic_card = PlanCard(
             plan="basic",
-            title="Basic",
-            price="Free",
+            title="پایه",
+            price="رایگان",
             accent=Palette.TEXT_SECONDARY,
             features=[
-                "Google-Calendar-style planner",
-                "Day / Week / Month / Year / Schedule views",
-                "Persian Shamsi calendar (Iranian week)",
-                "Multiple calendars with colors",
-                "Recurring events (RRULE-based)",
-                "Drag-and-drop to reschedule",
-                "Natural-language event creation",
-                "Built-in Persian holidays",
-                "Reminders, attendees, locations",
-                "Local SQLite persistence",
+                "برنامه‌ریز به سبک گوگل‌کلندر",
+                "نمای روز / هفته / ماه / سال / برنامه",
+                "تقویم شمسی (هفته ایرانی)",
+                "چند تقویم با رنگ‌های مختلف",
+                "رویدادهای تکرارشونده (مبتنی بر RRULE)",
+                "کشیدن و رها کردن برای باززمان‌بندی",
+                "ایجاد رویداد با زبان طبیعی",
+                "تعطیلات رسمی ایرانی",
+                "یادآوری‌ها، شرکت‌کنندگان، مکان‌ها",
+                "ذخیره‌سازی محلی SQLite",
             ],
             featured=False,
         )
@@ -259,20 +259,20 @@ class PlanSelectionDialog(QDialog):
 
         self._enterprise_card = PlanCard(
             plan="enterprise",
-            title="Enterprise",
-            price="Paid  •  Pro features",
+            title="سازمانی",
+            price="پرداختی  •  ویژگی‌های حرفه‌ای",
             accent=Palette.GOLD_BRIGHT,
             features=[
-                "Node-based task graph (main view)",
-                "Critical Path Method (CPM)",
-                "PERT 3-point estimates",
-                "Monte Carlo risk simulation",
-                "Resource leveling",
-                "Gantt / Kanban / Timeline / Stats",
-                "Undo / Redo with command stack",
-                "Command palette & integrated console",
-                "Mermaid / JSON / CSV export",
-                "Local rule-based advisor",
+                "گراف وظایف مبتنی بر گره (نمای اصلی)",
+                "روش مسیر بحرانی (CPM)",
+                "برآورد سه‌نقطه‌ای پرت",
+                "شبیه‌سازی ریسک مونت‌کارلو",
+                "تراز منابع",
+                "گانت / کانبان / تایم‌لاین / آمار",
+                "برگشت / دوباره با پشته دستورات",
+                "پالت فرمان و کنسول یکپارچه",
+                "خروجی مرمید / JSON / CSV",
+                "مشاور محلی مبتنی بر قوانین",
             ],
             featured=True,
         )
@@ -284,7 +284,7 @@ class PlanSelectionDialog(QDialog):
 
         # Footer hint
         hint = QLabel(
-            "You can switch plans later from the menu: File → Switch Plan"
+            "بعداً می‌توانید از منو طرح خود را تغییر دهید: پرونده → تغییر طرح"
         )
         hint.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 11px; "

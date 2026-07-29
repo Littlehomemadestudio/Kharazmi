@@ -73,9 +73,15 @@ class _HeroWidget(QWidget):
             glow_alpha = int(18 + 12 * pulse)
             glow_r = h * 0.5 + 20 * pulse
             glow_grad = QRadialGradient(QPointF(w / 2, h / 2 - 10), glow_r)
-            glow_grad.setColorAt(0, QColor(212, 175, 55, glow_alpha))
-            glow_grad.setColorAt(0.6, QColor(212, 175, 55, glow_alpha // 3))
-            glow_grad.setColorAt(1, QColor(212, 175, 55, 0))
+            glow_c = QColor(Palette.GOLD_PRIMARY)
+            glow_c.setAlpha(glow_alpha)
+            glow_mid = QColor(Palette.GOLD_PRIMARY)
+            glow_mid.setAlpha(glow_alpha // 3)
+            glow_end = QColor(Palette.GOLD_PRIMARY)
+            glow_end.setAlpha(0)
+            glow_grad.setColorAt(0, glow_c)
+            glow_grad.setColorAt(0.6, glow_mid)
+            glow_grad.setColorAt(1, glow_end)
             p.setPen(Qt.NoPen)
             p.setBrush(QBrush(glow_grad))
             p.drawEllipse(QPointF(w / 2, h / 2 - 10), glow_r, glow_r)
@@ -115,43 +121,51 @@ class _HeroWidget(QWidget):
             weekday_text = self._today.weekday_fa
 
             # Big centered day number with gold gradient
-            day_font = QFont("Segoe UI", 100, QFont.Bold)
+            day_font = QFont("Segoe UI", 90, QFont.Bold)
             p.setFont(day_font)
 
-            day_grad = QLinearGradient(0, 50, 0, 200)
-            day_grad.setColorAt(0, QColor(245, 200, 66))
-            day_grad.setColorAt(0.5, QColor(212, 175, 55))
-            day_grad.setColorAt(1, QColor(140, 112, 18))
+            day_grad = QLinearGradient(0, 60, 0, 200)
+            day_top = QColor(Palette.GOLD_BRIGHT)
+            day_mid = QColor(Palette.GOLD_PRIMARY)
+            day_bot = QColor(Palette.GOLD_DEEP)
+            day_grad.setColorAt(0, day_top)
+            day_grad.setColorAt(0.5, day_mid)
+            day_grad.setColorAt(1, day_bot)
             p.setPen(QPen(QBrush(day_grad), 1))
-            p.drawText(QRectF(0, 50, w, 150), Qt.AlignHCenter | Qt.AlignTop, day_text)
+            p.drawText(QRectF(0, 60, w, 140), Qt.AlignHCenter | Qt.AlignTop, day_text)
 
             # Month name centered below day
             month_font = QFont("Segoe UI", 38, QFont.Bold)
             p.setFont(month_font)
             p.setPen(QPen(QColor(Palette.GOLD_BRIGHT)))
-            p.drawText(QRectF(0, 200, w, 52), Qt.AlignHCenter, month_text)
+            p.drawText(QRectF(0, 210, w, 52), Qt.AlignHCenter, month_text)
 
             # Year + Weekday on one line
             year_week_font = QFont("Segoe UI", 18)
             p.setFont(year_week_font)
             year_weekday = f"{year_text}  ·  {weekday_text}"
             p.setPen(QPen(QColor(Palette.TEXT_SECONDARY)))
-            p.drawText(QRectF(0, 255, w, 30), Qt.AlignHCenter, year_weekday)
+            p.drawText(QRectF(0, 265, w, 30), Qt.AlignHCenter, year_weekday)
 
             # ── Greeting ──
             greeting = _greeting_fa()
             greet_font = QFont("Segoe UI", 17)
             p.setFont(greet_font)
             p.setPen(QPen(QColor(Palette.TEXT_TERTIARY)))
-            p.drawText(QRectF(0, 288, w, 30), Qt.AlignHCenter, greeting)
+            p.drawText(QRectF(0, 300, w, 30), Qt.AlignHCenter, greeting)
 
             # ── Subtle divider ──
             div_grad = QLinearGradient(0, 0, w, 0)
-            div_grad.setColorAt(0, QColor(212, 175, 55, 0))
-            div_grad.setColorAt(0.2, QColor(212, 175, 55, 50))
-            div_grad.setColorAt(0.5, QColor(212, 175, 55, 70))
-            div_grad.setColorAt(0.8, QColor(212, 175, 55, 50))
-            div_grad.setColorAt(1, QColor(212, 175, 55, 0))
+            div_start = QColor(Palette.GOLD_PRIMARY); div_start.setAlpha(0)
+            div_20 = QColor(Palette.GOLD_PRIMARY); div_20.setAlpha(50)
+            div_50 = QColor(Palette.GOLD_PRIMARY); div_50.setAlpha(70)
+            div_80 = QColor(Palette.GOLD_PRIMARY); div_80.setAlpha(50)
+            div_end = QColor(Palette.GOLD_PRIMARY); div_end.setAlpha(0)
+            div_grad.setColorAt(0, div_start)
+            div_grad.setColorAt(0.2, div_20)
+            div_grad.setColorAt(0.5, div_50)
+            div_grad.setColorAt(0.8, div_80)
+            div_grad.setColorAt(1, div_end)
             p.setPen(Qt.NoPen)
             p.setBrush(QBrush(div_grad))
             p.drawRect(QRectF(0, h - 1, w, 1))
@@ -586,8 +600,8 @@ class DashboardView(QWidget):
 
         cards_data = [
             (event_count, "رویدادها", "calendar", Palette.GOLD_PRIMARY),
-            (task_count, "وظایف", "checkmark", "#5A7FA8"),
-            (0, "مسیرهای AI", "star", "#8A6AAA"),  # AI routes placeholder
+            (task_count, "وظایف", "checkmark", Palette.STATUS_ACTIVE),
+            (0, "مسیرهای AI", "star", Palette.GOLD_MUTED),  # AI routes placeholder
             (journal_count, "یادداشت‌ها", "book", Palette.STATUS_DONE),
         ]
 
@@ -616,8 +630,8 @@ class DashboardView(QWidget):
 
         actions = [
             ("رویداد جدید", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
-            ("برنامه‌ریز هوشمند", self.plannerTabRequested.emit, "#8A6AAA"),
-            ("تقویم", self.calendarTabRequested.emit, "#5A7FA8"),
+            ("برنامه‌ریز هوشمند", self.plannerTabRequested.emit, Palette.GOLD_MUTED),
+            ("تقویم", self.calendarTabRequested.emit, Palette.STATUS_ACTIVE),
         ]
 
         for label, callback, color in actions:
@@ -716,7 +730,7 @@ class DashboardView(QWidget):
         # Progress rings with Persian labels
         rings_data = [
             (done_count, task_count, Palette.GOLD_PRIMARY, "وظایف"),
-            (len(self._journal), max(len(self._journal), 1), "#8A6AAA", "یادداشت‌ها"),
+            (len(self._journal), max(len(self._journal), 1), Palette.GOLD_MUTED, "یادداشت‌ها"),
         ]
         for val, mx, color, label in rings_data:
             ring = _ProgressRing(val, mx, color, label, card)
@@ -765,5 +779,120 @@ class DashboardView(QWidget):
 
     # بازسازی سبک‌ها برای تم فعلی
     def _reapply_theme(self):
-        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        self.setStyleSheet(f"background-color: {Palette.BG_DEEPEST};")
+
+        # Rebuild scroll area stylesheet
+        for scroll in self.findChildren(QScrollArea):
+            scroll.setStyleSheet(f"""
+                QScrollArea {{
+                    background: {Palette.BG_DEEPEST};
+                    border: none;
+                }}
+                QScrollBar:vertical {{
+                    background: transparent;
+                    width: 8px;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: {Palette.BORDER_STRONG};
+                    border-radius: 4px;
+                    min-height: 20px;
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                    height: 0;
+                }}
+            """)
+
+        # Rebuild content widget background
+        for child in self.findChildren(QWidget):
+            try:
+                child.update()
+            except Exception:
+                pass
+
+        # Rebuild stat cards section
+        self._rebuild_stat_cards()
+
+        # Rebuild quick actions
+        self._rebuild_quick_actions()
+
+        # Rebuild upcoming events
+        self._rebuild_upcoming_events()
+
+        # Rebuild productivity section
+        self._rebuild_productivity()
+
         self.update()
+
+    # بازسازی کارت‌های آماری
+    def _rebuild_stat_cards(self) -> None:
+        """Rebuild stat cards with current Palette colors."""
+        # Find the grid widget and update card colors
+        for card in self.findChildren(_StatCard):
+            card.update()
+
+    # بازسازی دکمه‌های عملیات سریع
+    def _rebuild_quick_actions(self) -> None:
+        """Rebuild quick action buttons with current Palette colors."""
+        actions_data = [
+            ("رویداد جدید", self.newEventRequested.emit, Palette.GOLD_PRIMARY),
+            ("برنامه‌ریز هوشمند", self.plannerTabRequested.emit, Palette.GOLD_MUTED),
+            ("تقویم", self.calendarTabRequested.emit, Palette.STATUS_ACTIVE),
+        ]
+        # Find all push buttons and update their styles
+        for btn in self.findChildren(QPushButton):
+            # Find matching color for this button
+            for label, _, color in actions_data:
+                if btn.text() == label:
+                    btn.setStyleSheet(f"""
+                        QPushButton {{
+                            background: {Palette.BG_TERTIARY};
+                            color: {Palette.TEXT_PRIMARY};
+                            border: 1px solid {Palette.BORDER_NORMAL};
+                            border-right: 3px solid {color};
+                            border-radius: 10px;
+                            padding: 10px 24px;
+                            text-align: center;
+                        }}
+                        QPushButton:hover {{
+                            background: {Palette.BG_ELEVATED};
+                            border-color: {color};
+                            color: {Palette.GOLD_BRIGHT};
+                        }}
+                        QPushButton:pressed {{
+                            background: {Palette.BG_HOVER};
+                        }}
+                    """)
+                    break
+
+    # بازسازی بخش رویدادهای آینده
+    def _rebuild_upcoming_events(self) -> None:
+        """Rebuild upcoming events section with current Palette colors."""
+        for card in self.findChildren(QWidget):
+            # Update event card container backgrounds
+            ss = card.styleSheet()
+            if "border-radius: 12px" in ss and "background:" in ss:
+                card.setStyleSheet(
+                    f"background: {Palette.BG_TERTIARY};"
+                    f" border: 1px solid {Palette.BORDER_NORMAL};"
+                    f" border-radius: 12px;"
+                )
+        for row in self.findChildren(_EventRow):
+            row.update()
+
+    # بازسازی بخش بهره‌وری
+    def _rebuild_productivity(self) -> None:
+        """Rebuild productivity section with current Palette colors."""
+        for ring in self.findChildren(_ProgressRing):
+            ring.update()
+        for label in self.findChildren(QLabel):
+            ss = label.styleSheet()
+            if "GOLD_BRIGHT" in ss or "TEXT_SECONDARY" in ss:
+                # Re-apply with current Palette
+                if "نکته روز" == label.text():
+                    label.setStyleSheet(
+                        f"color: {Palette.GOLD_BRIGHT}; background: transparent;"
+                    )
+                elif "برنامه‌ریزی روزانه" in label.text():
+                    label.setStyleSheet(
+                        f"color: {Palette.TEXT_SECONDARY}; background: transparent;"
+                    )

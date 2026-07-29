@@ -20,8 +20,8 @@ _NODE_TYPES: list[dict] = [
     {
         "kind": "action",
         "icon": "\U0001F3AF",  # 🎯
-        "label": "Action",
-        "tip": "A regular step",
+        "label": "عمل",
+        "tip": "یک مرحله عادی",
         "bg": "#1A2418",       # muted green-dark
         "bg_hover": "#223020",
         "border": "#3A5A30",
@@ -29,8 +29,8 @@ _NODE_TYPES: list[dict] = [
     {
         "kind": "decision",
         "icon": "\U0001F500",  # 🔀
-        "label": "Decision",
-        "tip": "A branching point",
+        "label": "تصمیم",
+        "tip": "نقطه انشعاب",
         "bg": "#1A1824",       # muted purple-dark
         "bg_hover": "#222030",
         "border": "#3A305A",
@@ -38,8 +38,8 @@ _NODE_TYPES: list[dict] = [
     {
         "kind": "milestone",
         "icon": "\U0001F3C1",  # 🏁
-        "label": "Milestone",
-        "tip": "A checkpoint",
+        "label": "نقطه عطف",
+        "tip": "نقطه بازرسی",
         "bg": "#24201A",       # muted gold-dark
         "bg_hover": "#302A20",
         "border": "#5A4A20",
@@ -47,8 +47,8 @@ _NODE_TYPES: list[dict] = [
     {
         "kind": "wait",
         "icon": "\u23F3",      # ⏳
-        "label": "Wait",
-        "tip": "A waiting step",
+        "label": "انتظار",
+        "tip": "مرحله انتظار",
         "bg": "#1A2024",       # muted blue-dark
         "bg_hover": "#202A30",
         "border": "#304A5A",
@@ -56,8 +56,8 @@ _NODE_TYPES: list[dict] = [
     {
         "kind": "checkpoint",
         "icon": "\u2705",      # ✅
-        "label": "Checkpoint",
-        "tip": "A verification step",
+        "label": "بازرسی",
+        "tip": "مرحله تأیید",
         "bg": "#241A1A",       # muted red-dark
         "bg_hover": "#302020",
         "border": "#5A3030",
@@ -141,7 +141,7 @@ class NewNodeDialog(QDialog):
         self._selected_kind: str = "action"
         self._step: RouteStep | None = None
 
-        self.setWindowTitle("Add New Node")
+        self.setWindowTitle("افزودن گره جدید")
         self.setMinimumWidth(580)
         self.setMinimumHeight(620)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -163,7 +163,7 @@ class NewNodeDialog(QDialog):
         icon_label.setStyleSheet("font-size: 20px; background: transparent; border: none;")
         header_layout.addWidget(icon_label)
 
-        title_label = QLabel("ADD NEW NODE")
+        title_label = QLabel("افزودن گره جدید")
         title_label.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 12px; font-weight: bold; "
             f"letter-spacing: 2px; background: transparent; border: none;"
@@ -208,29 +208,29 @@ class NewNodeDialog(QDialog):
         # Title (large, required)
         self._title = QLineEdit()
         self._title.setStyleSheet(self._input_style(large=True))
-        self._title.setPlaceholderText("Step title\u2026")
-        form.addRow(self._label("Title *"), self._title)
+        self._title.setPlaceholderText("عنوان مرحله…")
+        form.addRow(self._label("عنوان *"), self._title)
 
         # Description
         self._desc = QTextEdit()
         self._desc.setFixedHeight(80)
         self._desc.setStyleSheet(self._input_style())
-        self._desc.setPlaceholderText("Description\u2026")
+        self._desc.setPlaceholderText("توضیحات…")
         self._desc.setAcceptRichText(False)
-        form.addRow(self._label("Description"), self._desc)
+        form.addRow(self._label("توضیحات"), self._desc)
 
         # Duration + Success probability (side by side)
         row1 = QHBoxLayout()
         self._dur_spin = QSpinBox()
         self._dur_spin.setRange(1, 99999)
         self._dur_spin.setValue(30)
-        self._dur_spin.setSuffix("  min")
+        self._dur_spin.setSuffix("  دقیقه")
         self._dur_spin.setStyleSheet(self._input_style())
         row1.addWidget(self._dur_spin)
 
         row1.addSpacing(16)
 
-        prob_label = QLabel("Success %")
+        prob_label = QLabel("احتمال موفقیت")
         prob_label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; letter-spacing: 1px; "
@@ -245,20 +245,20 @@ class NewNodeDialog(QDialog):
         self._prob_spin.setValue(0.8)
         self._prob_spin.setStyleSheet(self._input_style())
         row1.addWidget(self._prob_spin)
-        form.addRow(self._label("Duration"), row1)
+        form.addRow(self._label("مدت"), row1)
 
         # Risk Level + Branch (side by side)
         row2 = QHBoxLayout()
         self._risk_combo = QComboBox()
-        for r in ["low", "medium", "high", "severe"]:
+        for r in ["پایین", "متوسط", "بالا", "شدید"]:
             self._risk_combo.addItem(r)
-        self._risk_combo.setCurrentText("low")
+        self._risk_combo.setCurrentText("پایین")
         self._risk_combo.setStyleSheet(self._input_style())
         row2.addWidget(self._risk_combo)
 
         row2.addSpacing(16)
 
-        branch_label = QLabel("Branch")
+        branch_label = QLabel("شاخه")
         branch_label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; letter-spacing: 1px; "
@@ -268,29 +268,29 @@ class NewNodeDialog(QDialog):
 
         self._branch = QLineEdit("main")
         self._branch.setStyleSheet(self._input_style())
-        self._branch.setPlaceholderText("e.g. main, alt-a, fallback-1")
+        self._branch.setPlaceholderText("مثلاً: اصلی، alt-a، fallback-1")
         row2.addWidget(self._branch)
-        form.addRow(self._label("Risk"), row2)
+        form.addRow(self._label("ریسک"), row2)
 
         # Location
         self._location = QLineEdit()
         self._location.setStyleSheet(self._input_style())
-        self._location.setPlaceholderText("e.g. Office, Remote, Tehran")
-        form.addRow(self._label("Location"), self._location)
+        self._location.setPlaceholderText("مثلاً: دفتر، راه دور، تهران")
+        form.addRow(self._label("مکان"), self._location)
 
         # Cost estimate
         self._cost = QLineEdit()
         self._cost.setStyleSheet(self._input_style())
-        self._cost.setPlaceholderText("e.g. $500, 2 hours")
-        form.addRow(self._label("Cost"), self._cost)
+        self._cost.setPlaceholderText("مثلاً: ۵۰۰ دلار، ۲ ساعت")
+        form.addRow(self._label("هزینه"), self._cost)
 
         # Fallback
         self._fallback = QTextEdit()
         self._fallback.setFixedHeight(60)
         self._fallback.setStyleSheet(self._input_style())
-        self._fallback.setPlaceholderText("What to do if this step fails\u2026")
+        self._fallback.setPlaceholderText("اگر این مرحله شکست خورد چه کار کنید…")
         self._fallback.setAcceptRichText(False)
-        form.addRow(self._label("Fallback"), self._fallback)
+        form.addRow(self._label("جایگزین"), self._fallback)
 
         layout.addLayout(form)
 
@@ -300,7 +300,7 @@ class NewNodeDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        cancel_btn = QPushButton("  Cancel  ")
+        cancel_btn = QPushButton("  لغو  ")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.BG_TERTIARY};
@@ -319,7 +319,7 @@ class NewNodeDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        save_btn = QPushButton("  \u2795  Create Node  ")
+        save_btn = QPushButton("  ➕  ایجاد گره  ")
         save_btn.setDefault(True)
         save_btn.setStyleSheet(f"""
             QPushButton {{
@@ -397,7 +397,7 @@ class NewNodeDialog(QDialog):
         title = self._title.text().strip()
         if not title:
             from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Required", "Title is required.")
+            QMessageBox.warning(self, "الزامی", "عنوان الزامی است.")
             return
 
         step_id = f"manual-{uuid.uuid4().hex[:8]}"

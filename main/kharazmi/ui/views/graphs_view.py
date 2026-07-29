@@ -372,7 +372,7 @@ class _BarChartWidget(QWidget):
         steps = self.route.steps
         if not steps:
             p.setPen(QColor(Palette.TEXT_TERTIARY))
-            p.setFont(QFont("Inter", 18))
+            p.setFont(QFont("Inter", 20))
             p.drawText(self.rect(), Qt.AlignCenter, "مرحله‌ای برای نمایش نیست")
             p.end()
             return
@@ -382,14 +382,14 @@ class _BarChartWidget(QWidget):
         bar_area = w - label_w - 80
         y = 10
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, y + 12, "احتمال موفقیت هر مرحله")
         y += 28
 
-        bar_font = QFont("Inter", 16)
-        val_font = QFont("JetBrains Mono", 16, QFont.Bold)
+        bar_font = QFont("Inter", 18)
+        val_font = QFont("JetBrains Mono", 18, QFont.Bold)
 
         for step in steps:
             # Label
@@ -408,11 +408,11 @@ class _BarChartWidget(QWidget):
             prob = max(0, min(1, step.success_probability))
             bar_fill_w = bar_area * prob
             if prob > 0.7:
-                fill_color = QColor("#5A8A5A")
+                fill_color = QColor(Palette.CHART_POSITIVE)
             elif prob > 0.4:
-                fill_color = QColor("#D4AF37")
+                fill_color = QColor(Palette.GOLD_PRIMARY)
             else:
-                fill_color = QColor("#A85A5A")
+                fill_color = QColor(Palette.CHART_NEGATIVE)
 
             grad = QLinearGradient(bar_x, 0, bar_x + bar_fill_w, 0)
             grad.setColorAt(0, fill_color)
@@ -452,16 +452,16 @@ class _RiskHeatmapWidget(QWidget):
             p.end()
             return
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 18, "توزیع سطح ریسک")
 
         risk_colors = {
-            "low": QColor("#5A8A5A"),
-            "medium": QColor("#D4AF37"),
-            "high": QColor("#A87A4A"),
-            "severe": QColor("#A85A5A"),
+            "low": QColor(Palette.CHART_POSITIVE),
+            "medium": QColor(Palette.GOLD_PRIMARY),
+            "high": QColor(Palette.CHART_NEUTRAL),
+            "severe": QColor(Palette.CHART_NEGATIVE),
         }
 
         # Count risks
@@ -476,7 +476,7 @@ class _RiskHeatmapWidget(QWidget):
         for risk, count in risk_counts.items():
             pct = count / total
             # Label
-            p.setFont(QFont("Inter", 16))
+            p.setFont(QFont("Inter", 18))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             risk_labels_fa = {"low": "کم", "medium": "متوسط", "high": "زیاد", "severe": "خیلی زیاد"}
             p.drawText(QRectF(10, y, 80, 28), Qt.AlignRight | Qt.AlignVCenter, risk_labels_fa.get(risk, risk.upper()))
@@ -484,11 +484,11 @@ class _RiskHeatmapWidget(QWidget):
             # Bar
             bar_w = bar_area_w * pct
             p.setPen(Qt.NoPen)
-            p.setBrush(risk_colors.get(risk, QColor("#555")))
+            p.setBrush(risk_colors.get(risk, QColor(Palette.TEXT_TERTIARY)))
             p.drawRoundedRect(QRectF(96, y + 4, bar_w, 20), 3, 3)
 
             # Count
-            p.setFont(QFont("JetBrains Mono", 16, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 18, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(96 + bar_area_w + 6, y, 60, 28),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{count} ({pct:.0%})")
@@ -525,23 +525,23 @@ class _DurationTimelineWidget(QWidget):
         bar_h = min(22, max(14, (h - 50) // len(steps) - 4))
         y = 10
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, y + 12, "جدول زمانی مدت (دقیقه)")
         y += 28
 
         kind_colors = {
-            "action": QColor("#5A7FA8"), "decision": QColor("#8B6FC0"),
-            "milestone": QColor("#C9A84C"), "wait": QColor("#6B8FA3"),
-            "checkpoint": QColor("#4A9A5A"), "research": QColor("#4A8AB0"),
-            "review": QColor("#A06040"), "deliver": QColor("#5A8A5A"),
-            "collaborate": QColor("#8A6A9A"),
+            "action": QColor(Palette.CHART_BAR_1), "decision": QColor(Palette.CHART_BAR_2),
+            "milestone": QColor(Palette.GOLD_PRIMARY), "wait": QColor(Palette.EDGE_ALTERNATIVE),
+            "checkpoint": QColor(Palette.CHART_POSITIVE), "research": QColor(Palette.STATUS_ACTIVE),
+            "review": QColor(Palette.CHART_NEUTRAL), "deliver": QColor(Palette.CHART_POSITIVE),
+            "collaborate": QColor(Palette.CHART_BAR_3),
         }
 
         for step in steps:
             # Label
-            p.setFont(QFont("Inter", 15))
+            p.setFont(QFont("Inter", 17))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             label = step.title[:18] + "…" if len(step.title) > 18 else step.title
             p.drawText(QRectF(4, y, label_w - 8, bar_h), Qt.AlignRight | Qt.AlignVCenter, label)
@@ -549,7 +549,7 @@ class _DurationTimelineWidget(QWidget):
             # Duration bar
             dur_pct = step.duration_minutes / max_dur
             bar_w = max(4, bar_area * dur_pct)
-            color = kind_colors.get(step.kind, QColor("#5A7FA8"))
+            color = kind_colors.get(step.kind, QColor(Palette.CHART_BAR_1))
 
             p.setPen(Qt.NoPen)
             grad = QLinearGradient(label_w, 0, label_w + bar_w, 0)
@@ -559,7 +559,7 @@ class _DurationTimelineWidget(QWidget):
             p.drawRoundedRect(QRectF(label_w, y + 2, bar_w, bar_h - 4), 3, 3)
 
             # Duration text
-            p.setFont(QFont("JetBrains Mono", 15))
+            p.setFont(QFont("JetBrains Mono", 17))
             p.setPen(QColor(Palette.TEXT_TERTIARY))
             p.drawText(QRectF(label_w + bar_w + 4, y, 50, bar_h),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{step.duration_minutes}m")
@@ -593,9 +593,11 @@ class _KindDonutWidget(QWidget):
             kind_counts[s.kind] = kind_counts.get(s.kind, 0) + 1
 
         kind_colors = {
-            "action": "#5A7FA8", "decision": "#8B6FC0", "milestone": "#C9A84C",
-            "wait": "#6B8FA3", "checkpoint": "#4A9A5A", "research": "#4A8AB0",
-            "review": "#A06040", "deliver": "#5A8A5A", "collaborate": "#8A6A9A",
+            "action": Palette.CHART_BAR_1, "decision": Palette.CHART_BAR_2,
+            "milestone": Palette.GOLD_PRIMARY, "wait": Palette.EDGE_ALTERNATIVE,
+            "checkpoint": Palette.CHART_POSITIVE, "research": Palette.STATUS_ACTIVE,
+            "review": Palette.CHART_NEUTRAL, "deliver": Palette.CHART_POSITIVE,
+            "collaborate": Palette.CHART_BAR_3,
         }
 
         total = len(steps)
@@ -604,7 +606,7 @@ class _KindDonutWidget(QWidget):
 
         for kind, count in kind_counts.items():
             span = int(360 * 16 * count / total)
-            color = QColor(kind_colors.get(kind, "#555"))
+            color = QColor(kind_colors.get(kind, Palette.TEXT_TERTIARY))
             p.setPen(Qt.NoPen)
             p.setBrush(color)
             p.drawPie(QRectF(cx - r, cy - r, r * 2, r * 2), start_angle, span)
@@ -615,21 +617,21 @@ class _KindDonutWidget(QWidget):
         p.drawEllipse(QRectF(cx - 55, cy - 55, 110, 110))
 
         # Center text
-        p.setFont(QFont("Inter", 24, QFont.Bold))
+        p.setFont(QFont("Inter", 26, QFont.Bold))
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(QRectF(cx - 50, cy - 18, 100, 24), Qt.AlignCenter, str(total))
-        p.setFont(QFont("Inter", 15))
+        p.setFont(QFont("Inter", 17))
         p.setPen(QColor(Palette.TEXT_TERTIARY))
         p.drawText(QRectF(cx - 50, cy + 6, 100, 18), Qt.AlignCenter, "مرحله")
 
         # Legend
         y = 8
         for kind, count in kind_counts.items():
-            color = QColor(kind_colors.get(kind, "#555"))
+            color = QColor(kind_colors.get(kind, Palette.TEXT_TERTIARY))
             p.setPen(Qt.NoPen)
             p.setBrush(color)
             p.drawRoundedRect(QRectF(210, y, 10, 10), 2, 2)
-            p.setFont(QFont("Inter", 15))
+            p.setFont(QFont("Inter", 17))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(224, y - 2, 40, 14), Qt.AlignLeft | Qt.AlignVCenter,
                        f"{kind[:4]} {count}")
@@ -665,18 +667,18 @@ class _BranchFlowWidget(QWidget):
         for s in steps:
             branch_counts[s.branch] = branch_counts.get(s.branch, 0) + 1
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
         p.drawText(10, 18, "توزیع شاخه‌ها")
 
         branch_colors = {
-            "main": QColor("#D4AF37"),
-            "alt-1": QColor("#5A7FA8"),
-            "alt-2": QColor("#8B6FC0"),
-            "fallback-1": QColor("#A87A4A"),
-            "fallback-2": QColor("#A85A5A"),
-            "tasks": QColor("#6B8FA3"),
+            "main": QColor(Palette.GOLD_PRIMARY),
+            "alt-1": QColor(Palette.EDGE_ALTERNATIVE),
+            "alt-2": QColor(Palette.CHART_BAR_2),
+            "fallback-1": QColor(Palette.CHART_NEUTRAL),
+            "fallback-2": QColor(Palette.CHART_NEGATIVE),
+            "tasks": QColor(Palette.EDGE_ALTERNATIVE),
         }
 
         n = len(branch_counts)
@@ -692,7 +694,7 @@ class _BranchFlowWidget(QWidget):
 
         for branch, count in branch_counts.items():
             bar_h = max(10, int(max_bar_h * count / max_count))
-            color = branch_colors.get(branch, QColor("#555"))
+            color = branch_colors.get(branch, QColor(Palette.TEXT_TERTIARY))
 
             # Bar
             p.setPen(Qt.NoPen)
@@ -703,13 +705,13 @@ class _BranchFlowWidget(QWidget):
             p.drawRoundedRect(QRectF(x, y_base - bar_h, col_w - 10, bar_h), 4, 4)
 
             # Count on top
-            p.setFont(QFont("JetBrains Mono", 17, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 19, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(x, y_base - bar_h - 18, col_w - 10, 16),
                        Qt.AlignCenter, str(count))
 
             # Label below
-            p.setFont(QFont("Inter", 15))
+            p.setFont(QFont("Inter", 17))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             p.drawText(QRectF(x, y_base + 4, col_w - 10, 16),
                        Qt.AlignCenter, branch[:10])
@@ -743,18 +745,18 @@ class _GraphsLanding(QFrame):
         outer.setSpacing(20)
 
         # Title
-        title = QLabel("📊  تحلیل گردش کار")
-        title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 30px; "
+        self._title_label = QLabel("📊  تحلیل گردش کار")
+        self._title_label.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 32px; "
             f"font-weight: bold; letter-spacing: 3px; background: transparent;"
         )
-        outer.addWidget(title)
+        outer.addWidget(self._title_label)
 
-        subtitle = QLabel("یک گردش کار برای نمایش انتخاب کنید یا از فایل وارد کنید.")
-        subtitle.setStyleSheet(
-            f"color: {Palette.TEXT_SECONDARY}; font-size: 17px; background: transparent;"
+        self._subtitle_label = QLabel("یک گردش کار برای نمایش انتخاب کنید یا از فایل وارد کنید.")
+        self._subtitle_label.setStyleSheet(
+            f"color: {Palette.TEXT_SECONDARY}; font-size: 19px; background: transparent;"
         )
-        outer.addWidget(subtitle)
+        outer.addWidget(self._subtitle_label)
 
         # Import/Export buttons
         btn_row = QHBoxLayout()
@@ -774,23 +776,23 @@ class _GraphsLanding(QFrame):
         outer.addLayout(btn_row)
 
         # Separator
-        sep = QFrame()
-        sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background-color: {Palette.BORDER_NORMAL};")
-        outer.addWidget(sep)
+        self._sep = QFrame()
+        self._sep.setFixedHeight(1)
+        self._sep.setStyleSheet(f"background-color: {Palette.BORDER_NORMAL};")
+        outer.addWidget(self._sep)
 
         # Workflow list header
-        list_header = QLabel("گردش کارهای ذخیره‌شده")
-        list_header.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; "
+        self._list_header = QLabel("گردش کارهای ذخیره‌شده")
+        self._list_header.setStyleSheet(
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 19px; "
             f"font-weight: bold; letter-spacing: 2px; background: transparent;"
         )
-        outer.addWidget(list_header)
+        outer.addWidget(self._list_header)
 
         # Scroll area for workflows
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(f"""
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setStyleSheet(f"""
             QScrollArea {{ background: {Palette.BG_SECONDARY}; border: 1px solid {Palette.BORDER_SUBTLE}; border-radius: 8px; }}
             QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
             QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
@@ -800,8 +802,8 @@ class _GraphsLanding(QFrame):
         self._workflow_layout.setContentsMargins(12, 12, 12, 12)
         self._workflow_layout.setSpacing(8)
         self._workflow_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        outer.addWidget(scroll, stretch=1)
+        self._scroll.setWidget(scroll_content)
+        outer.addWidget(self._scroll, stretch=1)
 
         self.refresh_workflows()
 
@@ -814,7 +816,7 @@ class _GraphsLanding(QFrame):
                 border: 1px solid {Palette.BORDER_GOLD};
                 border-radius: 6px;
                 padding: 10px 20px;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -861,7 +863,7 @@ class _GraphsLanding(QFrame):
             cl.setSpacing(4)
 
             goal_label = QLabel(f"<b>{entry.user_goal[:60]}</b>")
-            goal_label.setStyleSheet(f"color: {Palette.TEXT_PRIMARY}; background: transparent; font-size: 16px;")
+            goal_label.setStyleSheet(f"color: {Palette.TEXT_PRIMARY}; background: transparent; font-size: 18px;")
             goal_label.setWordWrap(True)
             cl.addWidget(goal_label)
 
@@ -870,7 +872,7 @@ class _GraphsLanding(QFrame):
                 f"{entry.route.overall_success_probability:.0%} موفقیت · "
                 f"{entry.timestamp[:10]}"
             )
-            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 17px;")
+            meta.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; background: transparent; font-size: 19px;")
             cl.addWidget(meta)
 
             # Export buttons
@@ -885,7 +887,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 16px;
+                    font-size: 18px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -904,7 +906,7 @@ class _GraphsLanding(QFrame):
                     color: {Palette.TEXT_TERTIARY};
                     border: 1px solid {Palette.BORDER_NORMAL};
                     border-radius: 3px;
-                    font-size: 16px;
+                    font-size: 18px;
                 }}
                 QPushButton:hover {{
                     color: {Palette.GOLD_BRIGHT};
@@ -972,6 +974,53 @@ class _GraphsLanding(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+
+        # Rebuild title label
+        if hasattr(self, '_title_label'):
+            self._title_label.setStyleSheet(
+                f"color: {Palette.GOLD_BRIGHT}; font-size: 32px; "
+                f"font-weight: bold; letter-spacing: 3px; background: transparent;"
+            )
+
+        # Rebuild subtitle label
+        if hasattr(self, '_subtitle_label'):
+            self._subtitle_label.setStyleSheet(
+                f"color: {Palette.TEXT_SECONDARY}; font-size: 19px; background: transparent;"
+            )
+
+        # Rebuild import buttons
+        if hasattr(self, '_import_csv_btn'):
+            self._import_csv_btn.setStyleSheet(self._btn_style())
+        if hasattr(self, '_import_excel_btn'):
+            self._import_excel_btn.setStyleSheet(self._btn_style())
+
+        # Rebuild separator
+        if hasattr(self, '_sep'):
+            self._sep.setStyleSheet(f"background-color: {Palette.BORDER_NORMAL};")
+
+        # Rebuild list header
+        if hasattr(self, '_list_header'):
+            self._list_header.setStyleSheet(
+                f"color: {Palette.TEXT_TERTIARY}; font-size: 19px; "
+                f"font-weight: bold; letter-spacing: 2px; background: transparent;"
+            )
+
+        # Rebuild scroll area
+        if hasattr(self, '_scroll'):
+            self._scroll.setStyleSheet(f"""
+                QScrollArea {{ background: {Palette.BG_SECONDARY}; border: 1px solid {Palette.BORDER_SUBTLE}; border-radius: 8px; }}
+                QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
+                QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
+            """)
+
+        # Rebuild workflow cards (rebuilds all card stylesheets)
+        self.refresh_workflows()
+
+        self.update()
+
 
 # ──────────────────────────────────────────────────────────────────────
 #  Graphs Workspace (shows charts for a selected route)
@@ -997,29 +1046,29 @@ class _GraphsWorkspace(QFrame):
         outer.setSpacing(0)
 
         # Top bar
-        top = QFrame()
-        top.setFixedHeight(44)
-        top.setStyleSheet(f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};")
-        top_layout = QHBoxLayout(top)
+        self._top_bar = QFrame()
+        self._top_bar.setFixedHeight(44)
+        self._top_bar.setStyleSheet(f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};")
+        top_layout = QHBoxLayout(self._top_bar)
         top_layout.setContentsMargins(12, 6, 12, 6)
 
-        back_btn = QPushButton("→ بازگشت")
-        back_btn.setStyleSheet(f"""
+        self._back_btn = QPushButton("→ بازگشت")
+        self._back_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 12px; font-size: 15px;
+                padding: 4px 12px; font-size: 17px;
             }}
             QPushButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
             }}
         """)
-        back_btn.clicked.connect(self.backRequested.emit)
-        top_layout.addWidget(back_btn)
+        self._back_btn.clicked.connect(self.backRequested.emit)
+        top_layout.addWidget(self._back_btn)
 
         self._route_title = QLabel("")
         self._route_title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 16px; font-weight: bold; background: transparent;"
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 18px; font-weight: bold; background: transparent;"
         )
         top_layout.addWidget(self._route_title)
         top_layout.addStretch()
@@ -1031,7 +1080,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 17px;
+                padding: 4px 10px; font-size: 19px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1046,7 +1095,7 @@ class _GraphsWorkspace(QFrame):
             QToolButton {{
                 background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
                 border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
-                padding: 4px 10px; font-size: 17px;
+                padding: 4px 10px; font-size: 19px;
             }}
             QToolButton:hover {{
                 color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
@@ -1055,12 +1104,12 @@ class _GraphsWorkspace(QFrame):
         self._export_xl_btn.clicked.connect(self._on_export_excel)
         top_layout.addWidget(self._export_xl_btn)
 
-        outer.addWidget(top)
+        outer.addWidget(self._top_bar)
 
         # Scroll area for charts
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(f"""
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setStyleSheet(f"""
             QScrollArea {{ background: {Palette.BG_PRIMARY}; border: none; }}
             QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
             QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
@@ -1071,8 +1120,8 @@ class _GraphsWorkspace(QFrame):
         self._charts_layout.setContentsMargins(20, 16, 20, 20)
         self._charts_layout.setSpacing(16)
 
-        scroll.setWidget(self._charts_container)
-        outer.addWidget(scroll, stretch=1)
+        self._scroll.setWidget(self._charts_container)
+        outer.addWidget(self._scroll, stretch=1)
 
     # تنظیم مسیر
     def set_route(self, route: Route):
@@ -1108,7 +1157,7 @@ class _GraphsWorkspace(QFrame):
         for label, value, color in [
             ("مراحل", str(len(route.steps)), Palette.GOLD_BRIGHT),
             ("مدت", f"{route.total_duration_minutes}m", Palette.TEXT_PRIMARY),
-            ("موفقیت", f"{route.overall_success_probability:.0%}", "#5A8A5A" if route.overall_success_probability > 0.7 else "#D4AF37"),
+            ("موفقیت", f"{route.overall_success_probability:.0%}", Palette.CHART_POSITIVE if route.overall_success_probability > 0.7 else Palette.GOLD_PRIMARY),
             ("یال‌ها", str(len(route.edges)), Palette.TEXT_SECONDARY),
             ("بینش‌ها", str(len(route.insights)), Palette.TEXT_TERTIARY),
             ("شاخه‌ها", str(len(set(s.branch for s in route.steps))), Palette.TEXT_SECONDARY),
@@ -1126,11 +1175,11 @@ class _GraphsWorkspace(QFrame):
             sl.setContentsMargins(12, 8, 12, 8)
             sl.setSpacing(2)
             v = QLabel(value)
-            v.setStyleSheet(f"color: {color}; font-size: 26px; font-weight: bold; background: transparent;")
+            v.setStyleSheet(f"color: {color}; font-size: 28px; font-weight: bold; background: transparent;")
             v.setAlignment(Qt.AlignCenter)
             sl.addWidget(v)
             l = QLabel(label)
-            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 16px; background: transparent; letter-spacing: 1px;")
+            l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 18px; background: transparent; letter-spacing: 1px;")
             l.setAlignment(Qt.AlignCenter)
             sl.addWidget(l)
             stats_row.addWidget(stat)
@@ -1216,6 +1265,73 @@ class _GraphsWorkspace(QFrame):
             except Exception as e:
                 QMessageBox.warning(self, "صادر کردن ناموفق", str(e))
 
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self):
+        self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+
+        # Rebuild top bar
+        if hasattr(self, '_top_bar'):
+            self._top_bar.setStyleSheet(
+                f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
+            )
+
+        # Rebuild back button
+        if hasattr(self, '_back_btn'):
+            self._back_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent; color: {Palette.TEXT_TERTIARY};
+                    border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
+                    padding: 4px 12px; font-size: 17px;
+                }}
+                QPushButton:hover {{
+                    color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
+                }}
+            """)
+
+        # Rebuild route title
+        if hasattr(self, '_route_title'):
+            self._route_title.setStyleSheet(
+                f"color: {Palette.GOLD_BRIGHT}; font-size: 18px; font-weight: bold; background: transparent;"
+            )
+
+        # Rebuild export buttons
+        if hasattr(self, '_export_csv_btn'):
+            self._export_csv_btn.setStyleSheet(f"""
+                QToolButton {{
+                    background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
+                    border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
+                    padding: 4px 10px; font-size: 19px;
+                }}
+                QToolButton:hover {{
+                    color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
+                }}
+            """)
+        if hasattr(self, '_export_xl_btn'):
+            self._export_xl_btn.setStyleSheet(f"""
+                QToolButton {{
+                    background-color: {Palette.BG_TERTIARY}; color: {Palette.TEXT_TERTIARY};
+                    border: 1px solid {Palette.BORDER_NORMAL}; border-radius: 3px;
+                    padding: 4px 10px; font-size: 19px;
+                }}
+                QToolButton:hover {{
+                    color: {Palette.GOLD_BRIGHT}; border-color: {Palette.GOLD_PRIMARY};
+                }}
+            """)
+
+        # Rebuild scroll area
+        if hasattr(self, '_scroll'):
+            self._scroll.setStyleSheet(f"""
+                QScrollArea {{ background: {Palette.BG_PRIMARY}; border: none; }}
+                QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
+                QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
+            """)
+
+        # Rebuild charts if route is set
+        if self._route is not None:
+            self._rebuild_charts()
+
+        self.update()
+
 
 # ──────────────────────────────────────────────────────────────────────
 #  Main GraphsView (stacked: landing + workspace)
@@ -1282,8 +1398,17 @@ class GraphsView(QWidget):
     # بازسازی سبک‌ها برای تم فعلی
     def _reapply_theme(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+
+        # Delegate to sub-views
         if hasattr(self, '_landing'):
-            self._landing.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+            self._landing._reapply_theme()
         if hasattr(self, '_workspace'):
-            self._workspace.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+            self._workspace._reapply_theme()
+
+        # Force update
+        for child in self.findChildren(QWidget):
+            try:
+                child.update()
+            except Exception:
+                pass
         self.update()

@@ -1,4 +1,5 @@
 # سیستم تم RASK — پشتیبانی از حالت روشن و تیره
+# پالت رنگی حرفه‌ای و مینیمال — فقط طلا و خاکستری
 from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
@@ -6,110 +7,146 @@ from PySide6.QtCore import Qt
 
 
 # ──────────────────────────────────────────────────────────────
-#  Light Palette (default)
+#  Light Palette (default) — Professional Minimalistic
 # ──────────────────────────────────────────────────────────────
 
 _LIGHT = {
-    # Surfaces (light progression: white → gray)
-    "BG_DEEPEST":   "#F5F5F7",
+    # ── Surfaces (clean white → warm gray progression) ──
+    "BG_DEEPEST":   "#F7F7F8",
     "BG_PRIMARY":   "#FFFFFF",
-    "BG_SECONDARY": "#F0F0F2",
-    "BG_TERTIARY":  "#E6E6E8",
-    "BG_ELEVATED":  "#DCDCDE",
-    "BG_HOVER":     "#D4D4D8",
-    "BG_SELECTED":  "#FFF4CC",    # gold-tinted light
+    "BG_SECONDARY": "#F4F4F5",
+    "BG_TERTIARY":  "#EBEBED",
+    "BG_ELEVATED":  "#E2E2E5",
+    "BG_HOVER":     "#D9D9DD",
+    "BG_SELECTED":  "#FFF8E1",    # subtle gold-tinted
 
-    # Gold family (deeper tints for contrast on white)
-    "GOLD_BRIGHT":  "#E8B730",
-    "GOLD_PRIMARY": "#C9A027",
-    "GOLD_DEEP":    "#8C7012",
+    # ── Gold accent (the ONLY accent — refined, professional) ──
+    "GOLD_BRIGHT":  "#D4A017",
+    "GOLD_PRIMARY": "#B8860B",
+    "GOLD_DEEP":    "#8B6914",
     "GOLD_MUTED":   "#6B5509",
-    "GOLD_GLOW":    "rgba(201, 160, 39, 0.12)",
+    "GOLD_GLOW":    "rgba(184, 134, 11, 0.10)",
 
-    # Text (dark progression for light backgrounds)
-    "TEXT_PRIMARY":   "#1A1A2E",
-    "TEXT_SECONDARY": "#6B6B80",
-    "TEXT_TERTIARY":  "#A0A0B4",
+    # ── Text (dark on light) ──
+    "TEXT_PRIMARY":   "#1C1C1E",
+    "TEXT_SECONDARY": "#6E6E73",
+    "TEXT_TERTIARY":  "#AEAEB2",
     "TEXT_ON_GOLD":   "#FFFFFF",
 
-    # Borders (light gray progression)
-    "BORDER_SUBTLE": "#E4E4E8",
-    "BORDER_NORMAL": "#CCCCCC",
-    "BORDER_STRONG": "#A8A8B4",
-    "BORDER_GOLD":   "#8C7012",
+    # ── Borders (subtle, barely visible) ──
+    "BORDER_SUBTLE": "#E5E5EA",
+    "BORDER_NORMAL": "#D1D1D6",
+    "BORDER_STRONG": "#C7C7CC",
+    "BORDER_GOLD":   "#B8860B",
 
-    # Status (more saturated for visibility on white)
-    "STATUS_DONE":      "#2E7D32",
-    "STATUS_ACTIVE":    "#1565C0",
-    "STATUS_BLOCKED":   "#C62828",
+    # ── Status (muted, professional — never competing with gold) ──
+    "STATUS_DONE":      "#34A853",
+    "STATUS_ACTIVE":    "#5B9BD5",
+    "STATUS_BLOCKED":   "#D93025",
     "STATUS_DRAFT":     "#9E9E9E",
-    "STATUS_READY":     "#827717",
+    "STATUS_READY":     "#8B6914",
     "STATUS_DEFERRED":  "#757575",
     "STATUS_CANCELLED": "#BDBDBD",
 
-    # Critical path glow
-    "CRITICAL_GLOW": "rgba(201, 160, 39, 0.25)",
+    # ── Critical path glow ──
+    "CRITICAL_GLOW": "rgba(184, 134, 11, 0.20)",
 
-    # Risk (lighter backgrounds for heatmap on white)
-    "RISK_NEGLIGIBLE": "#C8E6C9",
-    "RISK_LOW":        "#A5D6A7",
-    "RISK_MEDIUM":     "#FFF59D",
-    "RISK_HIGH":       "#FFCC80",
-    "RISK_SEVERE":     "#EF9A9A",
+    # ── Risk (muted, professional) ──
+    "RISK_NEGLIGIBLE": "#E6F4EA",
+    "RISK_LOW":        "#CEEAD6",
+    "RISK_MEDIUM":     "#FFF3E0",
+    "RISK_HIGH":       "#FCE4EC",
+    "RISK_SEVERE":     "#F9DEDE",
+
+    # ── Chart colors (all from gold family — no random colors) ──
+    "CHART_BAR_1":     "#B8860B",
+    "CHART_BAR_2":     "#D4A017",
+    "CHART_BAR_3":     "#8B6914",
+    "CHART_BAR_4":     "#6B5509",
+    "CHART_POSITIVE":  "#34A853",
+    "CHART_NEGATIVE":  "#D93025",
+    "CHART_NEUTRAL":   "#8B6914",
+
+    # ── Edge colors (professional, muted) ──
+    "EDGE_PRIMARY":      "#B8860B",
+    "EDGE_ALTERNATIVE":  "#7B8A9E",
+    "EDGE_FALLBACK":     "#9E7B7B",
+    "EDGE_MERGE":        "#D4A017",
+    "EDGE_BREAKTHROUGH": "#5B9BD5",
+    "EDGE_SKIP":         "#D4A017",
+    "EDGE_LOOP":         "#34A853",
 }
 
 
 # ──────────────────────────────────────────────────────────────
-#  Dark Palette
+#  Dark Palette — Professional Minimalistic
 # ──────────────────────────────────────────────────────────────
 
 _DARK = {
-    # Surfaces (dark progression: near-black → dark gray)
-    "BG_DEEPEST":   "#08080A",
-    "BG_PRIMARY":   "#0A0A0B",
-    "BG_SECONDARY": "#111114",
-    "BG_TERTIARY":  "#16161A",
-    "BG_ELEVATED":  "#1C1C22",
-    "BG_HOVER":     "#22222A",
-    "BG_SELECTED":  "#2A2410",
+    # ── Surfaces (true dark, no blue tint) ──
+    "BG_DEEPEST":   "#0A0A0B",
+    "BG_PRIMARY":   "#111113",
+    "BG_SECONDARY": "#18181B",
+    "BG_TERTIARY":  "#1F1F23",
+    "BG_ELEVATED":  "#27272B",
+    "BG_HOVER":     "#2E2E33",
+    "BG_SELECTED":  "#2A2410",    # gold-tinted dark
 
-    # Gold family (bright tints for contrast on dark)
+    # ── Gold accent (warm, pops against dark) ──
     "GOLD_BRIGHT":  "#F5C842",
     "GOLD_PRIMARY": "#D4AF37",
-    "GOLD_DEEP":    "#8C7012",
+    "GOLD_DEEP":    "#A88B2A",
     "GOLD_MUTED":   "#5C4A0E",
-    "GOLD_GLOW":    "rgba(212, 175, 55, 0.18)",
+    "GOLD_GLOW":    "rgba(212, 175, 55, 0.15)",
 
-    # Text (warm light progression)
-    "TEXT_PRIMARY":   "#F5F0DC",
-    "TEXT_SECONDARY": "#A8A294",
-    "TEXT_TERTIARY":  "#5C5749",
+    # ── Text (warm light on dark) ──
+    "TEXT_PRIMARY":   "#F0EDE4",
+    "TEXT_SECONDARY": "#9E9A8F",
+    "TEXT_TERTIARY":  "#5C5950",
     "TEXT_ON_GOLD":   "#1A1505",
 
-    # Borders (dark progression)
-    "BORDER_SUBTLE": "#1F1F25",
-    "BORDER_NORMAL": "#2A2A33",
-    "BORDER_STRONG": "#3A3A45",
-    "BORDER_GOLD":   "#8C7012",
+    # ── Borders (barely visible, dark) ──
+    "BORDER_SUBTLE": "#222226",
+    "BORDER_NORMAL": "#2C2C32",
+    "BORDER_STRONG": "#3A3A42",
+    "BORDER_GOLD":   "#D4AF37",
 
-    # Status (muted, never as primary accent)
-    "STATUS_DONE":      "#5A8A5A",
-    "STATUS_ACTIVE":    "#5A7FA8",
-    "STATUS_BLOCKED":   "#A85A5A",
-    "STATUS_DRAFT":     "#5C5749",
-    "STATUS_READY":     "#7A7A4A",
+    # ── Status (muted, never competing) ──
+    "STATUS_DONE":      "#5A9A6A",
+    "STATUS_ACTIVE":    "#6A8FB8",
+    "STATUS_BLOCKED":   "#C05A5A",
+    "STATUS_DRAFT":     "#5C5950",
+    "STATUS_READY":     "#8A8A4A",
     "STATUS_DEFERRED":  "#4A4A52",
-    "STATUS_CANCELLED": "#3A2A2A",
+    "STATUS_CANCELLED": "#3A3232",
 
-    # Critical path
-    "CRITICAL_GLOW": "rgba(245, 200, 66, 0.35)",
+    # ── Critical path ──
+    "CRITICAL_GLOW": "rgba(245, 200, 66, 0.30)",
 
-    # Risk (dark muted)
-    "RISK_NEGLIGIBLE": "#3A4A3A",
-    "RISK_LOW":        "#5A6A4A",
-    "RISK_MEDIUM":     "#8A8A4A",
-    "RISK_HIGH":       "#A87A4A",
-    "RISK_SEVERE":     "#A85A5A",
+    # ── Risk (dark muted) ──
+    "RISK_NEGLIGIBLE": "#1E2E1E",
+    "RISK_LOW":        "#2A3A2A",
+    "RISK_MEDIUM":     "#3A3A1E",
+    "RISK_HIGH":       "#3A2A1E",
+    "RISK_SEVERE":     "#3A1E1E",
+
+    # ── Chart colors (all from gold family) ──
+    "CHART_BAR_1":     "#D4AF37",
+    "CHART_BAR_2":     "#F5C842",
+    "CHART_BAR_3":     "#A88B2A",
+    "CHART_BAR_4":     "#5C4A0E",
+    "CHART_POSITIVE":  "#5A9A6A",
+    "CHART_NEGATIVE":  "#C05A5A",
+    "CHART_NEUTRAL":   "#D4AF37",
+
+    # ── Edge colors (professional, muted) ──
+    "EDGE_PRIMARY":      "#D4AF37",
+    "EDGE_ALTERNATIVE":  "#6A8FB8",
+    "EDGE_FALLBACK":     "#9E7B7B",
+    "EDGE_MERGE":        "#F5C842",
+    "EDGE_BREAKTHROUGH": "#6A8FB8",
+    "EDGE_SKIP":         "#F5C842",
+    "EDGE_LOOP":         "#5A9A6A",
 }
 
 
@@ -228,7 +265,7 @@ def load_theme_preference() -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-#  QSS stylesheet generator
+#  QSS stylesheet generator — Professional Minimalistic
 # ──────────────────────────────────────────────────────────────
 
 # ساخت شیوه‌نامه کامل QSS از پالت فعلی
@@ -242,7 +279,7 @@ QWidget {{
     background-color: {pal.BG_PRIMARY};
     color: {pal.TEXT_PRIMARY};
     font-family: "Inter", "SF Pro Display", "Segoe UI", "DejaVu Sans", sans-serif;
-    font-size: 16px;
+    font-size: 15px;
 }}
 
 QWidget:disabled {{
@@ -270,7 +307,7 @@ QMenuBar {{
     color: {pal.TEXT_PRIMARY};
     border-bottom: 1px solid {pal.BORDER_SUBTLE};
     padding: 2px 4px;
-    font-size: 15px;
+    font-size: 14px;
 }}
 QMenuBar::item {{
     background: transparent;
@@ -306,7 +343,7 @@ QStatusBar {{
     background-color: {pal.BG_SECONDARY};
     color: {pal.TEXT_SECONDARY};
     border-top: 1px solid {pal.BORDER_SUBTLE};
-    font-size: 14px;
+    font-size: 13px;
     padding: 2px 8px;
 }}
 QStatusBar::item {{ border: none; }}
@@ -330,7 +367,7 @@ QToolButton {{
     border: 1px solid transparent;
     border-radius: 4px;
     padding: 6px 10px;
-    font-size: 15px;
+    font-size: 14px;
 }}
 QToolButton:hover {{
     background-color: {pal.BG_HOVER};
@@ -348,9 +385,9 @@ QPushButton {{
     background-color: {pal.BG_TERTIARY};
     color: {pal.TEXT_PRIMARY};
     border: 1px solid {pal.BORDER_NORMAL};
-    border-radius: 4px;
+    border-radius: 5px;
     padding: 7px 16px;
-    font-size: 15px;
+    font-size: 14px;
 }}
 QPushButton:hover {{
     background-color: {pal.BG_ELEVATED};
@@ -397,7 +434,7 @@ QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDate
     background-color: {pal.BG_TERTIARY};
     color: {pal.TEXT_PRIMARY};
     border: 1px solid {pal.BORDER_NORMAL};
-    border-radius: 4px;
+    border-radius: 5px;
     padding: 6px 10px;
     selection-background-color: {pal.GOLD_MUTED};
     selection-color: {pal.TEXT_PRIMARY};
@@ -460,7 +497,7 @@ QHeaderView::section {{
     border-right: 1px solid {pal.BORDER_SUBTLE};
     border-bottom: 1px solid {pal.BORDER_NORMAL};
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }}
@@ -468,7 +505,7 @@ QHeaderView::section {{
 /* ===== Scrollbars ===== */
 QScrollBar:vertical {{
     background: transparent;
-    width: 12px;
+    width: 10px;
     margin: 0;
 }}
 QScrollBar::handle:vertical {{
@@ -485,7 +522,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 }}
 QScrollBar:horizontal {{
     background: transparent;
-    height: 12px;
+    height: 10px;
     margin: 0;
 }}
 QScrollBar::handle:horizontal {{
@@ -519,7 +556,7 @@ QGroupBox {{
     border-radius: 6px;
     margin-top: 14px;
     padding-top: 10px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: {pal.TEXT_SECONDARY};
     text-transform: uppercase;
@@ -547,13 +584,13 @@ QTabBar {{
 QTabBar::tab {{
     background: {pal.BG_SECONDARY};
     color: {pal.TEXT_SECONDARY};
-    padding: 8px 18px;
+    padding: 10px 22px;
     border: 1px solid {pal.BORDER_SUBTLE};
     border-bottom: none;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     margin-right: 2px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -609,7 +646,7 @@ QCheckBox::indicator:hover, QRadioButton::indicator:hover {{
 /* ===== Labels ===== */
 QLabel {{ background: transparent; }}
 QLabel[variant="title"] {{
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     color: {pal.GOLD_BRIGHT};
     letter-spacing: 0.5px;
@@ -656,6 +693,12 @@ QGraphicsView {{
     border: none;
     outline: 0;
 }}
+
+/* ===== Scroll area ===== */
+QScrollArea {{
+    background: transparent;
+    border: none;
+}}
 """
 
 
@@ -670,11 +713,7 @@ QSS = _build_qss()
 # ساخت پالت رنگی Qt از مقادیر فعلی پالت
 
 def build_qpalette() -> QPalette:
-    """Build a QPalette from the current Palette values.
-
-    This covers native Qt widgets that QSS can't fully style
-    (e.g. some default dialog elements, message boxes).
-    """
+    """Build a QPalette from the current Palette values."""
     pal = Palette
     p = QPalette()
     p.setColor(QPalette.Window, QColor(pal.BG_PRIMARY))

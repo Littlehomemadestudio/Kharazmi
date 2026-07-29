@@ -42,15 +42,15 @@ class _HistogramWidget(QWidget):
         hist = self.result.histogram
         if not hist:
             p.setPen(QColor(Palette.TEXT_TERTIARY))
-            p.setFont(QFont("Inter", 18))
+            p.setFont(QFont("Inter", 20))
             p.drawText(self.rect(), Qt.AlignCenter, "داده‌ای موجود نیست")
             p.end()
             return
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, 16, "توزیع زمان تکمیل")
+        p.drawText(10, 18, "توزیع زمان تکمیل")
 
         max_count = max(hist.values()) if hist else 1
         bar_area_y = 36
@@ -74,11 +74,11 @@ class _HistogramWidget(QWidget):
             # Color gradient based on position (earlier = green, later = red)
             pct = sorted_bins.index(bin_val) / max(1, n_bins - 1)
             if pct < 0.33:
-                color = QColor("#5A8A5A")
+                color = QColor(Palette.CHART_POSITIVE)
             elif pct < 0.66:
-                color = QColor("#D4AF37")
+                color = QColor(Palette.GOLD_PRIMARY)
             else:
-                color = QColor("#A87A4A")
+                color = QColor(Palette.CHART_NEUTRAL)
 
             p.setPen(Qt.NoPen)
             p.setBrush(color)
@@ -86,7 +86,7 @@ class _HistogramWidget(QWidget):
 
             # Bin label (every few bins)
             if n_bins <= 20 or sorted_bins.index(bin_val) % max(1, n_bins // 10) == 0:
-                p.setFont(QFont("JetBrains Mono", 14))
+                p.setFont(QFont("JetBrains Mono", 16))
                 p.setPen(QColor(Palette.TEXT_TERTIARY))
                 p.drawText(QRectF(x - 10, bar_area_y + bar_area_h + 4, bar_w + 20, 14),
                            Qt.AlignCenter, f"{bin_val}m")
@@ -128,10 +128,10 @@ class _StepFailureWidget(QWidget):
             p.end()
             return
 
-        title_font = QFont("Inter", 18, QFont.Bold)
+        title_font = QFont("Inter", 20, QFont.Bold)
         p.setFont(title_font)
         p.setPen(QColor(Palette.GOLD_BRIGHT))
-        p.drawText(10, 16, "تحلیل شکست مراحل")
+        p.drawText(10, 18, "تحلیل شکست مراحل")
 
         bar_h = min(22, max(14, (h - 50) // len(steps) - 4))
         label_w = 160
@@ -146,7 +146,7 @@ class _StepFailureWidget(QWidget):
             fail_rate = fail_count / max(1, self.result.n_simulations)
 
             # Label
-            p.setFont(QFont("Inter", 16))
+            p.setFont(QFont("Inter", 18))
             p.setPen(QColor(Palette.TEXT_SECONDARY))
             label = step.title[:20] + "…" if len(step.title) > 20 else step.title
             p.drawText(QRectF(4, y, label_w - 8, bar_h), Qt.AlignRight | Qt.AlignVCenter, label)
@@ -159,11 +159,11 @@ class _StepFailureWidget(QWidget):
             # Failure bar (red)
             bar_fill_w = bar_area * fail_rate
             if fail_rate > 0.3:
-                color = QColor("#A85A5A")
+                color = QColor(Palette.CHART_NEGATIVE)
             elif fail_rate > 0.15:
-                color = QColor("#A87A4A")
+                color = QColor(Palette.CHART_NEUTRAL)
             else:
-                color = QColor("#5A8A5A")
+                color = QColor(Palette.CHART_POSITIVE)
 
             grad = QLinearGradient(label_w, 0, label_w + bar_fill_w, 0)
             grad.setColorAt(0, color)
@@ -172,7 +172,7 @@ class _StepFailureWidget(QWidget):
             p.drawRoundedRect(QRectF(label_w, y + 2, bar_fill_w, bar_h - 4), 3, 3)
 
             # Value
-            p.setFont(QFont("JetBrains Mono", 16, QFont.Bold))
+            p.setFont(QFont("JetBrains Mono", 18, QFont.Bold))
             p.setPen(QColor(Palette.TEXT_PRIMARY))
             p.drawText(QRectF(label_w + bar_area + 4, y, 70, bar_h),
                        Qt.AlignLeft | Qt.AlignVCenter, f"{fail_rate:.1%} ({fail_count})")
@@ -218,22 +218,22 @@ class _CircularGauge(QWidget):
         # Foreground arc (score)
         score_pct = self._score / 100.0
         if score_pct > 0.7:
-            arc_color = QColor("#5A8A5A")
+            arc_color = QColor(Palette.CHART_POSITIVE)
         elif score_pct > 0.4:
-            arc_color = QColor("#D4AF37")
+            arc_color = QColor(Palette.GOLD_PRIMARY)
         else:
-            arc_color = QColor("#A85A5A")
+            arc_color = QColor(Palette.CHART_NEGATIVE)
 
         p.setPen(QPen(arc_color, pen_w, Qt.SolidLine, Qt.RoundCap))
         span = int(270 * 16 * score_pct)
         p.drawArc(arc_rect, 135 * 16, span)
 
         # Center text
-        p.setFont(QFont("Inter", 36, QFont.Bold))
+        p.setFont(QFont("Inter", 40, QFont.Bold))
         p.setPen(QColor(Palette.TEXT_PRIMARY))
         p.drawText(QRectF(cx - 50, cy - 18, 100, 36), Qt.AlignCenter, f"{self._score:.0f}")
 
-        p.setFont(QFont("Inter", 16))
+        p.setFont(QFont("Inter", 18))
         p.setPen(QColor(Palette.TEXT_TERTIARY))
         p.drawText(QRectF(cx - 60, cy + 20, 120, 18), Qt.AlignCenter, self._label)
 
@@ -273,22 +273,22 @@ class SimulationView(QWidget):
         layout.setSpacing(0)
 
         # Top bar
-        top = QFrame()
-        top.setFixedHeight(50)
-        top.setStyleSheet(f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};")
-        top_layout = QHBoxLayout(top)
+        self._top_bar = QFrame()
+        self._top_bar.setFixedHeight(50)
+        self._top_bar.setStyleSheet(f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};")
+        top_layout = QHBoxLayout(self._top_bar)
         top_layout.setContentsMargins(16, 8, 16, 8)
 
-        title = QLabel("🧪  شبیه‌سازی و سلامت")
-        title.setStyleSheet(
-            f"color: {Palette.GOLD_BRIGHT}; font-size: 18px; font-weight: bold; "
+        self._title_label = QLabel("🧪  شبیه‌سازی و سلامت")
+        self._title_label.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-size: 20px; font-weight: bold; "
             f"letter-spacing: 2px; background: transparent;"
         )
-        top_layout.addWidget(title)
+        top_layout.addWidget(self._title_label)
 
         self._route_info = QLabel("مسیری بارگذاری نشده")
         self._route_info.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 15px; background: transparent;"
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; background: transparent;"
         )
         top_layout.addWidget(self._route_info)
         top_layout.addStretch()
@@ -301,7 +301,7 @@ class SimulationView(QWidget):
                 border: none;
                 border-radius: 4px;
                 padding: 8px 18px;
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -316,12 +316,12 @@ class SimulationView(QWidget):
         self._run_btn.setEnabled(False)
         top_layout.addWidget(self._run_btn)
 
-        layout.addWidget(top)
+        layout.addWidget(self._top_bar)
 
         # Scroll area for content
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(f"""
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setStyleSheet(f"""
             QScrollArea {{ background: {Palette.BG_PRIMARY}; border: none; }}
             QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
             QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
@@ -343,13 +343,13 @@ class SimulationView(QWidget):
             "ابتدا به تب برنامه‌ریز بروید و یک مسیر بسازید."
         )
         self._placeholder.setStyleSheet(
-            f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; background: transparent; padding: 40px;"
+            f"color: {Palette.TEXT_TERTIARY}; font-size: 19px; background: transparent; padding: 40px;"
         )
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._content_layout.addWidget(self._placeholder)
 
-        scroll.setWidget(self._content)
-        layout.addWidget(scroll, stretch=1)
+        self._scroll.setWidget(self._content)
+        layout.addWidget(self._scroll, stretch=1)
 
     # تنظیم مسیر
     def set_route(self, route: Route):
@@ -417,7 +417,7 @@ class SimulationView(QWidget):
         stats_layout.setContentsMargins(16, 0, 0, 0)
         stats_layout.setSpacing(8)
 
-        stats_layout.addWidget(QLabel("<b style='color: #D4AF37; font-size: 17px;'>نتایج شبیه‌سازی</b>"))
+        stats_layout.addWidget(QLabel(f"<b style='color: {Palette.GOLD_PRIMARY}; font-size: 19px;'>نتایج شبیه‌سازی</b>"))
 
         if self._sim_result:
             for label, value, color in [
@@ -426,16 +426,16 @@ class SimulationView(QWidget):
                 ("P90", f"{self._sim_result.p90_minutes}m", Palette.GOLD_PRIMARY),
                 ("P99", f"{self._sim_result.p99_minutes}m", Palette.GOLD_BRIGHT),
                 ("نرخ شکست", f"{self._sim_result.failure_rate:.1%}",
-                 "#A85A5A" if self._sim_result.failure_rate > 0.3 else "#5A8A5A"),
+                 Palette.CHART_NEGATIVE if self._sim_result.failure_rate > 0.3 else Palette.CHART_POSITIVE),
                 ("کمینه / بیشینه", f"{self._sim_result.min_minutes}m / {self._sim_result.max_minutes}m", Palette.TEXT_SECONDARY),
             ]:
                 row = QHBoxLayout()
                 l = QLabel(label)
-                l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 15px; background: transparent;")
+                l.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; background: transparent;")
                 row.addWidget(l)
                 row.addStretch()
                 v = QLabel(value)
-                v.setStyleSheet(f"color: {color}; font-size: 17px; font-weight: bold; background: transparent;")
+                v.setStyleSheet(f"color: {color}; font-size: 19px; font-weight: bold; background: transparent;")
                 row.addWidget(v)
                 stats_layout.addLayout(row)
         else:
@@ -458,7 +458,7 @@ class SimulationView(QWidget):
                 "✅ جاهایی که موفق می‌شود",
                 f"{success_rate:.0%} شبیه‌سازی‌ها با موفقیت کامل شد",
                 self._get_succeeding_steps(),
-                "#5A8A5A",
+                Palette.CHART_POSITIVE,
             )
             row2.addWidget(success_card, stretch=1)
 
@@ -467,12 +467,12 @@ class SimulationView(QWidget):
                 "❌ جاهایی که شکست می‌خورد",
                 f"{fail_rate:.0%} شبیه‌سازی‌ها با شکست مواجه شد",
                 self._get_failing_steps(),
-                "#A85A5A",
+                Palette.CHART_NEGATIVE,
             )
             row2.addWidget(fail_card, stretch=1)
         else:
             no_sim = QLabel("شبیه‌سازی را اجرا کنید")
-            no_sim.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 16px; padding: 20px;")
+            no_sim.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 18px; padding: 20px;")
             row2.addWidget(no_sim)
 
         self._content_layout.addLayout(row2)
@@ -500,12 +500,12 @@ class SimulationView(QWidget):
         rec_cl.setSpacing(8)
 
         rec_title = QLabel("💡  چگونه بهبود یابد")
-        rec_title.setStyleSheet(f"color: {Palette.GOLD_BRIGHT}; font-size: 17px; font-weight: bold; background: transparent;")
+        rec_title.setStyleSheet(f"color: {Palette.GOLD_BRIGHT}; font-size: 19px; font-weight: bold; background: transparent;")
         rec_cl.addWidget(rec_title)
 
         for rec in self._get_recommendations():
             rl = QLabel(f"• {rec}")
-            rl.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 15px; background: transparent;")
+            rl.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 17px; background: transparent;")
             rl.setWordWrap(True)
             rec_cl.addWidget(rl)
 
@@ -546,16 +546,16 @@ class SimulationView(QWidget):
         cl.setSpacing(6)
 
         t = QLabel(title)
-        t.setStyleSheet(f"color: {accent}; font-size: 16px; font-weight: bold; background: transparent;")
+        t.setStyleSheet(f"color: {accent}; font-size: 18px; font-weight: bold; background: transparent;")
         cl.addWidget(t)
 
         s = QLabel(subtitle)
-        s.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; background: transparent;")
+        s.setStyleSheet(f"color: {Palette.TEXT_TERTIARY}; font-size: 19px; background: transparent;")
         cl.addWidget(s)
 
         for item in items[:8]:
             il = QLabel(f"  • {item}")
-            il.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 17px; background: transparent;")
+            il.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; font-size: 19px; background: transparent;")
             il.setWordWrap(True)
             cl.addWidget(il)
 
@@ -634,7 +634,66 @@ class SimulationView(QWidget):
     # بازسازی سبک‌ها برای تم فعلی
     def _reapply_theme(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
-        # Rebuild top bar
+
+        # Rebuild top bar stylesheet
+        if hasattr(self, '_top_bar'):
+            self._top_bar.setStyleSheet(
+                f"background-color: {Palette.BG_SECONDARY}; border-bottom: 1px solid {Palette.BORDER_SUBTLE};"
+            )
+
+        # Rebuild title label stylesheet
+        if hasattr(self, '_title_label'):
+            self._title_label.setStyleSheet(
+                f"color: {Palette.GOLD_BRIGHT}; font-size: 20px; font-weight: bold; "
+                f"letter-spacing: 2px; background: transparent;"
+            )
+
+        # Rebuild route info stylesheet
+        if hasattr(self, '_route_info'):
+            self._route_info.setStyleSheet(
+                f"color: {Palette.TEXT_TERTIARY}; font-size: 17px; background: transparent;"
+            )
+
+        # Rebuild run button stylesheet
+        if hasattr(self, '_run_btn'):
+            self._run_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Palette.GOLD_PRIMARY};
+                    color: {Palette.TEXT_ON_GOLD};
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 18px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {Palette.GOLD_BRIGHT};
+                }}
+                QPushButton:disabled {{
+                    background-color: {Palette.BG_TERTIARY};
+                    color: {Palette.TEXT_TERTIARY};
+                }}
+            """)
+
+        # Rebuild scroll area stylesheet
+        if hasattr(self, '_scroll'):
+            self._scroll.setStyleSheet(f"""
+                QScrollArea {{ background: {Palette.BG_PRIMARY}; border: none; }}
+                QScrollBar:vertical {{ background: {Palette.BG_TERTIARY}; width: 8px; }}
+                QScrollBar::handle:vertical {{ background: {Palette.BORDER_NORMAL}; border-radius: 4px; }}
+            """)
+
+        # Rebuild placeholder stylesheet
+        if hasattr(self, '_placeholder'):
+            self._placeholder.setStyleSheet(
+                f"color: {Palette.TEXT_TERTIARY}; font-size: 19px; background: transparent; padding: 40px;"
+            )
+
+        # Rebuild result cards if simulation was run
+        if self._route is not None:
+            self._show_results()
+
+        # Force update on all children
         for child in self.findChildren(QWidget):
             try:
                 child.update()

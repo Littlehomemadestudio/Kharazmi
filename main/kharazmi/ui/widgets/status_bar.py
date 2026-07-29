@@ -17,16 +17,7 @@ class StatusBar(QStatusBar):
     def __init__(self, parent: QWidget = None) -> None:
         super().__init__(parent)
         self.setSizeGripEnabled(False)
-        self.setStyleSheet(f"""
-            QStatusBar {{
-                background-color: {Palette.BG_SECONDARY};
-                color: {Palette.TEXT_SECONDARY};
-                border-top: 1px solid {Palette.BORDER_SUBTLE};
-                font-size: 11px;
-                padding: 2px 0;
-            }}
-            QStatusBar::item {{ border: none; }}
-        """)
+        self._apply_style()
 
         self._project_label = QLabel("")
         self._project_label.setStyleSheet(
@@ -59,11 +50,24 @@ class StatusBar(QStatusBar):
         self._message_timer.setSingleShot(True)
         self._message_timer.timeout.connect(lambda: self._message_label.setText(""))
 
+    # اعمال سبک بصری
+    def _apply_style(self) -> None:
+        self.setStyleSheet(f"""
+            QStatusBar {{
+                background-color: {Palette.BG_SECONDARY};
+                color: {Palette.TEXT_SECONDARY};
+                border-top: 1px solid {Palette.BORDER_SUBTLE};
+                font-size: 12px;
+                padding: 2px 0;
+            }}
+            QStatusBar::item {{ border: none; }}
+        """)
+
     # بروزرسانی پروژه
     def update_project(self, project: Project) -> None:
         self._project_label.setText(
             f"  ◆  {project.name.upper()}   "
-            f"({project.task_count} tasks · {project.dependency_count} deps)"
+            f"({project.task_count} وظیفه · {project.dependency_count} وابستگی)"
         )
 
     # بروزرسانی پروژه named
@@ -75,14 +79,14 @@ class StatusBar(QStatusBar):
     def update_stats(self, total: int, done: int, active: int,
                      blocked: int, critical: int, completion: float) -> None:
         self._stats_label.setText(
-            f"  Done: {done}  ·  Active: {active}  ·  Blocked: {blocked}  "
-            f"·  Critical: {critical}  ·  Completion: {completion:.1f}%"
+            f"  انجام‌شده: {done}  ·  فعال: {active}  ·  مسدود: {blocked}  "
+            f"·  بحرانی: {critical}  ·  پیشرفت: {completion:.1f}%"
         )
 
     # بروزرسانی schedule
     def update_schedule(self, duration_str: str, critical_count: int) -> None:
         self._schedule_label.setText(
-            f"⏱  Project span: {duration_str}   ·   Critical tasks: {critical_count}"
+            f"⏱  مدت پروژه: {duration_str}   ·   وظایف بحرانی: {critical_count}"
         )
 
     # نمایش message
@@ -90,3 +94,21 @@ class StatusBar(QStatusBar):
         self._message_label.setText(text)
         if timeout_ms > 0:
             self._message_timer.start(timeout_ms)
+
+    # بازسازی سبک‌ها برای تم فعلی
+    def _reapply_theme(self) -> None:
+        self._apply_style()
+        self._project_label.setStyleSheet(
+            f"color: {Palette.GOLD_BRIGHT}; font-weight: bold; "
+            f"font-family: 'JetBrains Mono', monospace; padding: 0 12px;"
+        )
+        self._stats_label.setStyleSheet(f"color: {Palette.TEXT_SECONDARY}; padding: 0 12px;")
+        self._schedule_label.setStyleSheet(
+            f"color: {Palette.TEXT_TERTIARY}; padding: 0 12px; "
+            f"font-family: 'JetBrains Mono', monospace;"
+        )
+        self._message_label.setStyleSheet(
+            f"color: {Palette.GOLD_PRIMARY}; padding: 0 12px; "
+            f"font-family: 'JetBrains Mono', monospace;"
+        )
+        self.update()

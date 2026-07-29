@@ -56,13 +56,13 @@ class _ScheduleBubble(QFrame):
             bg = "#1A2A1A"
             border_left = "#5A8A5A"
             icon = "✓"
-            name = "Schedule"
+            name = "زمان‌بندی"
             icon_color = "#5A8A5A"
         else:
             bg = Palette.BG_SELECTED
             border_left = Palette.GOLD_BRIGHT
             icon = "○"
-            name = "You"
+            name = "شما"
             icon_color = Palette.TEXT_SECONDARY
 
         self.setStyleSheet(f"""
@@ -160,7 +160,7 @@ class _ScheduleInput(QPlainTextEdit):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setPlaceholderText(
-            "Describe what you want scheduled...  (Enter to send)"
+            "توضیح دهید چه چیزی زمان‌بندی کنید... (Enter برای ارسال)"
         )
         self.setStyleSheet(f"""
             QPlainTextEdit {{
@@ -203,10 +203,10 @@ class AIScheduleDialog(QDialog):
 
     # Quick scheduling prompts
     QUICK_PROMPTS = [
-        "Study plan for my exams",
-        "Schedule my work week",
-        "Plan a daily routine",
-        "Block focus time this week",
+        "برنامه مطالعه برای امتحان",
+        "زمان‌بندی هفته کاری",
+        "برنامه‌ریزی روتین روزانه",
+        "زمان تمرکز این هفته",
     ]
 
     # سازنده — مقداردهی اولیه شیء
@@ -232,7 +232,7 @@ class AIScheduleDialog(QDialog):
 
     # ساخت رابط کاربری
     def _setup_ui(self) -> None:
-        self.setWindowTitle("✦ AI Schedule")
+        self.setWindowTitle("✦ زمان‌بندی هوشمند")
         self.setMinimumSize(520, 600)
         self.resize(560, 680)
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
@@ -259,7 +259,7 @@ class AIScheduleDialog(QDialog):
         )
         header_layout.addWidget(icon_lbl)
 
-        title_lbl = QLabel("AI Schedule")
+        title_lbl = QLabel("زمان‌بندی هوشمند")
         title_lbl.setStyleSheet(
             f"color: {Palette.GOLD_PRIMARY}; font-size: 14px; "
             f"font-weight: bold; letter-spacing: 1px; "
@@ -267,7 +267,7 @@ class AIScheduleDialog(QDialog):
         )
         header_layout.addWidget(title_lbl)
 
-        subtitle = QLabel("Let AI plan your calendar")
+        subtitle = QLabel("هوش مصنوعی تقویم شما را برنامه‌ریزی می‌کند")
         subtitle.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"background: transparent; border: none;"
@@ -305,7 +305,7 @@ class AIScheduleDialog(QDialog):
         chips_layout.setContentsMargins(12, 6, 12, 6)
         chips_layout.setSpacing(6)
 
-        chips_label = QLabel("Try:")
+        chips_label = QLabel("امتحان کنید:")
         chips_label.setStyleSheet(
             f"color: {Palette.TEXT_TERTIARY}; font-size: 10px; "
             f"font-weight: bold; background: transparent; border: none;"
@@ -399,7 +399,7 @@ class AIScheduleDialog(QDialog):
         action_row = QHBoxLayout()
         action_row.addStretch()
 
-        self._stop_btn = QPushButton("■ Stop")
+        self._stop_btn = QPushButton("■ توقف")
         self._stop_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.STATUS_BLOCKED};
@@ -418,7 +418,7 @@ class AIScheduleDialog(QDialog):
         self._stop_btn.hide()
         action_row.addWidget(self._stop_btn)
 
-        self._send_btn = QPushButton("➤ Schedule")
+        self._send_btn = QPushButton("➤ زمان‌بندی")
         self._send_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Palette.GOLD_PRIMARY};
@@ -597,7 +597,7 @@ class AIScheduleDialog(QDialog):
             # Show error
             if self._streaming_msg is not None:
                 self._streaming_msg.set_text(
-                    f"⚠ Error: {result}" if result else "⚠ An error occurred."
+                    f"⚠ خطا: {result}" if result else "⚠ خطایی رخ داد."
                 )
             self._reset_input()
             return
@@ -661,7 +661,7 @@ class AIScheduleDialog(QDialog):
         """Stop the current streaming request."""
         if self._request_id:
             self._ai.cancel_request(self._request_id)
-        self._handle_stream_done(True, {"mode": "ask", "message": "⏹ Stopped."})
+        self._handle_stream_done(True, {"mode": "ask", "message": "⏹ متوقف شد."})
 
     # ایجاد رویدادها
     def _create_events(self, events_data: list[dict]) -> None:
@@ -669,7 +669,7 @@ class AIScheduleDialog(QDialog):
         created = []
         for ev_data in events_data:
             try:
-                title = ev_data.get("title", "Untitled")
+                title = ev_data.get("title", "بدون عنوان")
                 start_iso = ev_data.get("start_iso", "")
                 end_iso = ev_data.get("end_iso", "")
                 calendar_id = ev_data.get("calendar_id", "cal-default")
@@ -723,7 +723,7 @@ class AIScheduleDialog(QDialog):
         # Show summary
         if created:
             self._summary_label.setText(
-                f"✓ {len(created)} event{'s' if len(created) != 1 else ''} created"
+                f"✓ {len(created)} رویداد ایجاد شد"
             )
             events_text = "\n".join(
                 f"  • {ev.title}  "
@@ -736,7 +736,7 @@ class AIScheduleDialog(QDialog):
             # Show system message in conversation
             sys_msg = _ScheduleBubble("system")
             sys_msg.set_text(
-                f"✅ Created {len(created)} event{'s' if len(created) != 1 else ''} in your calendar!\n\n"
+                f"✅ {len(created)} رویداد در تقویم شما ایجاد شد!\n\n"
                 + "\n".join(
                     f"• {ev.title} — {format_shamsi(ev.start, include_time=True)}"
                     for ev in created
@@ -747,7 +747,7 @@ class AIScheduleDialog(QDialog):
             )
 
             # Add "Schedule more" button
-            more_btn = QPushButton("✦ Schedule More")
+            more_btn = QPushButton("✦ زمان‌بندی بیشتر")
             more_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {Palette.GOLD_MUTED};
@@ -786,10 +786,10 @@ class AIScheduleDialog(QDialog):
         if not self._conversation_history:
             welcome = _ScheduleBubble("assistant")
             welcome.set_text(
-                "👋 Hi! I'm your AI scheduling assistant.\n\n"
-                "Tell me what you'd like to schedule and I'll help you plan it. "
-                "I can create study plans, work blocks, daily routines, or anything else.\n\n"
-                "I'll ask questions if I need more details!"
+                "👋 سلام! من دستیار زمان‌بندی هوشمند شما هستم.\n\n"
+                "بگویید چه چیزی می‌خواهید زمان‌بندی کنید تا کمک‌تان کنم. "
+                "می‌توانم برنامه مطالعه، بلوک‌های کاری، روتین روزانه یا هر چیز دیگری بسازم.\n\n"
+                "اگر به جزئیات بیشتری نیاز داشته باشم، سوال می‌پرسم!"
             )
             self._conv_layout.insertWidget(
                 self._conv_layout.count() - 1, welcome

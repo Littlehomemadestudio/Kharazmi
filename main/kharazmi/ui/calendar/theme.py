@@ -1,4 +1,5 @@
 # پوسته — رنگ‌ها، قلم‌ها و متریک‌های بصری تقویم
+# هماهنگ با پالت حرفه‌ای مینیمال RASK
 from __future__ import annotations
 
 from PySide6.QtGui import QColor, QFont
@@ -9,28 +10,28 @@ from PySide6.QtCore import Qt
 
 _LIGHT_SURFACE = {
     "CANVAS":      "#FFFFFF",
-    "PANEL":       "#F5F5F7",
-    "CARD":        "#EEEEF0",
-    "CARD_HOVER":  "#E4E4E6",
-    "CARD_ACTIVE": "#DCDCDE",
-    "ELEVATED":    "#E8E8EA",
-    "TOOLTIP":     "#2A2A30",     # dark tooltip for contrast
-    "OVERLAY":     "rgba(0, 0, 0, 0.30)",
+    "PANEL":       "#F7F7F8",
+    "CARD":        "#F4F4F5",
+    "CARD_HOVER":  "#EBEBED",
+    "CARD_ACTIVE": "#E2E2E5",
+    "ELEVATED":    "#E2E2E5",
+    "TOOLTIP":     "#2A2A30",
+    "OVERLAY":     "rgba(0, 0, 0, 0.25)",
 }
 
 _DARK_SURFACE = {
-    "CANVAS":      "#0A0A0A",
-    "PANEL":       "#111113",
-    "CARD":        "#1A1A1E",
-    "CARD_HOVER":  "#222228",
-    "CARD_ACTIVE": "#2A2A32",
-    "ELEVATED":    "#1E1E24",
-    "TOOLTIP":     "#1C1C22",
-    "OVERLAY":     "rgba(0, 0, 0, 0.55)",
+    "CANVAS":      "#111113",
+    "PANEL":       "#18181B",
+    "CARD":        "#1F1F23",
+    "CARD_HOVER":  "#27272B",
+    "CARD_ACTIVE": "#2E2E33",
+    "ELEVATED":    "#27272B",
+    "TOOLTIP":     "#1F1F23",
+    "OVERLAY":     "rgba(0, 0, 0, 0.50)",
 }
 
 class Surface:
-    """Background layers — darker = deeper (dark mode default)."""
+    """Background layers — darker = deeper."""
     pass
 
 # Initialize with light mode (matches app default)
@@ -41,23 +42,23 @@ for _k, _v in _LIGHT_SURFACE.items():
 # ──────────────────────────────── Gold Accent ─────────────────────────────
 
 _LIGHT_GOLD = {
-    "BRIGHT":        "#E8B730",
-    "PRIMARY":       "#C9A027",
-    "DEEP":          "#8C7012",
+    "BRIGHT":        "#D4A017",
+    "PRIMARY":       "#B8860B",
+    "DEEP":          "#8B6914",
     "MUTED":         "#6B5509",
-    "GLOW":          QColor(201, 160, 39, 30),
-    "GLOW_STRONG":   QColor(201, 160, 39, 70),
-    "GRADIENT_START": "#E8B730",
-    "GRADIENT_END":   "#C9A027",
+    "GLOW":          QColor(184, 134, 11, 25),
+    "GLOW_STRONG":   QColor(184, 134, 11, 60),
+    "GRADIENT_START": "#D4A017",
+    "GRADIENT_END":   "#B8860B",
 }
 
 _DARK_GOLD = {
     "BRIGHT":        "#F5C842",
     "PRIMARY":       "#D4AF37",
-    "DEEP":          "#8C7012",
+    "DEEP":          "#A88B2A",
     "MUTED":         "#5C4A0E",
-    "GLOW":          QColor(212, 175, 55, 46),
-    "GLOW_STRONG":   QColor(212, 175, 55, 90),
+    "GLOW":          QColor(212, 175, 55, 40),
+    "GLOW_STRONG":   QColor(212, 175, 55, 80),
     "GRADIENT_START": "#F5C842",
     "GRADIENT_END":   "#D4AF37",
 }
@@ -65,7 +66,7 @@ _DARK_GOLD = {
 class Gold:
     pass
 
-# Initialize with light mode (matches app default)
+# Initialize with light mode
 for _k, _v in _LIGHT_GOLD.items():
     setattr(Gold, _k, _v)
 
@@ -73,21 +74,21 @@ for _k, _v in _LIGHT_GOLD.items():
 # ──────────────────────────────── Text ────────────────────────────────────
 
 _LIGHT_TEXT = {
-    "PRIMARY":     "#1A1A2E",
-    "SECONDARY":   "#6B6B80",
-    "TERTIARY":    "#A0A0B4",
+    "PRIMARY":     "#1C1C1E",
+    "SECONDARY":   "#6E6E73",
+    "TERTIARY":    "#AEAEB2",
     "ON_GOLD":     "#FFFFFF",
-    "MUTED_WHITE": "#5A5A6E",
-    "WEEKEND":     "#C9A96E",
+    "MUTED_WHITE": "#6E6E73",
+    "WEEKEND":     "#B8860B",
 }
 
 _DARK_TEXT = {
-    "PRIMARY":     "#F5F0DC",
-    "SECONDARY":   "#A8A294",
-    "TERTIARY":    "#5C5749",
+    "PRIMARY":     "#F0EDE4",
+    "SECONDARY":   "#9E9A8F",
+    "TERTIARY":    "#5C5950",
     "ON_GOLD":     "#1A1505",
-    "MUTED_WHITE": "#C8C4B8",
-    "WEEKEND":     "#C9A96E",
+    "MUTED_WHITE": "#9E9A8F",
+    "WEEKEND":     "#D4AF37",
 }
 
 class Text:
@@ -100,18 +101,18 @@ for _k, _v in _LIGHT_TEXT.items():
 # ──────────────────────────────── Borders ─────────────────────────────────
 
 _LIGHT_BORDER = {
-    "SUBTLE":  "#E4E4E8",
-    "NORMAL":  "#CCCCCC",
-    "STRONG":  "#A8A8B4",
-    "GOLD":    "#8C7012",
-    "FOCUS":   "#C9A027",
+    "SUBTLE":  "#E5E5EA",
+    "NORMAL":  "#D1D1D6",
+    "STRONG":  "#C7C7CC",
+    "GOLD":    "#B8860B",
+    "FOCUS":   "#B8860B",
 }
 
 _DARK_BORDER = {
-    "SUBTLE":  "#1C1C22",
-    "NORMAL":  "#2A2A33",
-    "STRONG":  "#3A3A45",
-    "GOLD":    "#8C7012",
+    "SUBTLE":  "#222226",
+    "NORMAL":  "#2C2C32",
+    "STRONG":  "#3A3A42",
+    "GOLD":    "#D4AF37",
     "FOCUS":   "#D4AF37",
 }
 
@@ -125,13 +126,13 @@ for _k, _v in _LIGHT_BORDER.items():
 # ──────────────────────────────── Event Palette ───────────────────────────
 
 class EventColors:
-    """Named colors for event cards — each calendar gets one."""
-    DEFAULT    = "#D4AF37"
-    BLUE       = "#5A7FA8"
+    """Named colors for event cards — professional, muted palette."""
+    DEFAULT    = "#B8860B"
+    BLUE       = "#5B9BD5"
     TEAL       = "#4A9A8A"
     CORAL      = "#C07060"
     PURPLE     = "#8A6AAA"
-    GREEN      = "#5A9A5A"
+    GREEN      = "#5A9A6A"
     ORANGE     = "#C08A4A"
     PINK       = "#B06080"
     SLATE      = "#6A7A8A"
@@ -150,19 +151,19 @@ class EventColors:
 # ──────────────────────────────── Status ──────────────────────────────────
 
 _LIGHT_STATUS = {
-    "DONE":      "#2E7D32",
-    "ACTIVE":    "#1565C0",
-    "BLOCKED":   "#C62828",
+    "DONE":      "#34A853",
+    "ACTIVE":    "#5B9BD5",
+    "BLOCKED":   "#D93025",
     "DRAFT":     "#9E9E9E",
     "CANCELLED": "#BDBDBD",
 }
 
 _DARK_STATUS = {
-    "DONE":      "#5A8A5A",
-    "ACTIVE":    "#5A7FA8",
-    "BLOCKED":   "#A85A5A",
-    "DRAFT":     "#5C5749",
-    "CANCELLED": "#3A2A2A",
+    "DONE":      "#5A9A6A",
+    "ACTIVE":    "#6A8FB8",
+    "BLOCKED":   "#C05A5A",
+    "DRAFT":     "#5C5950",
+    "CANCELLED": "#3A3232",
 }
 
 class Status:
@@ -175,8 +176,8 @@ for _k, _v in _LIGHT_STATUS.items():
 # ──────────────────────────────── Current Time ────────────────────────────
 
 class NowLine:
-    COLOR = QColor(220, 60, 60)
-    DOT   = QColor(220, 60, 60)
+    COLOR = QColor(212, 175, 55)
+    DOT   = QColor(212, 175, 55)
     WIDTH = 2
 
 
@@ -184,18 +185,18 @@ class NowLine:
 
 _LIGHT_PRIORITY = {
     0: "#9E9E9E",   # trivial
-    1: "#827717",   # low
+    1: "#8B6914",   # low
     2: "#C08A4A",   # medium
     3: "#C07060",   # high
-    4: "#C62828",   # critical
+    4: "#D93025",   # critical
 }
 
 _DARK_PRIORITY = {
-    0: "#5C5749",   # trivial
-    1: "#7A7A4A",   # low
+    0: "#5C5950",   # trivial
+    1: "#8A8A4A",   # low
     2: "#C08A4A",   # medium
     3: "#C07060",   # high
-    4: "#C04040",   # critical
+    4: "#C05A5A",   # critical
 }
 
 PRIORITY_COLORS = dict(_LIGHT_PRIORITY)
@@ -232,35 +233,30 @@ def font_month_title() -> QFont:
 
 # قلم سربرگ
 def font_header() -> QFont:
-    """Used for section headers, weekday names, mini month headers."""
     f = QFont("Segoe UI", 16, QFont.Bold)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 # قلم بدنه
 def font_body() -> QFont:
-    """Primary body text — event titles, buttons, labels, day numbers."""
     f = QFont("Inter", 15, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 # قلم small
 def font_small() -> QFont:
-    """Secondary text — times, hints, chips."""
     f = QFont("Inter", 14)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 # قلم زمان برچسب
 def font_time_label() -> QFont:
-    """Time ruler labels."""
     f = QFont("Inter", 14)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 # قلم mini روز
 def font_mini_day() -> QFont:
-    """Small day numbers in mini-month and year view."""
     f = QFont("Inter", 13, QFont.Medium)
     f.setStyleStrategy(QFont.PreferAntialias)
     return f
@@ -335,12 +331,7 @@ class Metrics:
 
 # مجموعه تقویم پوسته
 def set_calendar_theme(mode: str) -> None:
-    """Switch the calendar sub-theme to 'light' or 'dark'.
-
-    Updates Surface, Text, Border, Status, PRIORITY_COLORS
-    class attributes in-place so all calendar views pick up
-    the new values dynamically.
-    """
+    """Switch the calendar sub-theme to 'light' or 'dark'."""
     if mode == "dark":
         for k, v in _DARK_SURFACE.items():
             setattr(Surface, k, v)
@@ -369,10 +360,9 @@ def set_calendar_theme(mode: str) -> None:
 
 # ──────────────────────────────── Helpers ─────────────────────────────────
 
-# qcolor
 # تبدیل رشته رنگ به QColor
 def qcolor(hex_str: str) -> QColor:
-    """Parse a hex color string to QColor. Handles #RGB, #RRGGBB, #AARRGGBB."""
+    """Parse a hex color string to QColor."""
     h = hex_str.lstrip("#")
     if len(h) == 3:
         h = h[0]*2 + h[1]*2 + h[2]*2
@@ -383,7 +373,6 @@ def qcolor(hex_str: str) -> QColor:
     return QColor(hex_str)
 
 
-# lighten
 # روشن‌تر کردن رنگ
 def lighten(hex_str: str, factor: float = 0.15) -> QColor:
     c = qcolor(hex_str)
@@ -394,7 +383,6 @@ def lighten(hex_str: str, factor: float = 0.15) -> QColor:
     return result
 
 
-# darken
 # تیره‌تر کردن رنگ
 def darken(hex_str: str, factor: float = 0.15) -> QColor:
     c = qcolor(hex_str)

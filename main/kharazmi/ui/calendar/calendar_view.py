@@ -268,6 +268,16 @@ class _CalendarToolbar(QWidget):
     def update_view_buttons(self) -> None:
         self._update_view_buttons()
 
+    # بازسازی سبک‌های درخطی برای تم فعلی
+    def _reapply_styles(self) -> None:
+        """Rebuild toolbar inline stylesheets for the current theme."""
+        self.setStyleSheet(f"background: {Surface.PANEL};")
+        self._title_label.setStyleSheet(f"color: {Text.PRIMARY};")
+        # Force view buttons to re-apply their checked/unchecked styles
+        for val, btn in self._view_buttons.items():
+            btn._apply_style(btn.isChecked())
+        self.update()
+
 
 # ──────────────────────────────── CalendarView ────────────────────────────
 
@@ -639,9 +649,38 @@ class CalendarView(QWidget):
     def _reapply_theme(self) -> None:
         """Rebuild inline styles for the current theme."""
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        # Rebuild toolbar styles
+        if hasattr(self, '_toolbar') and self._toolbar:
+            self._toolbar.setStyleSheet(f"background: {Surface.PANEL};")
+            self._toolbar._reapply_styles()
+        # Rebuild sidebar
+        if hasattr(self, '_sidebar') and self._sidebar:
+            try:
+                self._sidebar.setStyleSheet(f"background: {Surface.PANEL};")
+            except Exception:
+                pass
+        # Rebuild AI toggle button
+        if hasattr(self, '_ai_toggle_btn') and self._ai_toggle_btn:
+            self._ai_toggle_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 {Palette.GOLD_PRIMARY}, stop:1 {Palette.GOLD_BRIGHT});
+                    color: {Palette.TEXT_ON_GOLD};
+                    border: none;
+                    border-radius: 22px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 {Palette.GOLD_BRIGHT}, stop:1 {Palette.GOLD_PRIMARY});
+                }}
+            """)
         # Force all calendar sub-views to repaint
         for child in self.findChildren(QWidget):
             try:
+                child.style().unpolish(child)
+                child.style().polish(child)
                 child.update()
             except Exception:
                 pass

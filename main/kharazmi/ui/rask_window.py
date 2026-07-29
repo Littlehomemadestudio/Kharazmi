@@ -765,7 +765,9 @@ class RaskMainWindow(QMainWindow, FramelessWindowMixin):
                 child.update()
             except Exception:
                 pass
+        # Force a full repaint of the main window
         self.update()
+        self.repaint()
 
     # ---- Close ----
     # ذخیره خودکار هنگام بستن پنجره

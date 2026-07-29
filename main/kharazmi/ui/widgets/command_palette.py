@@ -56,7 +56,7 @@ class CommandPaletteDialog(QDialog):
         layout.setSpacing(0)
 
         self._input = QLineEdit()
-        self._input.setPlaceholderText("type a command or search tasks...")
+        self._input.setPlaceholderText("دستور تایپ کنید یا وظایف را جستجو کنید...")
         self._input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: transparent;

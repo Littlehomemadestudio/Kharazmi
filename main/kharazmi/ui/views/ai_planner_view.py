@@ -1783,4 +1783,10 @@ class AIPlannerView(QWidget):
     # بازسازی سبک‌ها برای تم فعلی
     def _reapply_theme(self):
         self.setStyleSheet(f"background-color: {Palette.BG_PRIMARY};")
+        # Propagate to the graph view so it rebuilds edge colors & toolbar styles
+        if hasattr(self, 'graph_view') and self.graph_view is not None:
+            try:
+                self.graph_view._reapply_theme()
+            except Exception:
+                pass
         self.update()
